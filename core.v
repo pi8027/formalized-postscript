@@ -10,8 +10,16 @@ Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..) : list_scope.
 Fixpoint replicate {A : Set} (n : nat) (a : A) :=
   match n with
     | 0 => nil
-    | S n' => a :: replicate n' a
+    | S n => a :: replicate n a
   end.
+
+Fixpoint replicatel' {A : Set} (l : list A) (n : nat) (a : A) :=
+  match n with
+    | 0 => l
+    | S n => replicatel' (a :: l) n a
+  end.
+
+Definition replicatel {A : Set} : nat -> A -> list A := replicatel' [].
 
 Lemma app_replicate : forall (A : Set) (n m : nat) (a : A),
   replicate n a ++ replicate m a = replicate (n + m) a.
@@ -132,12 +140,14 @@ Lemma rednop : forall (vs ps : stack), redstar (vs, termnop :: ps) (vs, ps).
   intros ; repeat evalstep.
 Qed.
 
-Definition term_list (ts : list term) : term := fold_left term_seq ts termnop.
+Definition term_list' : list term -> term -> term := fold_left term_seq.
+
+Definition term_list (ts : list term) : term := term_list' ts termnop.
 
 Lemma term_list_prop : forall (ts : list term) (vs ps : stack),
   redstar (vs, term_list ts :: ps) (vs, ts ++ ps).
-  intros ; compute.
-  assert (forall head, redstar (vs, fold_left term_seq ts head :: ps) (vs, head :: ts ++ ps)).
+  intros.
+  assert (forall head, redstar (vs, term_list' ts head :: ps) (vs, head :: ts ++ ps)).
     induction ts ; intros.
     evalstep.
     apply (rt_trans _ _ _ _ _ (IHts (term_seq head a))) ; evalstep.
@@ -146,7 +156,7 @@ Qed.
 
 Definition term_quote : term := term_list [term_push ; term_push ; term_cons].
 
-Lemma term_quote_prop : forall (v : term) (vs ps : stack),
+Lemma red_term_quote : forall (v : term) (vs ps : stack),
   redstar (v :: vs, term_quote :: ps) (term_seq term_push v :: vs, ps).
   intros ; repeat evalstep.
 Qed.
@@ -173,4 +183,17 @@ Lemma termnat_prop : forall (n : nat), termnat n (termnat_term n).
   repeat intro.
   apply (rt_trans _ _ _ _ _ (term_list_prop _ _ _)).
   repeat evalstep.
+  assert (forall head, redstar
+    (v :: head :: vs, term_list (replicate n termnat_term_part) :: ps)
+    (v :: term_list' (replicate n v) head :: vs, ps)).
+    intros.
+    induction n.
+    compute ; repeat evalstep.
+    unfold replicate at 1, term_list at 1, term_list', fold_left at 1.
+    apply (rt_trans _ _ _ _ _ (term_list_prop _ _ _)).
+    apply (rt_trans _ _ _ _ _ (term_list_prop _ _ _)).
+    repeat evalstep.
+    unfold app at 1.
 
+    evalstep.
+    repeat evalstep.
