@@ -111,7 +111,7 @@ Qed.
 
 Ltac evalstep' e1 e2 :=
   try apply rt_refl ;
-  lazymatch eval compute in (decide_reduction e1) with
+  match eval hnf in (decide_reduction e1) with
     | or_introl _ (ex_intro _ ?e3 ?p) =>
       apply (rt_step _ _ _ _ p) ||
       apply (rt_trans _ _ _ _ _ (rt_step _ _ _ _ p))
@@ -172,3 +172,5 @@ Definition termnat_term (n : nat) : term := term_list
 Lemma termnat_prop : forall (n : nat), termnat n (termnat_term n).
   repeat intro.
   apply (rt_trans _ _ _ _ _ (term_list_prop _ _ _)).
+  repeat evalstep.
+
