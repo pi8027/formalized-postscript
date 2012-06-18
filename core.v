@@ -270,7 +270,7 @@ Lemma termsucc_prop : forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1
   redpartial red_termincr_replicate.
   evalauto.
   assert (term_list' (replicate n t2) (term_seq termnop t2) = term_list (replicate (S n) t2)).
-    intros ; induction n ; auto.
+    compute ; auto.
   rewrite H0.
   apply red_term_list.
   evalauto.
