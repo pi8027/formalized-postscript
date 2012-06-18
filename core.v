@@ -137,16 +137,20 @@ Qed.
 
 Definition term_list' : list term -> term -> term := fold_left term_seq.
 
+Lemma red_term_list' : forall (ts : list term) (t : term) (vs ps : stack),
+  redstar (vs, term_list' ts t :: ps) (vs, t :: ts ++ ps).
+  induction ts ; intros.
+  evalauto.
+  redpartial IHts ; evalauto.
+Qed.
+
 Definition term_list (ts : list term) : term := term_list' ts termnop.
 
 Lemma red_term_list : forall (ts : list term) (vs ps : stack),
   redstar (vs, term_list ts :: ps) (vs, ts ++ ps).
   intros.
-  assert (forall head, redstar (vs, term_list' ts head :: ps) (vs, head :: ts ++ ps)).
-    induction ts ; intros.
-    evalauto.
-    redpartial IHts ; evalauto.
-  redpartial H ; evalauto.
+  redpartial red_term_list'.
+  evalauto.
 Qed.
 
 Definition term_snoc : term := term_list [ term_swap ; term_cons ].
@@ -235,7 +239,7 @@ Definition termnat_unquote_prop : forall (n : nat) (t1 t2 : term) (vs ps : stack
   termnat_quoted n t1 ->
   exists t2, termnat n t2 /\ redstar (t1 :: vs, termnat_unquote :: ps) (t2 :: vs, ps).
   repeat intro.
-  apply (ex_intro _ (term_list [ term_push ; termnop ; term_swap ; t1 ; term_pop ; term_exec])).
+  apply (ex_intro _ (term_list [ term_push ; termnop ; term_swap ; t1 ; term_pop ; term_exec ])).
   split.
   repeat intro.
   evalauto.
@@ -269,9 +273,8 @@ Lemma termsucc_prop : forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1
   redpartial H.
   redpartial red_termincr_replicate.
   evalauto.
-  assert (term_list' (replicate n t2) (term_seq termnop t2) = term_list (replicate (S n) t2)).
-    compute ; auto.
-  rewrite H0.
-  apply red_term_list.
+  simpl.
+  redpartial red_term_list'.
+  evalauto.
   evalauto.
 Qed.
