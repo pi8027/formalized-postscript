@@ -40,20 +40,20 @@ Definition stack : Set := list term.
 Definition environment : Set := (stack * stack)%type.
 
 Inductive reduction : relation environment :=
-  | reduction_pop  : forall (v : term) (vs ps : stack),
-                     reduction (v :: vs, term_pop :: ps) (vs, ps)
-  | reduction_dup  : forall (v : term) (vs ps : stack),
-                     reduction (v :: vs, term_dup :: ps) (v :: v :: vs, ps)
-  | reduction_swap : forall (v1 v2 : term) (vs ps : stack),
-                     reduction (v1 :: v2 :: vs, term_swap :: ps) (v2 :: v1 :: vs, ps)
-  | reduction_cons : forall (v1 v2 : term) (vs ps : stack),
-                     reduction (v1 :: v2 :: vs, term_cons :: ps) (term_seq v1 v2 :: vs, ps)
-  | reduction_push : forall (v : term) (vs ps : stack),
-                     reduction (vs, term_push :: v :: ps) (v :: vs, ps)
-  | reduction_exec : forall (p : term) (vs ps : stack),
-                     reduction (p :: vs, term_exec :: ps) (vs, p :: ps)
-  | reduction_seq  : forall (p1 p2 : term) (vs ps : stack),
-                     reduction (vs, term_seq p1 p2 :: ps) (vs, p1 :: p2 :: ps).
+  | reduction_pop  : forall (t : term) (vs ps : stack),
+                     reduction (t :: vs, term_pop :: ps) (vs, ps)
+  | reduction_dup  : forall (t : term) (vs ps : stack),
+                     reduction (t :: vs, term_dup :: ps) (t :: t :: vs, ps)
+  | reduction_swap : forall (t1 t2 : term) (vs ps : stack),
+                     reduction (t1 :: t2 :: vs, term_swap :: ps) (t2 :: t1 :: vs, ps)
+  | reduction_cons : forall (t1 t2 : term) (vs ps : stack),
+                     reduction (t1 :: t2 :: vs, term_cons :: ps) (term_seq t1 t2 :: vs, ps)
+  | reduction_push : forall (t : term) (vs ps : stack),
+                     reduction (vs, term_push :: t :: ps) (t :: vs, ps)
+  | reduction_exec : forall (t : term) (vs ps : stack),
+                     reduction (t :: vs, term_exec :: ps) (vs, t :: ps)
+  | reduction_seq  : forall (t1 t2 : term) (vs ps : stack),
+                     reduction (vs, term_seq t1 t2 :: ps) (vs, t1 :: t2 :: ps).
 
 Definition redstar : relation environment := clos_refl_trans _ reduction.
 
@@ -113,7 +113,6 @@ Ltac evalstep' e1 e2 :=
   try apply rt_refl ;
   match eval hnf in (decide_reduction e1) with
     | or_introl _ (ex_intro _ ?e3 ?p) =>
-      apply (rt_step _ _ _ _ p) ||
       apply (rt_trans _ _ _ _ _ (rt_step _ _ _ _ p))
     | or_intror _ _ => idtac
     | _ => idtac
@@ -123,95 +122,162 @@ Ltac evalstep :=
   match goal with
     | |- redstar ?e1 ?e2 => evalstep' e1 e2
     | |- clos_refl_trans _ reduction ?e1 ?e2 => evalstep' e1 e2
-    | _ => idtac
+    | _ => fail 2 "The goal is invalid."
   end.
+
+Ltac evalauto := repeat evalstep.
 
 Definition termnop : term := term_seq (term_seq term_push term_pop) term_pop.
 
 Lemma rednop : forall (vs ps : stack), redstar (vs, termnop :: ps) (vs, ps).
-  intros ; repeat evalstep.
+  intros ; evalauto.
 Qed.
 
 Definition term_list' : list term -> term -> term := fold_left term_seq.
 
 Definition term_list (ts : list term) : term := term_list' ts termnop.
 
-Lemma term_list_prop : forall (ts : list term) (vs ps : stack),
+Lemma red_term_list : forall (ts : list term) (vs ps : stack),
   redstar (vs, term_list ts :: ps) (vs, ts ++ ps).
   intros.
   assert (forall head, redstar (vs, term_list' ts head :: ps) (vs, head :: ts ++ ps)).
     induction ts ; intros.
-    evalstep.
-    apply (rt_trans _ _ _ _ _ (IHts (term_seq head a))) ; evalstep.
+    evalauto.
+    apply (rt_trans _ _ _ _ _ (IHts (term_seq head a))) ; evalauto.
   apply (rt_trans _ _ _ _ _ (H termnop) (rednop _ _)).
 Qed.
 
-Definition term_quote : term := term_list [term_push ; term_push ; term_cons].
+Definition term_snoc : term := term_list [ term_swap ; term_cons ].
 
-Lemma red_term_quote : forall (v : term) (vs ps : stack),
-  redstar (v :: vs, term_quote :: ps) (term_seq term_push v :: vs, ps).
-  intros ; repeat evalstep.
+Lemma red_snoc : forall (t1 t2 : term) (vs ps : stack),
+  redstar (t1 :: t2 :: vs, term_snoc :: ps) (term_seq t2 t1 :: vs, ps).
+  intros ; evalauto.
 Qed.
 
-Definition termnat (n : nat) (p : term) : Prop :=
-  forall (v : term) (vs ps : stack),
-    redstar (v :: vs, p :: ps) (vs, replicate n v ++ ps).
+Definition term_quote : term := term_list [term_push ; term_push ; term_cons ].
+
+Lemma red_term_quote : forall (t : term) (vs ps : stack),
+  redstar (t :: vs, term_quote :: ps) (term_seq term_push t :: vs, ps).
+  intros ; evalauto.
+Qed.
+
+Definition termnat_quoted (n : nat) (t1 : term) : Prop :=
+  forall (t2 t3 : term) (vs ps : stack),
+    redstar (t2 :: t3 :: vs, t1 :: ps) (t2 :: term_list' (replicate n t2) t3 :: vs, ps).
+
+Definition termnat (n : nat) (t1 : term) : Prop :=
+  forall (t2 : term) (vs ps : stack),
+    redstar (t2 :: vs, t1 :: ps) (vs, replicate n t2 ++ ps).
 
 Definition termincr : term := term_list
   [ term_dup ; term_quote ; term_swap ; term_quote ; term_cons ;
-    term_swap ; term_quote ; term_swap ; term_cons ; term_exec ;
+    term_swap ; term_quote ; term_snoc ; term_exec ;
     term_cons ; term_swap ].
 
-Lemma termincr_prop : forall (p1 p2 : term) (vs ps : stack),
-  redstar (p1 :: p2 :: vs, termincr :: ps) (p1 :: term_seq p2 p1 :: vs, ps).
-  intros ; repeat evalstep.
+Lemma red_termincr : forall (t1 t2 : term) (vs ps : stack),
+  redstar (t1 :: t2 :: vs, termincr :: ps) (t1 :: term_seq t2 t1 :: vs, ps).
+  intros ; evalauto.
 Qed.
 
-Lemma termincr_replicate_prop : forall (n : nat) (p1 p2 : term) (vs ps : stack),
-  redstar (p1 :: p2 :: vs, replicate n termincr ++ ps)
-    (p1 :: term_list' (replicate n p1) p2 :: vs, ps).
-  induction n ; intros ; repeat evalstep.
-  apply (rt_trans _ _ _ _ _ (IHn p1 (term_seq p2 p1) vs ps)).
-  assert (term_list' (replicate n p1) (term_seq p2 p1) = term_list' (replicate (S n) p1) p2).
+Lemma red_termincr_replicate : forall (n : nat) (t1 t2 : term) (vs ps : stack),
+  redstar (t1 :: t2 :: vs, replicate n termincr ++ ps)
+    (t1 :: term_list' (replicate n t1) t2 :: vs, ps).
+  induction n ; intros ; evalauto.
+  apply (rt_trans _ _ _ _ _ (IHn t1 (term_seq t2 t1) vs ps)).
+  assert (term_list' (replicate n t1) (term_seq t2 t1) = term_list' (replicate (S n) t1) t2).
     intros ; induction n ; compute ; auto.
   rewrite H ; evalstep.
+Qed.
+
+Definition termnat_quoted_term (n : nat) : term := term_list (replicate n termincr).
+
+Lemma termnat_quoted_term_prop : forall (n : nat), termnat_quoted n (termnat_quoted_term n).
+  repeat intro.
+  apply (rt_trans _ _ _ _ _ (red_term_list _ _ _)).
+  apply red_termincr_replicate.
 Qed.
 
 Definition termnat_term (n : nat) : term := term_list
   [ term_push ; termnop ; term_swap ; term_list (replicate n termincr) ; term_pop ; term_exec ].
 
-Lemma termnat_prop : forall (n : nat), termnat n (termnat_term n).
+Lemma termnat_term_prop : forall (n : nat), termnat n (termnat_term n).
   repeat intro.
-  apply (rt_trans _ _ _ _ _ (term_list_prop _ _ _)).
-  repeat evalstep.
-  apply (rt_trans _ _ _ _ _ (term_list_prop _ _ _)).
-  apply (rt_trans _ _ _ _ _ (termincr_replicate_prop _ _ _ _ _)).
-  repeat evalstep.
-  apply term_list_prop.
+  apply (rt_trans _ _ _ _ _ (red_term_list _ _ _)).
+  evalauto.
+  apply (rt_trans _ _ _ _ _ (termnat_quoted_term_prop _ _ _ _ _)).
+  evalauto.
+  apply red_term_list.
+Qed.
+
+Definition termnat_quote : term := term_list
+  [ term_push ; termnop ; term_quote ;
+    term_push ; termincr ; term_quote ; term_snoc ;
+    term_swap ; term_quote ; term_snoc ; term_exec ;
+    term_push ; termincr ; term_swap ; term_exec ; term_pop ].
+
+Lemma termnat_quote_prop : forall (n : nat) (t1 t2 : term) (vs ps : stack),
+  termnat n t1 ->
+  exists t2, termnat_quoted n t2 /\ redstar (t1 :: vs, termnat_quote :: ps) (t2 :: vs, ps).
+  repeat intro.
+  eexists.
+  split.
+  apply termnat_quoted_term_prop.
+  evalauto.
+  apply (rt_trans _ _ _ _ _ (H _ _ _)).
+  apply (rt_trans _ _ _ _ _ (red_termincr_replicate _ _ _ _ _)).
+  evalauto.
+Qed.
+
+Definition termnat_unquote : term := term_list
+  [ term_push ; termnop ;
+    term_push ; term_push ; term_snoc ;
+    term_push ; termnop ; term_snoc ;
+    term_push ; term_swap ; term_snoc ;
+    term_cons ;
+    term_push ; term_pop ; term_snoc ;
+    term_push ; term_exec ; term_snoc ].
+
+Definition termnat_unquote_prop : forall (n : nat) (t1 t2 : term) (vs ps : stack),
+  termnat_quoted n t1 ->
+  exists t2, termnat n t2 /\ redstar (t1 :: vs, termnat_unquote :: ps) (t2 :: vs, ps).
+  repeat intro.
+  apply (ex_intro _ (term_list [ term_push ; termnop ; term_swap ; t1 ; term_pop ; term_exec])).
+  split.
+  repeat intro.
+  evalauto.
+  apply (rt_trans _ _ _ _ _ (H _ _ _ _)).
+  evalauto.
+  apply (rt_trans _ _ _ _ _ (red_term_list _ _ _)).
+  evalauto.
+  evalauto.
 Qed.
 
 Definition termsucc : term := term_list
-  [ term_push ; term_list [ term_push ; termnop ; term_swap ; termincr ] ; term_swap ;
-    term_push ; termincr ; term_quote ; term_cons ;
-    term_push ; term_pop ; term_swap ; term_cons ;
-    term_push ; term_exec ; term_swap ; term_cons ;
-    term_swap ; term_cons ].
+  [ term_push ; termnop ;
+    term_push ; term_push ; term_snoc ;
+    term_push ; termnop ; term_snoc ;
+    term_push ; term_swap ; term_snoc ;
+    term_push ; termincr ; term_snoc ;
+    term_push ; termincr ; term_quote ; term_snoc ;
+    term_cons ;
+    term_push ; term_pop ; term_snoc ;
+    term_push ; term_exec ; term_snoc ].
 
-Lemma termsucc_prop : forall (n : nat) (p1 : term) (vs ps : stack), termnat n p1 ->
-  exists p2 : term, termnat (S n) p2 /\ redstar (p1 :: vs, termsucc :: ps) (p2 :: vs, ps).
+Lemma termsucc_prop : forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1 ->
+  exists t2 : term, termnat (S n) t2 /\ redstar (t1 :: vs, termsucc :: ps) (t2 :: vs, ps).
   intros.
-  apply (ex_intro _
-    (term_seq (term_list [term_push; termnop; term_swap; termincr])
-      (term_seq (term_seq (term_seq (term_seq term_push termincr) p1) term_pop) term_exec))).
+  apply (ex_intro _ (term_list
+    [ term_push ; termnop ; term_swap ; termincr ;
+      term_seq term_push termincr ; t1 ; term_pop ; term_exec ])).
   split.
   repeat intro.
-  repeat evalstep.
+  evalauto.
   apply (rt_trans _ _ _ _ _ (H _ _ _)).
-  apply (rt_trans _ _ _ _ _ (termincr_replicate_prop _ _ _ _ _)).
-  repeat evalstep.
-  assert (term_list' (replicate n v) (term_seq termnop v) = term_list (replicate (S n) v)).
+  apply (rt_trans _ _ _ _ _ (red_termincr_replicate _ _ _ _ _)).
+  evalauto.
+  assert (term_list' (replicate n t2) (term_seq termnop t2) = term_list (replicate (S n) t2)).
     intros ; induction n ; auto.
   rewrite H0.
-  apply term_list_prop.
-  repeat evalstep.
+  apply red_term_list.
+  evalauto.
 Qed.
