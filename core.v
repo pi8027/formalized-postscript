@@ -13,14 +13,6 @@ Fixpoint replicate {A : Set} (n : nat) (a : A) :=
     | S n => a :: replicate n a
   end.
 
-Fixpoint replicatel' {A : Set} (l : list A) (n : nat) (a : A) :=
-  match n with
-    | 0 => l
-    | S n => replicatel' (a :: l) n a
-  end.
-
-Definition replicatel {A : Set} : nat -> A -> list A := replicatel' [].
-
 Lemma app_replicate : forall (A : Set) (n m : nat) (a : A),
   replicate n a ++ replicate m a = replicate (n + m) a.
   intros.
@@ -161,39 +153,65 @@ Lemma red_term_quote : forall (v : term) (vs ps : stack),
   intros ; repeat evalstep.
 Qed.
 
-Definition termnat (n : nat) (p : term) : Set :=
+Definition termnat (n : nat) (p : term) : Prop :=
   forall (v : term) (vs ps : stack),
     redstar (v :: vs, p :: ps) (vs, replicate n v ++ ps).
 
-Definition termnat_term_part : term := term_list [
-  term_dup ; term_quote ; term_swap ; term_quote ; term_cons ;
-  term_swap ; term_quote ; term_swap ; term_cons ; term_exec ;
-  term_swap ; term_cons ; term_swap ].
+Definition termincr : term := term_list
+  [ term_dup ; term_quote ; term_swap ; term_quote ; term_cons ;
+    term_swap ; term_quote ; term_swap ; term_cons ; term_exec ;
+    term_cons ; term_swap ].
 
-Lemma termnat_term_part_prop : forall (p1 p2 : term) (vs ps : stack),
-  redstar (p1 :: p2 :: vs, termnat_term_part :: ps) (p1 :: term_seq p1 p2 :: vs, ps).
+Lemma termincr_prop : forall (p1 p2 : term) (vs ps : stack),
+  redstar (p1 :: p2 :: vs, termincr :: ps) (p1 :: term_seq p2 p1 :: vs, ps).
   intros ; repeat evalstep.
 Qed.
 
+Lemma termincr_replicate_prop : forall (n : nat) (p1 p2 : term) (vs ps : stack),
+  redstar (p1 :: p2 :: vs, replicate n termincr ++ ps)
+    (p1 :: term_list' (replicate n p1) p2 :: vs, ps).
+  induction n ; intros ; repeat evalstep.
+  apply (rt_trans _ _ _ _ _ (IHn p1 (term_seq p2 p1) vs ps)).
+  assert (term_list' (replicate n p1) (term_seq p2 p1) = term_list' (replicate (S n) p1) p2).
+    intros ; induction n ; compute ; auto.
+  rewrite H ; evalstep.
+Qed.
+
 Definition termnat_term (n : nat) : term := term_list
-  [ term_push ; termnop ; term_swap ;
-    term_list (replicate n termnat_term_part) ; term_pop ; term_exec ].
+  [ term_push ; termnop ; term_swap ; term_list (replicate n termincr) ; term_pop ; term_exec ].
 
 Lemma termnat_prop : forall (n : nat), termnat n (termnat_term n).
   repeat intro.
   apply (rt_trans _ _ _ _ _ (term_list_prop _ _ _)).
   repeat evalstep.
-  assert (forall head, redstar
-    (v :: head :: vs, term_list (replicate n termnat_term_part) :: ps)
-    (v :: term_list' (replicate n v) head :: vs, ps)).
-    intros.
-    induction n.
-    compute ; repeat evalstep.
-    unfold replicate at 1, term_list at 1, term_list', fold_left at 1.
-    apply (rt_trans _ _ _ _ _ (term_list_prop _ _ _)).
-    apply (rt_trans _ _ _ _ _ (term_list_prop _ _ _)).
-    repeat evalstep.
-    unfold app at 1.
+  apply (rt_trans _ _ _ _ _ (term_list_prop _ _ _)).
+  apply (rt_trans _ _ _ _ _ (termincr_replicate_prop _ _ _ _ _)).
+  repeat evalstep.
+  apply term_list_prop.
+Qed.
 
-    evalstep.
-    repeat evalstep.
+Definition termsucc : term := term_list
+  [ term_push ; term_list [ term_push ; termnop ; term_swap ; termincr ] ; term_swap ;
+    term_push ; termincr ; term_quote ; term_cons ;
+    term_push ; term_pop ; term_swap ; term_cons ;
+    term_push ; term_exec ; term_swap ; term_cons ;
+    term_swap ; term_cons ].
+
+Lemma termsucc_prop : forall (n : nat) (p1 : term) (vs ps : stack), termnat n p1 ->
+  exists p2 : term, termnat (S n) p2 /\ redstar (p1 :: vs, termsucc :: ps) (p2 :: vs, ps).
+  intros.
+  apply (ex_intro _
+    (term_seq (term_list [term_push; termnop; term_swap; termincr])
+      (term_seq (term_seq (term_seq (term_seq term_push termincr) p1) term_pop) term_exec))).
+  split.
+  repeat intro.
+  repeat evalstep.
+  apply (rt_trans _ _ _ _ _ (H _ _ _)).
+  apply (rt_trans _ _ _ _ _ (termincr_replicate_prop _ _ _ _ _)).
+  repeat evalstep.
+  assert (term_list' (replicate n v) (term_seq termnop v) = term_list (replicate (S n) v)).
+    intros ; induction n ; auto.
+  rewrite H0.
+  apply term_list_prop.
+  repeat evalstep.
+Qed.
