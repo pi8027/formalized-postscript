@@ -167,14 +167,6 @@ Lemma red_term_quote : forall (t : term) (vs ps : stack),
   intros ; evalauto.
 Qed.
 
-Definition termnat_quoted (n : nat) (t1 : term) : Prop :=
-  forall (t2 t3 : term) (vs ps : stack),
-    redstar (t2 :: t3 :: vs, t1 :: ps) (t2 :: term_list' (replicate n t2) t3 :: vs, ps).
-
-Definition termnat (n : nat) (t1 : term) : Prop :=
-  forall (t2 : term) (vs ps : stack),
-    redstar (t2 :: vs, t1 :: ps) (vs, replicate n t2 ++ ps).
-
 Definition termincr : term := term_list
   [ term_dup ; term_quote ; term_swap ; term_quote ; term_cons ;
     term_swap ; term_quote ; term_snoc ; term_exec ;
@@ -192,21 +184,27 @@ Lemma red_termincr_replicate : forall (n : nat) (t1 t2 : term) (vs ps : stack),
   redpartial IHn ; evalauto.
 Qed.
 
-Definition termnat_quoted_term (n : nat) : term := term_list (replicate n termincr).
+Definition termnatq (n : nat) : term := term_list (replicate n termincr).
 
-Lemma termnat_quoted_term_prop : forall (n : nat), termnat_quoted n (termnat_quoted_term n).
-  repeat intro.
+Lemma red_termnatq : forall (n : nat) (t1 t2 : term) (vs ps : stack),
+  redstar (t1 :: t2 :: vs, termnatq n :: ps) (t1 :: term_list' (replicate n t1) t2 :: vs, ps).
+  intros.
   redpartial red_term_list.
-  apply red_termincr_replicate.
+  redpartial red_termincr_replicate.
+  evalauto.
 Qed.
 
+Definition termnat (n : nat) (t1 : term) : Prop :=
+  forall (t2 : term) (vs ps : stack),
+    redstar (t2 :: vs, t1 :: ps) (vs, replicate n t2 ++ ps).
+
 Definition termnat_term (n : nat) : term := term_list
-  [ term_push ; termnop ; term_swap ; term_list (replicate n termincr) ; term_pop ; term_exec ].
+  [ term_push ; termnop ; term_swap ; termnatq n ; term_pop ; term_exec ].
 
 Lemma termnat_term_prop : forall (n : nat), termnat n (termnat_term n).
   repeat intro.
   redpartial red_term_list ; evalauto.
-  redpartial termnat_quoted_term_prop ; evalauto.
+  redpartial red_termnatq ; evalauto.
   apply red_term_list.
 Qed.
 
@@ -216,13 +214,9 @@ Definition termnat_quote : term := term_list
     term_swap ; term_quote ; term_snoc ; term_exec ;
     term_push ; termincr ; term_swap ; term_exec ; term_pop ].
 
-Lemma termnat_quote_prop : forall (n : nat) (t1 t2 : term) (vs ps : stack),
-  termnat n t1 ->
-  exists t2, termnat_quoted n t2 /\ redstar (t1 :: vs, termnat_quote :: ps) (t2 :: vs, ps).
+Lemma termnat_quote_prop : forall (n : nat) (t : term) (vs ps : stack),
+  termnat n t -> redstar (t :: vs, termnat_quote :: ps) (termnatq n :: vs, ps).
   repeat intro.
-  eexists.
-  split.
-  apply termnat_quoted_term_prop.
   evalauto ; redpartial H ; redpartial red_termincr_replicate ; evalauto.
 Qed.
 
@@ -235,19 +229,9 @@ Definition termnat_unquote : term := term_list
     term_push ; term_pop ; term_snoc ;
     term_push ; term_exec ; term_snoc ].
 
-Definition termnat_unquote_prop : forall (n : nat) (t1 t2 : term) (vs ps : stack),
-  termnat_quoted n t1 ->
-  exists t2, termnat n t2 /\ redstar (t1 :: vs, termnat_unquote :: ps) (t2 :: vs, ps).
-  repeat intro.
-  apply (ex_intro _ (term_list [ term_push ; termnop ; term_swap ; t1 ; term_pop ; term_exec ])).
-  split.
-  repeat intro.
-  evalauto.
-  redpartial H.
-  evalauto.
-  redpartial red_term_list.
-  evalauto.
-  evalauto.
+Definition termnat_unquote_prop : forall (n : nat) (vs ps : stack),
+  redstar (termnatq n :: vs, termnat_unquote :: ps) (termnat_term n :: vs, ps).
+  repeat intro ; evalauto.
 Qed.
 
 Definition termsucc : term := term_list
