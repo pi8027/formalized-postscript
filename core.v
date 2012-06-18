@@ -127,6 +127,8 @@ Ltac evalstep :=
 
 Ltac evalauto := repeat evalstep.
 
+Ltac redpartial t := eapply rt_trans ; [ apply t ; fail | ].
+
 Definition termnop : term := term_seq (term_seq term_push term_pop) term_pop.
 
 Lemma rednop : forall (vs ps : stack), redstar (vs, termnop :: ps) (vs, ps).
@@ -143,8 +145,8 @@ Lemma red_term_list : forall (ts : list term) (vs ps : stack),
   assert (forall head, redstar (vs, term_list' ts head :: ps) (vs, head :: ts ++ ps)).
     induction ts ; intros.
     evalauto.
-    apply (rt_trans _ _ _ _ _ (IHts (term_seq head a))) ; evalauto.
-  apply (rt_trans _ _ _ _ _ (H termnop) (rednop _ _)).
+    redpartial IHts ; evalauto.
+  redpartial H ; evalauto.
 Qed.
 
 Definition term_snoc : term := term_list [ term_swap ; term_cons ].
@@ -183,7 +185,7 @@ Lemma red_termincr_replicate : forall (n : nat) (t1 t2 : term) (vs ps : stack),
   redstar (t1 :: t2 :: vs, replicate n termincr ++ ps)
     (t1 :: term_list' (replicate n t1) t2 :: vs, ps).
   induction n ; intros ; evalauto.
-  apply (rt_trans _ _ _ _ _ (IHn t1 (term_seq t2 t1) vs ps)).
+  redpartial IHn.
   assert (term_list' (replicate n t1) (term_seq t2 t1) = term_list' (replicate (S n) t1) t2).
     intros ; induction n ; compute ; auto.
   rewrite H ; evalstep.
@@ -193,7 +195,7 @@ Definition termnat_quoted_term (n : nat) : term := term_list (replicate n termin
 
 Lemma termnat_quoted_term_prop : forall (n : nat), termnat_quoted n (termnat_quoted_term n).
   repeat intro.
-  apply (rt_trans _ _ _ _ _ (red_term_list _ _ _)).
+  redpartial red_term_list.
   apply red_termincr_replicate.
 Qed.
 
@@ -202,9 +204,9 @@ Definition termnat_term (n : nat) : term := term_list
 
 Lemma termnat_term_prop : forall (n : nat), termnat n (termnat_term n).
   repeat intro.
-  apply (rt_trans _ _ _ _ _ (red_term_list _ _ _)).
+  redpartial red_term_list.
   evalauto.
-  apply (rt_trans _ _ _ _ _ (termnat_quoted_term_prop _ _ _ _ _)).
+  redpartial termnat_quoted_term_prop.
   evalauto.
   apply red_term_list.
 Qed.
@@ -223,8 +225,8 @@ Lemma termnat_quote_prop : forall (n : nat) (t1 t2 : term) (vs ps : stack),
   split.
   apply termnat_quoted_term_prop.
   evalauto.
-  apply (rt_trans _ _ _ _ _ (H _ _ _)).
-  apply (rt_trans _ _ _ _ _ (red_termincr_replicate _ _ _ _ _)).
+  redpartial H.
+  redpartial red_termincr_replicate.
   evalauto.
 Qed.
 
@@ -245,9 +247,9 @@ Definition termnat_unquote_prop : forall (n : nat) (t1 t2 : term) (vs ps : stack
   split.
   repeat intro.
   evalauto.
-  apply (rt_trans _ _ _ _ _ (H _ _ _ _)).
+  redpartial H.
   evalauto.
-  apply (rt_trans _ _ _ _ _ (red_term_list _ _ _)).
+  redpartial red_term_list.
   evalauto.
   evalauto.
 Qed.
@@ -272,8 +274,8 @@ Lemma termsucc_prop : forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1
   split.
   repeat intro.
   evalauto.
-  apply (rt_trans _ _ _ _ _ (H _ _ _)).
-  apply (rt_trans _ _ _ _ _ (red_termincr_replicate _ _ _ _ _)).
+  redpartial H.
+  redpartial red_termincr_replicate.
   evalauto.
   assert (term_list' (replicate n t2) (term_seq termnop t2) = term_list (replicate (S n) t2)).
     intros ; induction n ; auto.
