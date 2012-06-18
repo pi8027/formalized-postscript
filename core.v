@@ -185,10 +185,7 @@ Lemma red_termincr_replicate : forall (n : nat) (t1 t2 : term) (vs ps : stack),
   redstar (t1 :: t2 :: vs, replicate n termincr ++ ps)
     (t1 :: term_list' (replicate n t1) t2 :: vs, ps).
   induction n ; intros ; evalauto.
-  redpartial IHn.
-  assert (term_list' (replicate n t1) (term_seq t2 t1) = term_list' (replicate (S n) t1) t2).
-    intros ; induction n ; compute ; auto.
-  rewrite H ; evalstep.
+  redpartial IHn ; evalauto.
 Qed.
 
 Definition termnat_quoted_term (n : nat) : term := term_list (replicate n termincr).
@@ -204,10 +201,8 @@ Definition termnat_term (n : nat) : term := term_list
 
 Lemma termnat_term_prop : forall (n : nat), termnat n (termnat_term n).
   repeat intro.
-  redpartial red_term_list.
-  evalauto.
-  redpartial termnat_quoted_term_prop.
-  evalauto.
+  redpartial red_term_list ; evalauto.
+  redpartial termnat_quoted_term_prop ; evalauto.
   apply red_term_list.
 Qed.
 
@@ -224,10 +219,7 @@ Lemma termnat_quote_prop : forall (n : nat) (t1 t2 : term) (vs ps : stack),
   eexists.
   split.
   apply termnat_quoted_term_prop.
-  evalauto.
-  redpartial H.
-  redpartial red_termincr_replicate.
-  evalauto.
+  evalauto ; redpartial H ; redpartial red_termincr_replicate ; evalauto.
 Qed.
 
 Definition termnat_unquote : term := term_list
