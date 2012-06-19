@@ -252,6 +252,6 @@ Lemma termsucc_prop : forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1
   replace (S n) with (n + 1) by omega.
   rewrite <- (replicate_app _ n 1 termincr).
   simpl ; unfold term_list, term_list'.
-  rewrite (fold_left_app term_seq (replicate n termincr) (termincr :: []) termnop).
+  rewrite (fold_left_app term_seq (replicate n termincr) ([ termincr ]) termnop).
   auto.
 Qed.
