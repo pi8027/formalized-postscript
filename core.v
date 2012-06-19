@@ -227,7 +227,7 @@ Definition termnat (n : nat) (t1 : term) : Prop :=
 Definition termnat_term (n : nat) : term := term_list
   [ term_push ; termnop ; term_swap ; termnatq n ; term_pop ; term_exec ].
 
-Lemma termnat_term_prop : forall (n : nat), termnat n (termnat_term n).
+Lemma red_termnat_term : forall (n : nat), termnat n (termnat_term n).
   repeat intro.
   redpartial red_term_list ; evalauto.
   redpartial red_termnatq ; evalauto.
@@ -240,7 +240,7 @@ Definition termnat_quote : term := term_list
     term_swap ; term_quote ; term_cons ; term_exec ;
     term_push ; termincr ; term_swap ; term_exec ; term_pop ].
 
-Lemma termnat_quote_prop : forall (n : nat) (t : term) (vs ps : stack),
+Lemma red_termnat_quote : forall (n : nat) (t : term) (vs ps : stack),
   termnat n t -> redstar (t :: vs, termnat_quote :: ps) (termnatq n :: vs, ps).
   repeat intro.
   evalauto ; redpartial H ; redpartial red_termincr_replicate ; evalauto.
@@ -255,14 +255,14 @@ Definition termnat_unquote : term := term_list
     term_push ; term_pop ; term_cons ;
     term_push ; term_exec ; term_cons ].
 
-Definition termnat_unquote_prop : forall (n : nat) (vs ps : stack),
+Definition red_termnat_unquote : forall (n : nat) (vs ps : stack),
   redstar (termnatq n :: vs, termnat_unquote :: ps) (termnat_term n :: vs, ps).
   repeat intro ; evalauto.
 Qed.
 
 Definition termsuccq : term := term_list [ term_push ; termincr ; term_cons ].
 
-Lemma termsuccq_prop : forall (n : nat) (vs ps : stack),
+Lemma red_termsuccq : forall (n : nat) (vs ps : stack),
   redstar (termnatq n :: vs, termsuccq :: ps) (termnatq (S n) :: vs, ps).
   intros.
   evalauto.
@@ -273,6 +273,17 @@ Lemma termsuccq_prop : forall (n : nat) (vs ps : stack),
   auto.
 Qed.
 
+Lemma red_termsuccq_replicate : forall (n m : nat) (vs ps : stack),
+  redstar (termnatq n :: vs, replicate m termsuccq ++ ps) (termnatq (m + n) :: vs, ps).
+  intros ; revert n.
+  induction m ; intros.
+  evalauto.
+  simpl.
+  redpartial red_termsuccq.
+  redpartial IHm.
+  rtequal ; omega.
+Qed.
+
 Definition termsucc : term := term_list [ termnat_quote ; termsuccq ; termnat_unquote ].
 
 Lemma termsucc_prop : forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1 ->
@@ -280,11 +291,11 @@ Lemma termsucc_prop : forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1
   intros.
   eexists.
   split.
-  apply termnat_term_prop.
+  apply red_termnat_term.
   redpartial red_term_list.
-  redpartial termnat_quote_prop.
+  redpartial red_termnat_quote.
   apply H.
-  redpartial termsuccq_prop.
+  redpartial red_termsuccq.
   evalauto.
 Qed.
 
@@ -297,21 +308,12 @@ Lemma termadd_prop : forall (n m : nat) (t1 t2 : term) (vs ps : stack),
   intros.
   eexists.
   split.
-  apply termnat_term_prop.
+  apply red_termnat_term.
   redpartial red_term_list.
-  redpartial termnat_quote_prop.
+  redpartial red_termnat_quote.
   apply H.
   evalauto.
   redpartial H0.
-  assert (forall (n m : nat) (vs ps : stack),
-    redstar (termnatq n :: vs, replicate m termsuccq ++ ps) (termnatq (m + n) :: vs, ps)).
-    intros ; revert n0.
-    induction m0 ; intros.
-    evalauto.
-    simpl.
-    redpartial termsuccq_prop.
-    redpartial IHm0.
-    rtequal ; omega.
-  redpartial H1.
-  apply termnat_unquote_prop.
+  redpartial red_termsuccq_replicate.
+  apply red_termnat_unquote.
 Qed.
