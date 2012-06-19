@@ -142,6 +142,14 @@ Ltac evalauto := repeat evalstep.
 
 Ltac redpartial t := eapply rt_trans ; [ apply t ; fail | ].
 
+Ltac redequal :=
+  hnf ;
+  match goal with
+    | |- clos_refl_trans _ reduction ?e1 ?e2 =>
+      replace e1 with e2 ; [ apply rt_refl | repeat f_equal ]
+    | _ => fail 2 "The goal is invalid."
+  end.
+
 Definition termnop : term := term_seq (term_seq term_push term_pop) term_pop.
 
 Lemma rednop : forall (vs ps : stack), redstar (vs, termnop :: ps) (vs, ps).
@@ -265,12 +273,13 @@ Lemma termsucc_prop : forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1
   eapply rt_trans.
   apply termnat_quote_prop.
   apply H.
-  do 9 evalstep.
-  replace (term_seq (termnatq n) termincr) with (termnatq (S n)).
   evalauto.
-  unfold termnatq in *.
+  redequal.
+  unfold termnat_term, termnatq.
   replace (S n) with (n + 1) by omega.
   rewrite <- (replicate_app n 1 termincr).
-  simpl ; unfold term_list ; rewrite (term_list_app _ _ _).
+  simpl.
+  unfold term_list.
+  rewrite (term_list_app _ _ _).
   auto.
 Qed.
