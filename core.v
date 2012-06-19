@@ -13,7 +13,7 @@ Fixpoint replicate {A : Set} (n : nat) (a : A) :=
     | S n => a :: replicate n a
   end.
 
-Lemma app_replicate : forall (A : Set) (n m : nat) (a : A),
+Lemma replicate_app : forall (A : Set) (n m : nat) (a : A),
   replicate n a ++ replicate m a = replicate (n + m) a.
   intros.
   induction n.
@@ -235,30 +235,23 @@ Definition termnat_unquote_prop : forall (n : nat) (vs ps : stack),
 Qed.
 
 Definition termsucc : term := term_list
-  [ term_push ; termnop ;
-    term_push ; term_push ; term_snoc ;
-    term_push ; termnop ; term_snoc ;
-    term_push ; term_swap ; term_snoc ;
-    term_push ; termincr ; term_snoc ;
-    term_push ; termincr ; term_quote ; term_snoc ;
-    term_cons ;
-    term_push ; term_pop ; term_snoc ;
-    term_push ; term_exec ; term_snoc ].
+  [ termnat_quote ; term_push ; termincr ; term_snoc ; termnat_unquote ].
 
 Lemma termsucc_prop : forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1 ->
   exists t2 : term, termnat (S n) t2 /\ redstar (t1 :: vs, termsucc :: ps) (t2 :: vs, ps).
   intros.
-  apply (ex_intro _ (term_list
-    [ term_push ; termnop ; term_swap ; termincr ;
-      term_seq term_push termincr ; t1 ; term_pop ; term_exec ])).
+  eexists.
   split.
-  repeat intro.
+  apply termnat_term_prop.
+  redpartial red_term_list.
+  redpartial (termnat_quote_prop n t1 vs (term_push :: termincr :: term_snoc :: termnat_unquote :: ps) H).
+  do 9 evalstep.
+  replace (term_seq (termnatq n) termincr) with (termnatq (S n)).
   evalauto.
-  redpartial H.
-  redpartial red_termincr_replicate.
-  evalauto.
-  simpl.
-  redpartial red_term_list'.
-  evalauto.
-  evalauto.
+  unfold termnatq in *.
+  replace (S n) with (n + 1) by omega.
+  rewrite <- (replicate_app _ n 1 termincr).
+  simpl ; unfold term_list, term_list'.
+  rewrite (fold_left_app term_seq (replicate n termincr) (termincr :: []) termnop).
+  auto.
 Qed.
