@@ -270,16 +270,11 @@ Lemma termsucc_prop : forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1
   split.
   apply termnat_term_prop.
   redpartial red_term_list.
-  eapply rt_trans.
-  apply termnat_quote_prop.
-  apply H.
+  eapply (rt_trans _ _ _ _ _ (termnat_quote_prop _ _ _ _ H)).
   evalauto.
   redequal.
-  unfold termnat_term, termnatq.
+  unfold termnat_term, termnatq, term_list, term_list' at 1, fold_left at 1.
   replace (S n) with (n + 1) by omega.
-  rewrite <- (replicate_app n 1 termincr).
-  simpl.
-  unfold term_list.
-  rewrite (term_list_app _ _ _).
+  rewrite <- (replicate_app n 1 termincr), (term_list_app _ _ _).
   auto.
 Qed.
