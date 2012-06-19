@@ -13,8 +13,8 @@ Fixpoint replicate {A : Set} (n : nat) (a : A) :=
     | S n => a :: replicate n a
   end.
 
-Lemma replicate_app :
-  forall {A : Set} (n m : nat) (a : A), replicate n a ++ replicate m a = replicate (n + m) a.
+Lemma replicate_app : forall {A : Set} (n m : nat) (a : A),
+  replicate n a ++ replicate m a = replicate (n + m) a.
   intros.
   induction n.
   compute ; auto.
@@ -53,20 +53,27 @@ Definition stack : Set := list term.
 Definition environment : Set := (stack * stack)%type.
 
 Inductive reduction : relation environment :=
-  | reduction_pop  : forall (t : term) (vs ps : stack),
-                     reduction (t :: vs, term_pop :: ps) (vs, ps)
-  | reduction_dup  : forall (t : term) (vs ps : stack),
-                     reduction (t :: vs, term_dup :: ps) (t :: t :: vs, ps)
-  | reduction_swap : forall (t1 t2 : term) (vs ps : stack),
-                     reduction (t1 :: t2 :: vs, term_swap :: ps) (t2 :: t1 :: vs, ps)
-  | reduction_cons : forall (t1 t2 : term) (vs ps : stack),
-                     reduction (t1 :: t2 :: vs, term_cons :: ps) (term_seq t2 t1 :: vs, ps)
-  | reduction_push : forall (t : term) (vs ps : stack),
-                     reduction (vs, term_push :: t :: ps) (t :: vs, ps)
-  | reduction_exec : forall (t : term) (vs ps : stack),
-                     reduction (t :: vs, term_exec :: ps) (vs, t :: ps)
-  | reduction_seq  : forall (t1 t2 : term) (vs ps : stack),
-                     reduction (vs, term_seq t1 t2 :: ps) (vs, t1 :: t2 :: ps).
+  | reduction_pop  :
+      forall (t : term) (vs ps : stack),
+      reduction (t :: vs, term_pop :: ps) (vs, ps)
+  | reduction_dup  :
+      forall (t : term) (vs ps : stack),
+      reduction (t :: vs, term_dup :: ps) (t :: t :: vs, ps)
+  | reduction_swap :
+      forall (t1 t2 : term) (vs ps : stack),
+      reduction (t1 :: t2 :: vs, term_swap :: ps) (t2 :: t1 :: vs, ps)
+  | reduction_cons :
+      forall (t1 t2 : term) (vs ps : stack),
+      reduction (t1 :: t2 :: vs, term_cons :: ps) (term_seq t2 t1 :: vs, ps)
+  | reduction_push :
+      forall (t : term) (vs ps : stack),
+      reduction (vs, term_push :: t :: ps) (t :: vs, ps)
+  | reduction_exec :
+      forall (t : term) (vs ps : stack),
+      reduction (t :: vs, term_exec :: ps) (vs, t :: ps)
+  | reduction_seq  :
+      forall (t1 t2 : term) (vs ps : stack),
+      reduction (vs, term_seq t1 t2 :: ps) (vs, t1 :: t2 :: ps).
 
 Definition redstar : relation environment := clos_refl_trans _ reduction.
 
@@ -218,7 +225,8 @@ Qed.
 Definition termnatq (n : nat) : term := term_list (replicate n termincr).
 
 Lemma red_termnatq : forall (n : nat) (t1 t2 : term) (vs ps : stack),
-  redstar (t1 :: t2 :: vs, termnatq n :: ps) (t1 :: term_list' (replicate n t1) t2 :: vs, ps).
+  redstar (t1 :: t2 :: vs, termnatq n :: ps)
+    (t1 :: term_list' (replicate n t1) t2 :: vs, ps).
   intros.
   redpartial red_term_list.
   redpartial red_termincr_replicate.
@@ -265,7 +273,8 @@ Definition red_termnat_unquote : forall (n : nat) (vs ps : stack),
   repeat intro ; evalauto.
 Qed.
 
-Definition termnatq_succ : term := term_list [ term_push ; termincr ; term_cons ].
+Definition termnatq_succ : term :=
+  term_list [ term_push ; termincr ; term_cons ].
 
 Lemma red_termnatq_succ : forall (n : nat) (vs ps : stack),
   redstar (termnatq n :: vs, termnatq_succ :: ps) (termnatq (S n) :: vs, ps).
@@ -279,7 +288,8 @@ Lemma red_termnatq_succ : forall (n : nat) (vs ps : stack),
 Qed.
 
 Lemma red_termnatq_succ_replicate : forall (n m : nat) (vs ps : stack),
-  redstar (termnatq n :: vs, replicate m termnatq_succ ++ ps) (termnatq (m + n) :: vs, ps).
+  redstar (termnatq n :: vs, replicate m termnatq_succ ++ ps)
+    (termnatq (m + n) :: vs, ps).
   intros ; revert n.
   induction m ; intros.
   evalauto.
@@ -289,10 +299,13 @@ Lemma red_termnatq_succ_replicate : forall (n m : nat) (vs ps : stack),
   rtequal ; omega.
 Qed.
 
-Definition termnat_succ : term := term_list [ termnat_quote ; termnatq_succ ; termnat_unquote ].
+Definition termnat_succ : term := term_list
+  [ termnat_quote ; termnatq_succ ; termnat_unquote ].
 
-Lemma termnat_succ_prop : forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1 ->
-  exists t2 : term, termnat (S n) t2 /\ redstar (t1 :: vs, termnat_succ :: ps) (t2 :: vs, ps).
+Lemma termnat_succ_prop :
+  forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1 ->
+    exists t2 : term, termnat (S n) t2 /\
+      redstar (t1 :: vs, termnat_succ :: ps) (t2 :: vs, ps).
   intros.
   eexists.
   split.
@@ -304,12 +317,30 @@ Lemma termnat_succ_prop : forall (n : nat) (t1 : term) (vs ps : stack), termnat 
   evalauto.
 Qed.
 
+Definition termnatq_add : term := term_list
+  [ term_push ; termincr ; term_swap ; term_exec ; term_pop ].
+
+Lemma red_termnatq_add : forall (n m : nat) (vs ps : stack),
+  redstar (termnatq n :: termnatq m :: vs, termnatq_add :: ps)
+    (termnatq (m + n) :: vs, ps).
+  intros.
+  evalauto.
+  redpartial red_termnatq.
+  evalauto.
+  unfold termnatq.
+  rewrite <- (term_list_app _ _).
+  rewrite <- (replicate_app _ _ _).
+  evalauto.
+Qed.
+
 Definition termnat_add : term := term_list
-  [ termnat_quote ; term_swap ; term_push ; termnatq_succ ; term_swap ; term_exec ; termnat_unquote ].
+  [ termnat_quote ; term_swap ;
+    term_push ; termnatq_succ ; term_swap ; term_exec ; termnat_unquote ].
 
 Lemma termnat_add_prop : forall (n m : nat) (t1 t2 : term) (vs ps : stack),
   termnat n t1 -> termnat m t2 ->
-  exists t3 : term, termnat (m + n) t3 /\ redstar (t1 :: t2 :: vs, termnat_add :: ps) (t3 :: vs, ps).
+    exists t3 : term, termnat (m + n) t3 /\
+      redstar (t1 :: t2 :: vs, termnat_add :: ps) (t3 :: vs, ps).
   intros.
   eexists.
   split.
