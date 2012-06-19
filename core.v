@@ -174,9 +174,14 @@ Lemma red_term_list : forall (ts : list term) (vs ps : stack),
   evalauto.
 Qed.
 
-Lemma term_list_app : forall (ts1 ts2 : list term) (t : term),
+Lemma term_list'_app : forall (ts1 ts2 : list term) (t : term),
   term_list' (ts1 ++ ts2) t = term_list' ts2 (term_list' ts1 t).
   intros ; apply fold_left_app.
+Qed.
+
+Lemma term_list_app : forall (ts1 ts2 : list term),
+  term_list (ts1 ++ ts2) = term_list' ts2 (term_list ts1).
+  intros ; apply term_list'_app.
 Qed.
 
 Definition term_snoc : term := term_list [ term_swap ; term_cons ].
@@ -260,34 +265,34 @@ Definition red_termnat_unquote : forall (n : nat) (vs ps : stack),
   repeat intro ; evalauto.
 Qed.
 
-Definition termsuccq : term := term_list [ term_push ; termincr ; term_cons ].
+Definition termnatq_succ : term := term_list [ term_push ; termincr ; term_cons ].
 
-Lemma red_termsuccq : forall (n : nat) (vs ps : stack),
-  redstar (termnatq n :: vs, termsuccq :: ps) (termnatq (S n) :: vs, ps).
+Lemma red_termnatq_succ : forall (n : nat) (vs ps : stack),
+  redstar (termnatq n :: vs, termnatq_succ :: ps) (termnatq (S n) :: vs, ps).
   intros.
   evalauto.
   rtequal.
-  unfold termnat_term, termnatq, term_list, term_list' at 1, fold_left at 1.
+  unfold termnat_term, termnatq.
   replace (S n) with (n + 1) by omega.
-  rewrite <- (replicate_app n 1 termincr), (term_list_app _ _ _).
+  rewrite <- (replicate_app n 1 termincr), (term_list_app _ _).
   auto.
 Qed.
 
-Lemma red_termsuccq_replicate : forall (n m : nat) (vs ps : stack),
-  redstar (termnatq n :: vs, replicate m termsuccq ++ ps) (termnatq (m + n) :: vs, ps).
+Lemma red_termnatq_succ_replicate : forall (n m : nat) (vs ps : stack),
+  redstar (termnatq n :: vs, replicate m termnatq_succ ++ ps) (termnatq (m + n) :: vs, ps).
   intros ; revert n.
   induction m ; intros.
   evalauto.
   simpl.
-  redpartial red_termsuccq.
+  redpartial red_termnatq_succ.
   redpartial IHm.
   rtequal ; omega.
 Qed.
 
-Definition termsucc : term := term_list [ termnat_quote ; termsuccq ; termnat_unquote ].
+Definition termnat_succ : term := term_list [ termnat_quote ; termnatq_succ ; termnat_unquote ].
 
-Lemma termsucc_prop : forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1 ->
-  exists t2 : term, termnat (S n) t2 /\ redstar (t1 :: vs, termsucc :: ps) (t2 :: vs, ps).
+Lemma termnat_succ_prop : forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1 ->
+  exists t2 : term, termnat (S n) t2 /\ redstar (t1 :: vs, termnat_succ :: ps) (t2 :: vs, ps).
   intros.
   eexists.
   split.
@@ -295,16 +300,16 @@ Lemma termsucc_prop : forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1
   redpartial red_term_list.
   redpartial red_termnat_quote.
   apply H.
-  redpartial red_termsuccq.
+  redpartial red_termnatq_succ.
   evalauto.
 Qed.
 
-Definition termadd : term := term_list
-  [ termnat_quote ; term_swap ; term_push ; termsuccq ; term_swap ; term_exec ; termnat_unquote ].
+Definition termnat_add : term := term_list
+  [ termnat_quote ; term_swap ; term_push ; termnatq_succ ; term_swap ; term_exec ; termnat_unquote ].
 
-Lemma termadd_prop : forall (n m : nat) (t1 t2 : term) (vs ps : stack),
+Lemma termnat_add_prop : forall (n m : nat) (t1 t2 : term) (vs ps : stack),
   termnat n t1 -> termnat m t2 ->
-  exists t3 : term, termnat (m + n) t3 /\ redstar (t1 :: t2 :: vs, termadd :: ps) (t3 :: vs, ps).
+  exists t3 : term, termnat (m + n) t3 /\ redstar (t1 :: t2 :: vs, termnat_add :: ps) (t3 :: vs, ps).
   intros.
   eexists.
   split.
@@ -314,6 +319,6 @@ Lemma termadd_prop : forall (n m : nat) (t1 t2 : term) (vs ps : stack),
   apply H.
   evalauto.
   redpartial H0.
-  redpartial red_termsuccq_replicate.
+  redpartial red_termnatq_succ_replicate.
   apply red_termnat_unquote.
 Qed.
