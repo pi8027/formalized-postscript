@@ -1,4 +1,6 @@
+Require Import Basics.
 Require Import Relations.
+Require Import Logic.Decidable.
 Require Import Arith.
 Require Import List.
 Require Import Omega.
@@ -78,8 +80,7 @@ Inductive reduction : relation environment :=
 Definition redstar : relation environment := clos_refl_trans _ reduction.
 
 Lemma decide_reduction : forall (e1 : environment),
-  (exists e2 : environment, reduction e1 e2) \/
-  ~(exists e2 : environment, reduction e1 e2).
+  decidable (exists e2 : environment, reduction e1 e2).
   intros.
   destruct e1.
   destruct s0.
@@ -179,6 +180,15 @@ Lemma red_term_list : forall (ts : list term) (vs ps : stack),
   intros.
   redpartial red_term_list'.
   evalauto.
+Qed.
+
+Lemma term_list_replicate : forall (n : nat) (t1 t2 : term),
+  term_list' (replicate n t1) t2 =
+    fold_right (flip term_seq) t2 (replicate n t1).
+  intros.
+  unfold term_list'.
+  rewrite (replicate_rev_id n t1) at 2.
+  apply (eq_sym (fold_left_rev_right (flip term_seq) (replicate n t1) t2)).
 Qed.
 
 Lemma term_list'_app : forall (ts1 ts2 : list term) (t : term),
@@ -281,10 +291,10 @@ Lemma red_termnatq_succ : forall (n : nat) (vs ps : stack),
   intros.
   evalauto.
   rtequal.
-  unfold termnat_term, termnatq.
-  replace (S n) with (n + 1) by omega.
-  rewrite <- (replicate_app n 1 termincr), (term_list_app _ _).
-  auto.
+  unfold termnat_term, termnatq, term_list.
+  rewrite (term_list_replicate (S n) termincr termnop).
+  simpl ; unfold flip ; f_equal.
+  apply (eq_sym (term_list_replicate n termincr termnop)).
 Qed.
 
 Lemma red_termnatq_succ_replicate : forall (n m : nat) (vs ps : stack),
@@ -299,8 +309,8 @@ Lemma red_termnatq_succ_replicate : forall (n m : nat) (vs ps : stack),
   rtequal ; omega.
 Qed.
 
-Definition termnat_succ : term := term_list
-  [ termnat_quote ; termnatq_succ ; termnat_unquote ].
+Definition termnat_succ : term :=
+  term_list [ termnat_quote ; termnatq_succ ; termnat_unquote ].
 
 Lemma termnat_succ_prop :
   forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1 ->
@@ -317,8 +327,8 @@ Lemma termnat_succ_prop :
   evalauto.
 Qed.
 
-Definition termnatq_add : term := term_list
-  [ term_push ; termincr ; term_swap ; term_exec ; term_pop ].
+Definition termnatq_add : term :=
+  term_list [ term_push ; termincr ; term_swap ; term_exec ; term_pop ].
 
 Lemma red_termnatq_add : forall (n m : nat) (vs ps : stack),
   redstar (termnatq n :: termnatq m :: vs, termnatq_add :: ps)
