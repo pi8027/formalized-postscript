@@ -283,6 +283,28 @@ Definition red_termnat_unquote : forall (n : nat) (vs ps : stack),
   repeat intro ; evalauto.
 Qed.
 
+Lemma termnatq_eqmap : forall (n m : nat), termnatq n = termnatq m -> n = m.
+  intro.
+  induction n ; intros ; destruct m.
+  auto.
+  unfold termnatq, term_list, replicate at 1, term_list' at 1, fold_left in H.
+  rewrite (term_list_replicate (S m) termincr termnop) in H.
+  inversion H.
+  unfold termnatq, term_list, replicate at 2, term_list' at 2, fold_left in H.
+  rewrite (term_list_replicate (S n) termincr termnop) in H.
+  inversion H.
+  f_equal.
+  apply IHn.
+  unfold termnatq, term_list in H.
+  rewrite (term_list_replicate (S n) termincr termnop) in H.
+  rewrite (term_list_replicate (S m) termincr termnop) in H.
+  simpl in H.
+  inversion H.
+  rewrite <- (term_list_replicate n termincr termnop) in H1.
+  rewrite <- (term_list_replicate m termincr termnop) in H1.
+  auto.
+Qed.
+
 Definition termnatq_succ : term :=
   term_list [ term_push ; termincr ; term_cons ].
 
