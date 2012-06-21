@@ -79,6 +79,8 @@ Inductive reduction : relation environment :=
 
 Definition redstar : relation environment := clos_refl_trans _ reduction.
 
+Definition redstar' : relation environment := clos_refl_trans_1n _ reduction.
+
 Lemma decide_reduction : forall (e1 : environment),
   decidable (exists e2 : environment, reduction e1 e2).
   intros.
@@ -134,9 +136,9 @@ Lemma redstar_confluence : forall (a b c : environment),
   redstar a b -> redstar a c -> redstar b c \/ redstar c b.
   unfold redstar.
   intros.
-  assert (clos_refl_trans_1n environment reduction a b).
+  assert (redstar' a b).
     apply clos_rt_rt1n ; auto.
-  assert (clos_refl_trans_1n environment reduction a c).
+  assert (redstar' a c).
     apply clos_rt_rt1n ; auto.
   induction H1 ; auto.
   inversion H2.
@@ -322,6 +324,38 @@ Lemma termnatq_eqmap : forall (n m : nat), termnatq n = termnatq m -> n = m.
   rewrite <- (term_list_replicate n termincr termnop) in H1.
   rewrite <- (term_list_replicate m termincr termnop) in H1.
   auto.
+Qed.
+
+Lemma termnat_eqmap : forall (n m : nat) (t1 t2 : term),
+  termnat n t1 -> termnat m t2 -> t1 = t2 -> n = m.
+  intros.
+  assert
+    (redstar ([], replicate n term_pop) ([], replicate m term_pop) \/
+     redstar ([], replicate m term_pop) ([], replicate n term_pop)).
+    eapply (redstar_confluence ([ term_pop ], [ t1 ])).
+    redpartial H.
+    rewrite (app_nil_r (replicate n term_pop)).
+    evalauto.
+    rewrite H1.
+    redpartial H0.
+    rewrite (app_nil_r (replicate m term_pop)).
+    evalauto.
+  assert
+    (redstar' ([], replicate n term_pop) ([], replicate m term_pop) \/
+     redstar' ([], replicate m term_pop) ([], replicate n term_pop)).
+    destruct H2 ; [ left | right ] ; apply clos_rt_rt1n ; auto.
+  assert (replicate n term_pop = replicate m term_pop).
+    destruct H3 ; destruct n ; destruct m ; inversion H3 ;
+      (auto || inversion H4 || simpl ; f_equal ; auto).
+  assert (forall a b, replicate a term_pop = replicate b term_pop -> a = b).
+    intro ; induction a ; intro ; destruct b ; simpl ; intro.
+    auto.
+    congruence.
+    congruence.
+    f_equal.
+    apply IHa.
+    congruence.
+  apply H5 ; auto.
 Qed.
 
 Definition termnatq_succ : term :=
