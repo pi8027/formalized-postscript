@@ -38,20 +38,16 @@ Lemma replicate_rev_id :
 Qed.
 
 Inductive term : Set :=
-  (* value stack operators *)
   | term_pop  : term
   | term_dup  : term
   | term_swap : term
   | term_cons : term
-  (* continuation stack operators *)
   | term_push : term
   | term_exec : term
-  (* structure *)
   | term_seq  : term -> term -> term.
 
 Definition stack : Set := list term.
 
-(* Environment is product of the value stack and the continuacion stack. *)
 Definition environment : Set := (stack * stack)%type.
 
 Inductive reduction : relation environment :=
