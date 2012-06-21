@@ -130,6 +130,23 @@ Lemma reduction_unique : forall (a b c : environment),
   inversion H ; inversion H0 ; congruence.
 Qed.
 
+Lemma redstar_confluence : forall (a b c : environment),
+  redstar a b -> redstar a c -> redstar b c \/ redstar c b.
+  unfold redstar.
+  intros.
+  assert (clos_refl_trans_1n environment reduction a b).
+    apply clos_rt_rt1n ; auto.
+  assert (clos_refl_trans_1n environment reduction a c).
+    apply clos_rt_rt1n ; auto.
+  induction H1 ; auto.
+  inversion H2.
+  rewrite <- H4 ; auto.
+  apply IHclos_refl_trans_1n.
+  apply clos_rt1n_rt ; auto.
+  apply clos_rt1n_rt ; rewrite (reduction_unique _ _ _ H1 H4) ; auto.
+  rewrite (reduction_unique _ _ _ H1 H4) ; auto.
+Qed.
+
 Ltac evalstep' e1 e2 :=
   try apply rt_refl ;
   match eval hnf in (decide_reduction e1) with
@@ -148,7 +165,9 @@ Ltac evalstep :=
 
 Ltac evalauto := repeat evalstep.
 
-Ltac redpartial t := eapply rt_trans ; [ eapply t | ].
+Ltac redpartial t := eapply rt_trans ; [ apply t ; fail | ].
+
+Ltac redpartial' t := eapply rt_trans ; [ eapply t | ].
 
 Ltac rtequal :=
   hnf ;
@@ -343,7 +362,7 @@ Lemma termnat_succ_prop :
   split.
   apply red_termnat_term.
   redpartial red_term_list.
-  redpartial red_termnat_quote.
+  redpartial' red_termnat_quote.
   apply H.
   redpartial red_termnatq_succ.
   evalauto.
@@ -378,7 +397,7 @@ Lemma termnat_add_prop : forall (n m : nat) (t1 t2 : term) (vs ps : stack),
   split.
   apply red_termnat_term.
   redpartial red_term_list.
-  redpartial red_termnat_quote.
+  redpartial' red_termnat_quote.
   apply H.
   evalauto.
   redpartial H0.
