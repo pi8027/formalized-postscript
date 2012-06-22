@@ -6,63 +6,6 @@ Require Import Omega.
 Require Import Listutils.
 Require Import PsCore.
 
-Definition termnop : term := term_seq (term_seq term_push term_pop) term_pop.
-
-Lemma rednop : forall (vs ps : stack), redstar (vs, termnop :: ps) (vs, ps).
-  intros ; evalauto.
-Qed.
-
-Definition term_list' : list term -> term -> term := fold_left term_seq.
-
-Lemma red_term_list' : forall (ts : list term) (t : term) (vs ps : stack),
-  redstar (vs, term_list' ts t :: ps) (vs, t :: ts ++ ps).
-  induction ts ; intros.
-  evalauto.
-  redpartial IHts ; evalauto.
-Qed.
-
-Definition term_list (ts : list term) : term := term_list' ts termnop.
-
-Lemma red_term_list : forall (ts : list term) (vs ps : stack),
-  redstar (vs, term_list ts :: ps) (vs, ts ++ ps).
-  intros.
-  redpartial red_term_list'.
-  evalauto.
-Qed.
-
-Lemma term_list_replicate : forall (n : nat) (t1 t2 : term),
-  term_list' (replicate n t1) t2 =
-    fold_right (flip term_seq) t2 (replicate n t1).
-  intros.
-  unfold term_list'.
-  rewrite (replicate_rev_id n t1) at 2.
-  apply (eq_sym (fold_left_rev_right (flip term_seq) (replicate n t1) t2)).
-Qed.
-
-Lemma term_list'_app : forall (ts1 ts2 : list term) (t : term),
-  term_list' (ts1 ++ ts2) t = term_list' ts2 (term_list' ts1 t).
-  intros ; apply fold_left_app.
-Qed.
-
-Lemma term_list_app : forall (ts1 ts2 : list term),
-  term_list (ts1 ++ ts2) = term_list' ts2 (term_list ts1).
-  intros ; apply term_list'_app.
-Qed.
-
-Definition term_snoc : term := term_list [ term_swap ; term_cons ].
-
-Lemma red_snoc : forall (t1 t2 : term) (vs ps : stack),
-  redstar (t1 :: t2 :: vs, term_snoc :: ps) (term_seq t1 t2 :: vs, ps).
-  intros ; evalauto.
-Qed.
-
-Definition term_quote : term := term_list [term_push ; term_push ; term_snoc ].
-
-Lemma red_term_quote : forall (t : term) (vs ps : stack),
-  redstar (t :: vs, term_quote :: ps) (term_seq term_push t :: vs, ps).
-  intros ; evalauto.
-Qed.
-
 Definition termincr : term := term_list
   [ term_dup ; term_quote ; term_swap ; term_quote ; term_cons ;
     term_swap ; term_quote ; term_cons ; term_exec ;
