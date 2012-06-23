@@ -89,7 +89,6 @@ Lemma termnatq_eqmap : forall (n m : nat), termnatq n = termnatq m -> n = m.
   unfold termnatq, term_list in H.
   rewrite (term_list_replicate (S n) termincr termnop) in H.
   rewrite (term_list_replicate (S m) termincr termnop) in H.
-  simpl in H.
   inversion H.
   rewrite <- (term_list_replicate n termincr termnop) in H1.
   rewrite <- (term_list_replicate m termincr termnop) in H1.
@@ -102,7 +101,7 @@ Lemma termnat_eqmap : forall (n m : nat) (t1 t2 : term),
   assert
     (([], replicate n term_pop) |=>* ([], replicate m term_pop) \/
      ([], replicate m term_pop) |=>* ([], replicate n term_pop)).
-    eapply (evalrts_confluence ([ term_pop ], [ t1 ])).
+    eapply (evalrtc_confluence ([ term_pop ], [ t1 ])).
     evalpartial H.
     rewrite (app_nil_r (replicate n term_pop)).
     evalauto.

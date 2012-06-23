@@ -42,14 +42,14 @@ Inductive eval : relation environment :=
       forall (t1 t2 : term) (vs ps : stack),
       eval (vs, term_seq t1 t2 :: ps) (vs, t1 :: t2 :: ps).
 
-Definition evalrts : relation environment := clos_refl_trans _ eval.
-Definition evalrts' : relation environment := clos_refl_trans_1n _ eval.
+Definition evalrtc : relation environment := clos_refl_trans _ eval.
+Definition evalrtc' : relation environment := clos_refl_trans_1n _ eval.
 
 Infix "|=>" := eval (at level 80, no associativity).
-Infix "|=>*" := evalrts (at level 80, no associativity).
-Infix "|=>*'" := evalrts' (at level 80, no associativity).
+Infix "|=>*" := evalrtc (at level 80, no associativity).
+Infix "|=>*'" := evalrtc' (at level 80, no associativity).
 
-Lemma evalrts_is_evalrts' : forall (e1 e2 : environment), e1 |=>* e2 <-> e1 |=>*' e2.
+Lemma evalrtc_is_evalrtc' : forall (e1 e2 : environment), e1 |=>* e2 <-> e1 |=>*' e2.
   intros ; split ; [ apply clos_rt_rt1n | apply clos_rt1n_rt ].
 Qed.
 
@@ -103,7 +103,7 @@ Lemma eval_unique : forall (a b c : environment), a |=> b -> a |=> c -> b = c.
   inversion H ; inversion H0 ; congruence.
 Qed.
 
-Lemma evalrts'_confluence : forall (e1 e2 e3 : environment),
+Lemma evalrtc'_confluence : forall (e1 e2 e3 : environment),
   e1 |=>*' e2 -> e1 |=>*' e3 -> e2 |=>*' e3 \/ e3 |=>*' e2.
   intros.
   induction H ; auto.
@@ -115,11 +115,11 @@ Lemma evalrts'_confluence : forall (e1 e2 e3 : environment),
   rewrite (eval_unique _ _ _ H H2) ; auto.
 Qed.
 
-Lemma evalrts_confluence : forall (e1 e2 e3 : environment),
+Lemma evalrtc_confluence : forall (e1 e2 e3 : environment),
   e1 |=>* e2 -> e1 |=>* e3 -> e2 |=>* e3 \/ e3 |=>* e2.
   do 3 intro.
-  repeat erewrite evalrts_is_evalrts'.
-  apply evalrts'_confluence.
+  repeat erewrite evalrtc_is_evalrtc'.
+  eapply evalrtc'_confluence.
 Qed.
 
 Ltac evalstep' e1 e2 :=
@@ -180,7 +180,6 @@ Lemma term_list_replicate : forall (n : nat) (t1 t2 : term),
   term_list' (replicate n t1) t2 =
     fold_right (flip term_seq) t2 (replicate n t1).
   intros.
-  unfold term_list'.
   rewrite (replicate_rev_id n t1) at 2.
   apply (eq_sym (fold_left_rev_right (flip term_seq) (replicate n t1) t2)).
 Qed.
