@@ -224,40 +224,31 @@ Lemma termnat_add_prop : forall (n m : nat) (t1 t2 : term) (vs ps : stack),
 Qed.
 
 Definition termnatq_mult : term := term_list
-  [ term_swap ; termnat_unquote ;
-    term_swap ; term_push ; term_push ; term_snoc ; term_snoc ;
-    term_push ; termnop ; term_swap ;
-    term_push ; termincr ; term_swap ;
-    term_exec ; term_pop ].
+  [ term_push ; termnop ; term_push ; term_push ; term_cons ; term_snoc ;
+    term_push ; termnatq_add ; term_cons ; term_quote ;
+    term_push ; termnatq 0 ; term_quote ; term_snoc ;
+    term_swap ; termnat_unquote ; term_cons ; term_exec ].
 
 Lemma eval_termnatq_mult : forall (n m : nat) (vs ps : stack),
   (termnatq m :: termnatq n :: vs, termnatq_mult :: ps) |=>*
     (termnatq (n * m) :: vs, ps).
   intros.
-  evalpartial eval_term_list.
-  evalauto.
-  evalpartial eval_termnatq.
-  evalauto.
-  evalpartial eval_term_list.
-  simpl.
-  assert (forall (a : nat) (vs ps : stack),
-    (termincr :: termnatq a :: vs, replicate n (termnatq m) ++ ps) |=>*
-      (termincr :: termnatq (a + n * m) :: vs, ps)).
+  do 126 evalstep.
+  evalpartial eval_termnat_term.
+  assert (forall (a : nat), (termnatq a :: vs,
+    replicate n (term_list [ term_push ; termnatq m ; termnatq_add ]) ++ ps)
+      |=>* (termnatq (a + n * m) :: vs, ps)).
     induction n ; intros.
     replace (a + 0 * m) with a by omega.
     evalauto.
     simpl.
-    evalpartial eval_termnatq.
-    replace (a + (m + n * m)) with ((m + a) + n * m) by omega.
-    replace (term_list' (replicate m termincr) (termnatq a)) with
-      (termnatq (m + a)).
+    evalpartial eval_term_list.
+    evalstep.
+    evalpartial eval_termnatq_add.
+    simpl.
+    replace (a + (m + n * m)) with ((a + m) + n * m) by omega.
     apply IHn.
-    unfold termnatq.
-    replace (m + a) with (a + m) by omega.
-    rewrite <- (replicate_app a m termincr).
-    apply app_term_list.
-  evalpartial (H 0).
-  evalauto.
+  evalpartial (H 0) ; evalauto.
 Qed.
 
 Definition termnat_mult : term := term_list
