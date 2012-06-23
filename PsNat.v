@@ -233,7 +233,6 @@ Lemma eval_termnatq_mult : forall (n m : nat) (vs ps : stack),
     evalpartial eval_term_list.
     evalstep.
     evalpartial eval_termnatq_add.
-    simpl.
     replace (a + (m + n * m)) with ((a + m) + n * m) by omega.
     apply IHn.
   evalpartial (H 0) ; evalauto.
