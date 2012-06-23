@@ -253,3 +253,14 @@ Lemma eval_termnat_mult : forall (n m : nat) (t1 t2 : term) (vs ps : stack),
   evalpartial eval_termnatq_mult.
   apply eval_termnat_unquote.
 Qed.
+
+Lemma termnat_mult_proof : forall (n m : nat) (t1 t2 : term) (vs ps : stack),
+  termnat_spec n t1 -> termnat_spec m t2 ->
+    exists t3 : term, termnat_spec (n * m) t3 /\
+      (t2 :: t1 :: vs, termnat_mult :: ps) |=>* (t3 :: vs, ps).
+  intros.
+  eexists.
+  split.
+  apply eval_termnat.
+  apply eval_termnat_mult ; auto.
+Qed.
