@@ -183,8 +183,8 @@ Definition termnatq_add : term :=
   term_list [ term_push ; termincr ; term_swap ; term_exec ; term_pop ].
 
 Lemma eval_termnatq_add : forall (n m : nat) (vs ps : stack),
-  (termnatq n :: termnatq m :: vs, termnatq_add :: ps) |=>*
-    (termnatq (m + n) :: vs, ps).
+  (termnatq m :: termnatq n :: vs, termnatq_add :: ps) |=>*
+    (termnatq (n + m) :: vs, ps).
   intros.
   evalauto.
   evalpartial eval_termnatq.
@@ -221,4 +221,60 @@ Lemma termnat_add_prop : forall (n m : nat) (t1 t2 : term) (vs ps : stack),
   split.
   apply eval_termnat_term.
   apply eval_termnat_add ; auto.
+Qed.
+
+Definition termnatq_mult : term := term_list
+  [ term_swap ; termnat_unquote ;
+    term_swap ; term_push ; term_push ; term_snoc ; term_snoc ;
+    term_push ; termnop ; term_swap ;
+    term_push ; termincr ; term_swap ;
+    term_exec ; term_pop ].
+
+Lemma eval_termnatq_mult : forall (n m : nat) (vs ps : stack),
+  (termnatq m :: termnatq n :: vs, termnatq_mult :: ps) |=>*
+    (termnatq (n * m) :: vs, ps).
+  intros.
+  evalpartial eval_term_list.
+  evalauto.
+  evalpartial eval_termnatq.
+  evalauto.
+  evalpartial eval_term_list.
+  simpl.
+  assert (forall (a : nat) (vs ps : stack),
+    (termincr :: termnatq a :: vs, replicate n (termnatq m) ++ ps) |=>*
+      (termincr :: termnatq (a + n * m) :: vs, ps)).
+    induction n ; intros.
+    replace (a + 0 * m) with a by omega.
+    evalauto.
+    simpl.
+    evalpartial eval_termnatq.
+    replace (a + (m + n * m)) with ((m + a) + n * m) by omega.
+    replace (term_list' (replicate m termincr) (termnatq a)) with
+      (termnatq (m + a)).
+    apply IHn.
+    unfold termnatq.
+    replace (m + a) with (a + m) by omega.
+    rewrite <- (replicate_app a m termincr).
+    apply app_term_list.
+  evalpartial (H 0).
+  evalauto.
+Qed.
+
+Definition termnat_mult : term := term_list
+  [ termnat_quote ; term_swap ; termnat_quote ; term_swap ;
+    termnatq_mult ; termnat_unquote ].
+
+Lemma eval_termnat_mult : forall (n m : nat) (t1 t2 : term) (vs ps : stack),
+  termnat n t1 -> termnat m t2 ->
+    (t2 :: t1 :: vs, termnat_mult :: ps) |=>* (termnat_term (n * m) :: vs, ps).
+  intros.
+  evalpartial eval_term_list.
+  evalpartial' eval_termnat_quote.
+  apply H0.
+  evalstep.
+  evalpartial' eval_termnat_quote.
+  apply H.
+  evalstep.
+  evalpartial eval_termnatq_mult.
+  apply eval_termnat_unquote.
 Qed.
