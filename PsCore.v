@@ -178,14 +178,14 @@ Lemma term_list_replicate : forall (n : nat) (t1 t2 : term),
   apply (eq_sym (fold_left_rev_right (flip term_seq) (replicate n t1) t2)).
 Qed.
 
-Lemma term_list'_app : forall (ts1 ts2 : list term) (t : term),
+Lemma app_term_list' : forall (ts1 ts2 : list term) (t : term),
   term_list' (ts1 ++ ts2) t = term_list' ts2 (term_list' ts1 t).
   intros ; apply fold_left_app.
 Qed.
 
-Lemma term_list_app : forall (ts1 ts2 : list term),
+Lemma app_term_list : forall (ts1 ts2 : list term),
   term_list (ts1 ++ ts2) = term_list' ts2 (term_list ts1).
-  intros ; apply term_list'_app.
+  intros ; apply app_term_list'.
 Qed.
 
 Definition term_snoc : term := term_list [ term_swap ; term_cons ].
@@ -197,7 +197,7 @@ Qed.
 
 Definition term_quote : term := term_list [term_push ; term_push ; term_snoc ].
 
-Lemma red_term_quote : forall (t : term) (vs ps : stack),
+Lemma eval_term_quote : forall (t : term) (vs ps : stack),
   (t :: vs, term_quote :: ps) |=>* (term_seq term_push t :: vs, ps).
   intros ; evalauto.
 Qed.

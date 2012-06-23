@@ -157,19 +157,26 @@ Qed.
 Definition termnat_succ : term :=
   term_list [ termnat_quote ; termnatq_succ ; termnat_unquote ].
 
-Lemma termnat_succ_prop :
-  forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1 ->
-    exists t2 : term, termnat (S n) t2 /\
-      (t1 :: vs, termnat_succ :: ps) |=>* (t2 :: vs, ps).
+Lemma eval_termnat_succ :
+  forall (n : nat) (t : term) (vs ps : stack), termnat n t ->
+    (t :: vs, termnat_succ :: ps) |=>* (termnat_term (S n) :: vs, ps).
   intros.
-  eexists.
-  split.
-  apply eval_termnat_term.
   evalpartial eval_term_list.
   evalpartial' eval_termnat_quote.
   apply H.
   evalpartial eval_termnatq_succ.
   evalauto.
+Qed.
+
+Lemma termnat_succ_prop :
+  forall (n : nat) (t1 : term) (vs ps : stack), termnat n t1 ->
+    exists t2 : term, termnat (S n) t2 /\
+      (t1 :: vs, termnat_succ :: ps) |=>* (t2 :: vs, ps).
+  intros.
+  exists (termnat_term (S n)).
+  split.
+  apply eval_termnat_term.
+  apply eval_termnat_succ ; auto.
 Qed.
 
 Definition termnatq_add : term :=
@@ -183,7 +190,7 @@ Lemma eval_termnatq_add : forall (n m : nat) (vs ps : stack),
   evalpartial eval_termnatq.
   evalauto.
   unfold termnatq.
-  rewrite <- (term_list_app _ _).
+  rewrite <- (app_term_list _ _).
   rewrite <- (replicate_app _ _ _).
   evalauto.
 Qed.
@@ -192,19 +199,26 @@ Definition termnat_add : term := term_list
   [ termnat_quote ; term_swap ;
     term_push ; termnatq_succ ; term_swap ; term_exec ; termnat_unquote ].
 
+Lemma eval_termnat_add : forall (n m : nat) (t1 t2 : term) (vs ps : stack),
+  termnat n t1 -> termnat m t2 ->
+    (t2 :: t1 :: vs, termnat_add :: ps) |=>* (termnat_term (n + m) :: vs, ps).
+  intros.
+  evalpartial eval_term_list.
+  evalpartial' eval_termnat_quote.
+  apply H0.
+  evalauto.
+  evalpartial H.
+  evalpartial eval_termnatq_succ_replicate.
+  apply eval_termnat_unquote.
+Qed.
+
 Lemma termnat_add_prop : forall (n m : nat) (t1 t2 : term) (vs ps : stack),
   termnat n t1 -> termnat m t2 ->
-    exists t3 : term, termnat (m + n) t3 /\
-      (t1 :: t2 :: vs, termnat_add :: ps) |=>* (t3 :: vs, ps).
+    exists t3 : term, termnat (n + m) t3 /\
+      (t2 :: t1 :: vs, termnat_add :: ps) |=>* (t3 :: vs, ps).
   intros.
   eexists.
   split.
   apply eval_termnat_term.
-  evalpartial eval_term_list.
-  evalpartial' eval_termnat_quote.
-  apply H.
-  evalauto.
-  evalpartial H0.
-  evalpartial eval_termnatq_succ_replicate.
-  apply eval_termnat_unquote.
+  apply eval_termnat_add ; auto.
 Qed.
