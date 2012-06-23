@@ -1,5 +1,6 @@
 Require Import Basics.
 Require Import Relations.
+Require Import Relation_Operators.
 Require Import Logic.Decidable.
 Require Import List.
 
@@ -47,6 +48,10 @@ Definition evalrts' : relation environment := clos_refl_trans_1n _ eval.
 Infix "|=>" := eval (at level 80, no associativity).
 Infix "|=>*" := evalrts (at level 80, no associativity).
 Infix "|=>*'" := evalrts' (at level 80, no associativity).
+
+Lemma evalrts_is_evalrts' : forall (e1 e2 : environment), e1 |=>* e2 <-> e1 |=>*' e2.
+  intros ; split ; [ apply clos_rt_rt1n | apply clos_rt1n_rt ].
+Qed.
 
 Lemma decide_eval : forall (e1 : environment),
   decidable (exists e2 : environment, e1 |=> e2).
@@ -98,21 +103,23 @@ Lemma eval_unique : forall (a b c : environment), a |=> b -> a |=> c -> b = c.
   inversion H ; inversion H0 ; congruence.
 Qed.
 
-Lemma evalrts_confluence :
-  forall (a b c : environment), a |=>* b -> a |=>* c -> b |=>* c \/ c |=>* b.
-  unfold evalrts.
+Lemma evalrts'_confluence : forall (e1 e2 e3 : environment),
+  e1 |=>*' e2 -> e1 |=>*' e3 -> e2 |=>*' e3 \/ e3 |=>*' e2.
   intros.
-  assert (a |=>*' b).
-    apply clos_rt_rt1n ; auto.
-  assert (a |=>*' c).
-    apply clos_rt_rt1n ; auto.
-  induction H1 ; auto.
-  inversion H2.
-  rewrite <- H4 ; auto.
+  induction H ; auto.
+  inversion H0.
+  rewrite <- H2.
+  right.
+  eapply rt1n_trans ; [ apply H | apply H1 ].
   apply IHclos_refl_trans_1n.
-  apply clos_rt1n_rt ; auto.
-  apply clos_rt1n_rt ; rewrite (eval_unique _ _ _ H1 H4) ; auto.
-  rewrite (eval_unique _ _ _ H1 H4) ; auto.
+  rewrite (eval_unique _ _ _ H H2) ; auto.
+Qed.
+
+Lemma evalrts_confluence : forall (e1 e2 e3 : environment),
+  e1 |=>* e2 -> e1 |=>* e3 -> e2 |=>* e3 \/ e3 |=>* e2.
+  do 3 intro.
+  repeat erewrite evalrts_is_evalrts'.
+  apply evalrts'_confluence.
 Qed.
 
 Ltac evalstep' e1 e2 :=
