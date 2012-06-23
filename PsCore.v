@@ -7,13 +7,13 @@ Require Import List.
 Require Import Listutils.
 
 Inductive term : Set :=
-  | term_pop  : term
-  | term_dup  : term
-  | term_swap : term
-  | term_cons : term
-  | term_push : term
-  | term_exec : term
-  | term_seq  : term -> term -> term.
+  | termpop  : term
+  | termdup  : term
+  | termswap : term
+  | termcons : term
+  | termpush : term
+  | termexec : term
+  | termseq  : term -> term -> term.
 
 Definition stack : Set := list term.
 
@@ -22,25 +22,25 @@ Definition environment : Set := (stack * stack)%type.
 Inductive eval : relation environment :=
   | evalpop  :
       forall (t : term) (vs ps : stack),
-      eval (t :: vs, term_pop :: ps) (vs, ps)
+      eval (t :: vs, termpop :: ps) (vs, ps)
   | evaldup  :
       forall (t : term) (vs ps : stack),
-      eval (t :: vs, term_dup :: ps) (t :: t :: vs, ps)
+      eval (t :: vs, termdup :: ps) (t :: t :: vs, ps)
   | evalswap :
       forall (t1 t2 : term) (vs ps : stack),
-      eval (t1 :: t2 :: vs, term_swap :: ps) (t2 :: t1 :: vs, ps)
+      eval (t1 :: t2 :: vs, termswap :: ps) (t2 :: t1 :: vs, ps)
   | evalcons :
       forall (t1 t2 : term) (vs ps : stack),
-      eval (t1 :: t2 :: vs, term_cons :: ps) (term_seq t2 t1 :: vs, ps)
+      eval (t1 :: t2 :: vs, termcons :: ps) (termseq t2 t1 :: vs, ps)
   | evalpush :
       forall (t : term) (vs ps : stack),
-      eval (vs, term_push :: t :: ps) (t :: vs, ps)
+      eval (vs, termpush :: t :: ps) (t :: vs, ps)
   | evalexec :
       forall (t : term) (vs ps : stack),
-      eval (t :: vs, term_exec :: ps) (vs, t :: ps)
+      eval (t :: vs, termexec :: ps) (vs, t :: ps)
   | evalseq  :
       forall (t1 t2 : term) (vs ps : stack),
-      eval (vs, term_seq t1 t2 :: ps) (vs, t1 :: t2 :: ps).
+      eval (vs, termseq t1 t2 :: ps) (vs, t1 :: t2 :: ps).
 
 Definition evalrtc : relation environment := clos_refl_trans _ eval.
 Definition evalrtc' : relation environment := clos_refl_trans_1n _ eval.
@@ -152,58 +152,58 @@ Ltac rtcequal :=
     | _ => fail 2 "The goal is invalid."
   end.
 
-Definition termnop : term := term_seq (term_seq term_push term_pop) term_pop.
+Definition termnop : term := termseq (termseq termpush termpop) termpop.
 
 Lemma evalnop : forall (vs ps : stack), (vs, termnop :: ps) |=>* (vs, ps).
   intros ; evalauto.
 Qed.
 
-Definition term_list' : list term -> term -> term := fold_left term_seq.
+Definition termlist' : list term -> term -> term := fold_left termseq.
 
-Lemma eval_term_list' : forall (ts : list term) (t : term) (vs ps : stack),
-  (vs, term_list' ts t :: ps) |=>* (vs, t :: ts ++ ps).
+Lemma eval_termlist' : forall (ts : list term) (t : term) (vs ps : stack),
+  (vs, termlist' ts t :: ps) |=>* (vs, t :: ts ++ ps).
   induction ts ; intros.
   evalauto.
   evalpartial IHts ; evalauto.
 Qed.
 
-Definition term_list (ts : list term) : term := term_list' ts termnop.
+Definition termlist (ts : list term) : term := termlist' ts termnop.
 
-Lemma eval_term_list : forall (ts : list term) (vs ps : stack),
-  (vs, term_list ts :: ps) |=>* (vs, ts ++ ps).
+Lemma eval_termlist : forall (ts : list term) (vs ps : stack),
+  (vs, termlist ts :: ps) |=>* (vs, ts ++ ps).
   intros.
-  evalpartial eval_term_list'.
+  evalpartial eval_termlist'.
   evalauto.
 Qed.
 
-Lemma term_list_replicate : forall (n : nat) (t1 t2 : term),
-  term_list' (replicate n t1) t2 =
-    fold_right (flip term_seq) t2 (replicate n t1).
+Lemma termlist_replicate : forall (n : nat) (t1 t2 : term),
+  termlist' (replicate n t1) t2 =
+    fold_right (flip termseq) t2 (replicate n t1).
   intros.
   rewrite (replicate_rev_id n t1) at 2.
-  apply (eq_sym (fold_left_rev_right (flip term_seq) (replicate n t1) t2)).
+  apply (eq_sym (fold_left_rev_right (flip termseq) (replicate n t1) t2)).
 Qed.
 
-Lemma app_term_list' : forall (ts1 ts2 : list term) (t : term),
-  term_list' (ts1 ++ ts2) t = term_list' ts2 (term_list' ts1 t).
+Lemma app_termlist' : forall (ts1 ts2 : list term) (t : term),
+  termlist' (ts1 ++ ts2) t = termlist' ts2 (termlist' ts1 t).
   intros ; apply fold_left_app.
 Qed.
 
-Lemma app_term_list : forall (ts1 ts2 : list term),
-  term_list (ts1 ++ ts2) = term_list' ts2 (term_list ts1).
-  intros ; apply app_term_list'.
+Lemma app_termlist : forall (ts1 ts2 : list term),
+  termlist (ts1 ++ ts2) = termlist' ts2 (termlist ts1).
+  intros ; apply app_termlist'.
 Qed.
 
-Definition term_snoc : term := term_list [ term_swap ; term_cons ].
+Definition termsnoc : term := termlist [ termswap ; termcons ].
 
 Lemma evalsnoc : forall (t1 t2 : term) (vs ps : stack),
-  (t1 :: t2 :: vs, term_snoc :: ps) |=>* (term_seq t1 t2 :: vs, ps).
+  (t1 :: t2 :: vs, termsnoc :: ps) |=>* (termseq t1 t2 :: vs, ps).
   intros ; evalauto.
 Qed.
 
-Definition term_quote : term := term_list [term_push ; term_push ; term_snoc ].
+Definition termquote : term := termlist [termpush ; termpush ; termsnoc ].
 
-Lemma eval_term_quote : forall (t : term) (vs ps : stack),
-  (t :: vs, term_quote :: ps) |=>* (term_seq term_push t :: vs, ps).
+Lemma eval_termquote : forall (t : term) (vs ps : stack),
+  (t :: vs, termquote :: ps) |=>* (termseq termpush t :: vs, ps).
   intros ; evalauto.
 Qed.
