@@ -86,45 +86,35 @@ Lemma termnatq_eqmap : forall (n m : nat), termnatq n = termnatq m -> n = m.
   inversion H.
   f_equal.
   apply IHn.
-  unfold termnatq, term_list in H.
-  rewrite (term_list_replicate (S n) termincr termnop) in H.
-  rewrite (term_list_replicate (S m) termincr termnop) in H.
+  unfold termnatq, term_list in *.
+  repeat erewrite term_list_replicate in *.
   inversion H.
-  rewrite <- (term_list_replicate n termincr termnop) in H1.
-  rewrite <- (term_list_replicate m termincr termnop) in H1.
   auto.
 Qed.
 
-Lemma termnat_eqmap : forall (n m : nat) (t1 t2 : term),
-  termnat n t1 -> termnat m t2 -> t1 = t2 -> n = m.
+Lemma termnat_eqmap : forall (n m : nat) (t : term),
+  termnat n t -> termnat m t -> n = m.
   intros.
-  assert
-    (([], replicate n term_pop) |=>* ([], replicate m term_pop) \/
-     ([], replicate m term_pop) |=>* ([], replicate n term_pop)).
-    eapply (evalrtc_confluence ([ term_pop ], [ t1 ])).
-    evalpartial H.
-    rewrite (app_nil_r (replicate n term_pop)).
-    evalauto.
-    rewrite H1.
-    evalpartial H0.
-    rewrite (app_nil_r (replicate m term_pop)).
-    evalauto.
   assert
     (([], replicate n term_pop) |=>*' ([], replicate m term_pop) \/
      ([], replicate m term_pop) |=>*' ([], replicate n term_pop)).
-    destruct H2 ; [ left | right ] ; apply clos_rt_rt1n ; auto.
+    repeat erewrite <- evalrtc_is_evalrtc'.
+    eapply (evalrtc_confluence ([ term_pop ], [ t ])).
+    evalpartial H.
+    erewrite app_nil_r.
+    evalauto.
+    evalpartial H0.
+    erewrite app_nil_r.
+    evalauto.
   assert (replicate n term_pop = replicate m term_pop).
-    destruct H3 ; destruct n ; destruct m ; inversion H3 ;
-      (auto || inversion H4 || simpl ; f_equal ; auto).
-  assert (forall a b, replicate a term_pop = replicate b term_pop -> a = b).
-    intro ; induction a ; intro ; destruct b ; simpl ; intro.
-    auto.
-    congruence.
-    congruence.
-    f_equal.
-    apply IHa.
-    congruence.
-  apply H5 ; auto.
+    destruct H1 ; destruct n ; destruct m ; inversion H1 ;
+      (auto || inversion H2 || simpl ; f_equal ; auto).
+  clear H H0 H1.
+  revert m H2 ; induction n ; intro ; destruct m ; simpl ; intros.
+  auto.
+  congruence.
+  congruence.
+  f_equal ; apply IHn ; congruence.
 Qed.
 
 Definition termnatq_succ : term :=
@@ -136,9 +126,9 @@ Lemma eval_termnatq_succ : forall (n : nat) (vs ps : stack),
   evalauto.
   rtcequal.
   unfold termnat_term, termnatq, term_list.
-  rewrite (term_list_replicate (S n) termincr termnop).
+  erewrite term_list_replicate.
   simpl ; unfold flip ; f_equal.
-  apply (eq_sym (term_list_replicate n termincr termnop)).
+  apply eq_sym, term_list_replicate.
 Qed.
 
 Lemma eval_termnatq_succ_replicate : forall (n m : nat) (vs ps : stack),
@@ -189,8 +179,7 @@ Lemma eval_termnatq_add : forall (n m : nat) (vs ps : stack),
   evalpartial eval_termnatq.
   evalauto.
   unfold termnatq.
-  rewrite <- (app_term_list _ _).
-  rewrite <- (replicate_app _ _ _).
+  erewrite <- app_term_list, replicate_app.
   evalauto.
 Qed.
 
