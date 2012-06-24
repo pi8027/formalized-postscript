@@ -4,44 +4,44 @@ Require Import List.
 Require Import Listutils.
 Require Import PsCore.
 
-Definition termtrue_spec (t1 : term) : Prop :=
-  forall (t2 t3 : term) (vs ps : stack),
-    (t3 :: t2 :: vs, t1 :: ps) |=>* (t3 :: t2 :: vs, ps).
+Definition insttrue_spec (i1 : inst) : Prop :=
+  forall (i2 i3 : inst) (vs ps : stack),
+    (i3 :: i2 :: vs, i1 :: ps) |=>* (i3 :: i2 :: vs, ps).
 
-Definition termfalse_spec (t1 : term) : Prop :=
-  forall (t2 t3 : term) (vs ps : stack),
-    (t3 :: t2 :: vs, t1 :: ps) |=>* (t2 :: t3 :: vs, ps).
+Definition instfalse_spec (i1 : inst) : Prop :=
+  forall (i2 i3 : inst) (vs ps : stack),
+    (i3 :: i2 :: vs, i1 :: ps) |=>* (i2 :: i3 :: vs, ps).
 
-Definition termbool_spec (b : bool) (t : term) : Prop :=
-  if b then termtrue_spec t else termfalse_spec t.
+Definition instbool_spec (b : bool) (i : inst) : Prop :=
+  if b then insttrue_spec i else instfalse_spec i.
 
-Definition termtrue := termnop.
+Definition insttrue := instnop.
 
-Definition termfalse := termswap.
+Definition instfalse := instswap.
 
-Lemma eval_termtrue : termtrue_spec termtrue.
+Lemma eval_insttrue : insttrue_spec insttrue.
   repeat intro ; evalauto.
 Qed.
 
-Lemma eval_termfalse : termfalse_spec termfalse.
+Lemma eval_instfalse : instfalse_spec instfalse.
   repeat intro ; evalauto.
 Qed.
 
-Lemma termtrue_proof : termbool_spec true termtrue.
-  apply eval_termtrue.
+Lemma insttrue_proof : instbool_spec true insttrue.
+  apply eval_insttrue.
 Qed.
 
-Lemma termfalse_proof : termbool_spec false termfalse.
-  apply eval_termfalse.
+Lemma instfalse_proof : instbool_spec false instfalse.
+  apply eval_instfalse.
 Qed.
 
-Definition termnot := termseq [ termpush ; termswap ; termcons ].
+Definition instnot := instseq [ instpush ; instswap ; instcons ].
 
-Lemma termnot_proof : forall (b : bool) (t1 : term) (vs ps : stack),
-  termbool_spec b t1 ->
-    exists t2 : term,
-      termbool_spec (negb b) t2 /\
-      (t1 :: vs, termnot :: ps) |=>* (t2 :: vs, ps).
+Lemma instnot_proof : forall (b : bool) (i1 : inst) (vs ps : stack),
+  instbool_spec b i1 ->
+    exists i2 : inst,
+      instbool_spec (negb b) i2 /\
+      (i1 :: vs, instnot :: ps) |=>* (i2 :: vs, ps).
   intros.
   eexists.
   destruct b ; eapply (flip (@conj _ _)).
@@ -51,31 +51,31 @@ Lemma termnot_proof : forall (b : bool) (t1 : term) (vs ps : stack),
   repeat intro ; evalauto ; evalpartial H ; evalauto.
 Qed.
 
-Definition termif := termseq [ termexec ; termpop ].
+Definition instif := instseq [ instexec ; instpop ].
 
-Lemma eval_termif : forall (b : bool) (t1 t2 t3 : term) (vs ps : stack),
-  termbool_spec b t3 -> (t3 :: t2 :: t1 :: vs, termif :: ps) |=>*
-    ((if b then t1 else t2) :: vs, ps).
+Lemma eval_instif : forall (b : bool) (i1 i2 i3 : inst) (vs ps : stack),
+  instbool_spec b i3 -> (i3 :: i2 :: i1 :: vs, instif :: ps) |=>*
+    ((if b then i1 else i2) :: vs, ps).
   intros.
   destruct b ; evalauto ; evalpartial H ; evalauto.
 Qed.
 
-Definition termexecif := termseq [ termif ; termexec ].
+Definition instexecif := instseq [ instif ; instexec ].
 
-Lemma eval_termexecif : forall (b : bool) (t1 t2 t3 : term) (vs ps : stack),
-  termbool_spec b t3 -> (t3 :: t2 :: t1 :: vs, termexecif :: ps) |=>*
-    (vs, (if b then t1 else t2) :: ps).
+Lemma eval_instexecif : forall (b : bool) (i1 i2 i3 : inst) (vs ps : stack),
+  instbool_spec b i3 -> (i3 :: i2 :: i1 :: vs, instexecif :: ps) |=>*
+    (vs, (if b then i1 else i2) :: ps).
   intros.
   destruct b ; evalauto ; evalpartial H ; evalauto.
 Qed.
 
-Definition termxor := termseq [ termcons ; termnot ].
+Definition instxor := instseq [ instcons ; instnot ].
 
-Lemma termxor_proof : forall (b1 b2 : bool) (t1 t2 : term) (vs ps : stack),
-  termbool_spec b1 t1 -> termbool_spec b2 t2 ->
-    exists t3 : term,
-      termbool_spec (xorb b1 b2) t3 /\
-      (t2 :: t1 :: vs, termxor :: ps) |=>* (t3 :: vs, ps).
+Lemma instxor_proof : forall (b1 b2 : bool) (i1 i2 : inst) (vs ps : stack),
+  instbool_spec b1 i1 -> instbool_spec b2 i2 ->
+    exists i3 : inst,
+      instbool_spec (xorb b1 b2) i3 /\
+      (i2 :: i1 :: vs, instxor :: ps) |=>* (i3 :: vs, ps).
   intros.
   destruct b1, b2 ; eexists ;
     (eapply (flip (@conj _ _)) ; [ evalauto |

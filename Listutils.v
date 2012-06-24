@@ -2,7 +2,6 @@ Require Import List.
 Require Import Omega.
 
 Notation "[]" := nil : list_scope.
-
 Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..) : list_scope.
 
 Fixpoint replicate {A : Set} (n : nat) (a : A) :=
