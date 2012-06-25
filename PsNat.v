@@ -122,7 +122,7 @@ Lemma eval_instnatq_succ : forall (n : nat) (vs ps : stack),
   (instnatq n :: vs, instnatq_succ :: ps) |=>* (instnatq (S n) :: vs, ps).
   intros.
   evalauto.
-  rtcequal.
+  rtcrefl.
   unfold instnat, instnatq, instseq.
   erewrite instseq_replicate.
   simpl ; unfold flip ; f_equal.
@@ -138,7 +138,7 @@ Lemma eval_instnatq_succ_replicate : forall (n m : nat) (vs ps : stack),
   simpl.
   evalpartial eval_instnatq_succ.
   evalpartial IHm.
-  rtcequal ; omega.
+  rtcrefl ; omega.
 Qed.
 
 Definition instnat_succ : inst :=

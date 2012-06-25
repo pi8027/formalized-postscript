@@ -6,6 +6,10 @@ Require Import List.
 
 Require Import Listutils.
 
+(*
+inst:
+  命令の定義。命令は値も兼ねる。
+*)
 Inductive inst : Set :=
   | instpop  : inst
   | instdup  : inst
@@ -15,10 +19,38 @@ Inductive inst : Set :=
   | instexec : inst
   | instpair : inst -> inst -> inst.
 
+(*
+stack:
+  スタックは命令のリスト。
+*)
 Definition stack : Set := list inst.
 
+(*
+environment:
+  環境は2本のスタックの組。前者は値のスタック、後者は継続のスタックである。
+*)
 Definition environment : Set := (stack * stack)%type.
 
+(*
+eval:
+  計算は環境上の二項関係(書換系)である。
+  evalpop (instpop):
+    値のスタックの先頭を捨てる。
+  evaldup (instdup):
+    値のスタックの先頭を複製する。
+  evalswap (instswap):
+    値のスタックの先頭の2つの値を入れ替える。
+  evalcons (instcons):
+    値のスタックの先頭の2つの値を取り出し、そのペアを instpair で作成し、値のス
+    タックの先頭に積む。
+  evalpush (instpush):
+    継続のスタックの先頭にある evalpush 命令の直後の値を取り出し、値のスタックに
+    積む。
+  evalexec (instexec):
+    値のスタックの先頭にある値を取り出し、継続のスタックの先頭に積む。
+  evalpair (instpair):
+    instpair のパラメータの2つの命令を継続のスタックに積む。
+*)
 Inductive eval : relation environment :=
   | evalpop  :
       forall (i : inst) (vs ps : stack),
@@ -42,18 +74,37 @@ Inductive eval : relation environment :=
       forall (i1 i2 : inst) (vs ps : stack),
       eval (vs, instpair i1 i2 :: ps) (vs, i1 :: i2 :: ps).
 
+(*
+evalrtc, evalrtc':
+  eval の反射推移閉包。
+  NOTE:
+    clos_refl_trans と clos_refl_trans_1n はどちらも反射推移閉包であるが、定義が
+    異なる。
+*)
 Definition evalrtc : relation environment := clos_refl_trans _ eval.
 Definition evalrtc' : relation environment := clos_refl_trans_1n _ eval.
 
-Infix "|=>" := eval (at level 80, no associativity).
-Infix "|=>*" := evalrtc (at level 80, no associativity).
-Infix "|=>*'" := evalrtc' (at level 80, no associativity).
+(*
+|=>, |=>*, |=>*':
+  eval, evalrtc, evalrtc' の中置演算子。
+*)
+Infix "|=>" := eval (at level 10, no associativity).
+Infix "|=>*" := evalrtc (at level 10, no associativity).
+Infix "|=>*'" := evalrtc' (at level 10, no associativity).
 
+(*
+evalrtc_is_evalrtc':
+  evalrtc, evalrtc' の同値性の証明。
+*)
 Lemma evalrtc_is_evalrtc' :
   forall (e1 e2 : environment), e1 |=>* e2 <-> e1 |=>*' e2.
   intros ; split ; [ apply clos_rt_rt1n | apply clos_rt1n_rt ].
 Qed.
 
+(*
+decide_eval:
+  環境 e1 から eval によって書き換えられる環境 e2 の存在を決定する。
+*)
 Lemma decide_eval : forall (e1 : environment),
   decidable (exists e2 : environment, e1 |=> e2).
   intros.
@@ -88,10 +139,14 @@ Lemma decide_eval : forall (e1 : environment),
   left ; eexists ; apply evalpair.
 Defined.
 
+(*
+uniqueness_of_eval:
+  環境 e1 から eval によって書き換えられる環境 e2, e3 は同値である。
+*)
 Lemma uniqueness_of_eval :
-  forall (a b c : environment), a |=> b -> a |=> c -> b = c.
+  forall (e1 e2 e3 : environment), e1 |=> e2 -> e1 |=> e3 -> e2 = e3.
   intros.
-  destruct a, b, c.
+  destruct e1, e2, e3.
   destruct s0.
   inversion H.
   destruct i.
@@ -105,6 +160,14 @@ Lemma uniqueness_of_eval :
   inversion H ; inversion H0 ; congruence.
 Qed.
 
+(*
+evalrtc'_confluence:
+  e1 |=>*' e2 かつ e1 |=>*' e3 ならば e2 |=>*' e3 もしくは e3 |=>*' e2 が成り立
+  つ。
+  NOTE:
+    合流性より強い性質であるが、適切な名前を知らないので仮の名前として
+    evalrtc'_confluence とした。
+*)
 Lemma evalrtc'_confluence : forall (e1 e2 e3 : environment),
   e1 |=>*' e2 -> e1 |=>*' e3 -> e2 |=>*' e3 \/ e3 |=>*' e2.
   intros.
@@ -117,6 +180,10 @@ Lemma evalrtc'_confluence : forall (e1 e2 e3 : environment),
   rewrite (uniqueness_of_eval _ _ _ H H2) ; auto.
 Qed.
 
+(*
+evalrtc_confluence:
+  e1 |=>* e2 かつ e1 |=>* e3 ならば e2 |=>* e3 もしくは e3 |=>* e2 が成り立つ。
+*)
 Lemma evalrtc_confluence : forall (e1 e2 e3 : environment),
   e1 |=>* e2 -> e1 |=>* e3 -> e2 |=>* e3 \/ e3 |=>* e2.
   do 3 intro.
@@ -124,6 +191,11 @@ Lemma evalrtc_confluence : forall (e1 e2 e3 : environment),
   eapply evalrtc'_confluence.
 Qed.
 
+(*
+evalstep:
+  ゴールが e1 |=>* e2 の形である場合に、e1 から書き換え可能な環境 e3 を計算し、
+  ゴールを e3 |=>* e2 で置き換えるタクティク。計算を自動的に1段階進める。
+*)
 Ltac evalstep' e1 e2 :=
   try apply rt_refl ;
   match eval hnf in (decide_eval e1) with
@@ -139,13 +211,26 @@ Ltac evalstep :=
     | _ => fail 2 "The goal is invalid."
   end.
 
+(*
+evalauto:
+  evalstep を適用できなくなるまで繰り返す。
+*)
 Ltac evalauto := repeat evalstep.
 
+(*
+evalpartial, evalpartial':
+  指定した関数を適用することで計算を途中まで進める。evalpartial は適用した結果と
+  してサブゴールが残ることを許容しないが、evalpartial' ではそれを許容する。
+*)
 Ltac evalpartial H := eapply rt_trans ; [ apply H ; fail | ].
 
 Ltac evalpartial' H := eapply rt_trans ; [ eapply H | ].
 
-Ltac rtcequal :=
+(*
+rtcrefl:
+  ゴール e1 |=>* e2 を e1 = e2 で置き換え、f_equal を繰り返し適用する。
+*)
+Ltac rtcrefl :=
   hnf ;
   match goal with
     | |- clos_refl_trans _ _ ?e1 ?e2 =>
@@ -153,12 +238,21 @@ Ltac rtcequal :=
     | _ => fail 2 "The goal is invalid."
   end.
 
+(*
+instnop:
+  何もしない(NOP)命令。
+*)
 Definition instnop : inst := instpair (instpair instpush instpop) instpop.
 
 Lemma evalnop : forall (vs ps : stack), (vs, instnop :: ps) |=>* (vs, ps).
   intros ; evalauto.
 Qed.
 
+(*
+instseq:
+  命令列を素直に記述するためのもの。命令のリストを instpair で畳み込むと、それが
+  継続のスタックの先頭にあった場合に、元のリストの通りに展開される。
+*)
 Definition instseq' : list inst -> inst -> inst := fold_left instpair.
 
 Lemma evalseq' : forall (is : list inst) (i : inst) (vs ps : stack),
@@ -195,6 +289,10 @@ Lemma app_instseq : forall (is1 is2 : list inst),
   intros ; apply app_instseq'.
 Qed.
 
+(*
+instsnoc:
+  instswap, instcons を順番に実行する。パラメータの順番が反転した instcons。
+*)
 Definition instsnoc : inst := instseq [ instswap ; instcons ].
 
 Lemma evalsnoc : forall (i1 i2 : inst) (vs ps : stack),
@@ -202,6 +300,11 @@ Lemma evalsnoc : forall (i1 i2 : inst) (vs ps : stack),
   intros ; evalauto.
 Qed.
 
+(*
+instquote:
+  スタックの先頭にある値をクオートする。クオートされた値は、クオートされる前の値
+  をスタックの先頭に積む命令である。
+*)
 Definition instquote : inst := instseq [instpush ; instpush ; instsnoc ].
 
 Lemma evalquote : forall (i : inst) (vs ps : stack),
