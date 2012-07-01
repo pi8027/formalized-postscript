@@ -166,47 +166,45 @@ Lemma instnat_succ_proof :
   apply eval_instnat_succ ; auto.
 Qed.
 
-Definition instnatq_add : inst :=
-  instseq [ instpush ; instincr ; instswap ; instexec ; instpop ].
-
-Lemma eval_instnatq_add : forall (n m : nat) (vs ps : stack),
-  (instnatq m :: instnatq n :: vs, instnatq_add :: ps) |=>*
-    (instnatq (n + m) :: vs, ps).
-  intros.
-  evalauto.
-  evalpartial eval_instnatq.
-  evalauto.
-  unfold instnatq.
-  erewrite <- app_instseq, replicate_app.
-  evalauto.
-Qed.
-
 Definition instnat_add : inst := instseq
-  [ instnat_quote ; instswap ;
-    instpush ; instnatq_succ ; instswap ; instexec ; instnat_unquote ].
-
-Lemma eval_instnat_add : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
-  instnat_spec n i1 -> instnat_spec m i2 ->
-    (i2 :: i1 :: vs, instnat_add :: ps) |=>* (instnat (n + m) :: vs, ps).
-  intros.
-  evalpartial evalseq.
-  evalpartial' eval_instnat_quote.
-  apply H0.
-  evalauto.
-  evalpartial H.
-  evalpartial eval_instnatq_succ_replicate.
-  apply eval_instnat_unquote.
-Qed.
+  [ instswap ; instpush ; instnat_succ ; instswap ; instexec ].
 
 Lemma instnat_add_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   instnat_spec n i1 -> instnat_spec m i2 ->
     exists i3 : inst, instnat_spec (n + m) i3 /\
       (i2 :: i1 :: vs, instnat_add :: ps) |=>* (i3 :: vs, ps).
   intros.
-  eexists.
-  split.
-  apply eval_instnat.
-  apply eval_instnat_add ; auto.
+  evalauto.
+  eapply (exists_map _ _ _
+    (fun _ => and_map_right _ _ _ (rt_trans _ _ _ _ _ (H _ _ _)))).
+  generalize m as m', i2 as i3, H0 ; clear H H0.
+  induction n ; intros ; simpl.
+  eexists ; split ; [ apply H0 | evalauto ].
+  destruct (instnat_succ_proof m' i3 vs (replicate n instnat_succ ++ ps) H0)
+    as [i4 [H1 H2]].
+  eapply (exists_map _ _ _
+    (fun _ => and_map_right _ _ _ (rt_trans _ _ _ _ _ H2))).
+  replace (S (n + m')) with (n + S m') by omega.
+  apply (IHn (S m') i4 H1).
+Qed.
+
+Definition instnatq_add : inst := instseq
+  [ instnat_unquote ; instswap ; instnat_unquote ; instswap ;
+    instnat_add ; instnat_quote ].
+
+Lemma eval_instnatq_add : forall (n m : nat) (vs ps : stack),
+  (instnatq m :: instnatq n :: vs, instnatq_add :: ps) |=>*
+    (instnatq (n + m) :: vs, ps).
+  intros.
+  evalpartial evalseq.
+  evalpartial eval_instnat_unquote.
+  evalstep.
+  evalpartial eval_instnat_unquote.
+  evalstep.
+  destruct (instnat_add_proof n m (instnat n) (instnat m)
+    vs (instnat_quote :: ps) (eval_instnat n) (eval_instnat m)) as [x [H1 H2]].
+  evalpartial H2.
+  apply (eval_instnat_quote (n + m) x vs ps H1).
 Qed.
 
 Definition instnat_mult : inst := instseq
