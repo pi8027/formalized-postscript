@@ -209,33 +209,6 @@ Lemma instnat_add_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   apply eval_instnat_add ; auto.
 Qed.
 
-Definition instnatq_mult : inst := instseq
-  [ instpush ; instnop ; instpush ; instpush ; instcons ; instsnoc ;
-    instpush ; instnatq_add ; instcons ; instquote ;
-    instpush ; instnatq 0 ; instquote ; instsnoc ;
-    instswap ; instnat_unquote ; instcons ; instexec ].
-
-Lemma eval_instnatq_mult : forall (n m : nat) (vs ps : stack),
-  (instnatq m :: instnatq n :: vs, instnatq_mult :: ps) |=>*
-    (instnatq (n * m) :: vs, ps).
-  intros.
-  do 126 evalstep.
-  evalpartial eval_instnat.
-  assert (forall (a : nat), (instnatq a :: vs,
-    replicate n (instseq [ instpush ; instnatq m ; instnatq_add ]) ++ ps)
-      |=>* (instnatq (a + n * m) :: vs, ps)).
-    induction n ; intros.
-    replace (a + 0 * m) with a by omega.
-    evalauto.
-    simpl.
-    evalpartial evalseq.
-    evalstep.
-    evalpartial eval_instnatq_add.
-    replace (a + (m + n * m)) with ((a + m) + n * m) by omega.
-    apply IHn.
-  evalpartial (H 0) ; evalauto.
-Qed.
-
 Definition instnat_mult : inst := instseq
   [ instswap ; instquote ; instpush ; instnat_add ; instcons ; instquote ;
     instsnoc ; instpush ; instnat 0 ; instquote ; instsnoc ; instexec ].
@@ -258,4 +231,23 @@ Lemma instnat_mult_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   eapply (exists_map _ _ _ (fun _ => and_map_right _ _ _ (rt_trans _ _ _ _ _ H2))).
   replace (n + m * n + o) with (m * n + (o + n)) by omega.
   eapply (IHm (o + n) i4 H1).
+Qed.
+
+Definition instnatq_mult : inst := instseq
+  [ instnat_unquote ; instswap ; instnat_unquote ; instswap ;
+    instnat_mult ; instnat_quote ].
+
+Lemma eval_instnatq_mult : forall (n m : nat) (vs ps : stack),
+  (instnatq m :: instnatq n :: vs, instnatq_mult :: ps) |=>*
+    (instnatq (m * n) :: vs, ps).
+  intros.
+  evalpartial evalseq.
+  evalpartial eval_instnat_unquote.
+  evalstep.
+  evalpartial eval_instnat_unquote.
+  evalstep.
+  destruct (instnat_mult_proof n m (instnat n) (instnat m)
+    vs (instnat_quote :: ps) (eval_instnat n) (eval_instnat m)) as [x [H1 H2]].
+  evalpartial H2.
+  apply (eval_instnat_quote (m * n) x vs ps H1).
 Qed.
