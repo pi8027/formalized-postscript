@@ -3,7 +3,7 @@ Require Import Relations.
 Require Import List.
 Require Import Omega.
 
-Require Import Listutils.
+Require Import Utils.
 Require Import PsCore.
 
 Definition instincr : inst := instseq
@@ -237,31 +237,25 @@ Lemma eval_instnatq_mult : forall (n m : nat) (vs ps : stack),
 Qed.
 
 Definition instnat_mult : inst := instseq
-  [ instnat_quote ; instswap ; instnat_quote ; instswap ;
-    instnatq_mult ; instnat_unquote ].
-
-Lemma eval_instnat_mult : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
-  instnat_spec n i1 -> instnat_spec m i2 ->
-    (i2 :: i1 :: vs, instnat_mult :: ps) |=>* (instnat (n * m) :: vs, ps).
-  intros.
-  evalpartial evalseq.
-  evalpartial' eval_instnat_quote.
-  apply H0.
-  evalstep.
-  evalpartial' eval_instnat_quote.
-  apply H.
-  evalstep.
-  evalpartial eval_instnatq_mult.
-  apply eval_instnat_unquote.
-Qed.
+  [ instswap ; instquote ; instpush ; instnat_add ; instcons ; instquote ;
+    instsnoc ; instpush ; instnat 0 ; instquote ; instsnoc ; instexec ].
 
 Lemma instnat_mult_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   instnat_spec n i1 -> instnat_spec m i2 ->
-    exists i3 : inst, instnat_spec (n * m) i3 /\
+    exists i3 : inst, instnat_spec (m * n) i3 /\
       (i2 :: i1 :: vs, instnat_mult :: ps) |=>* (i3 :: vs, ps).
   intros.
-  eexists.
-  split.
-  apply eval_instnat.
-  apply eval_instnat_mult ; auto.
+  evalauto.
+  eapply (exists_map _ _ _ (fun _ => and_map_right _ _ _ (rt_trans _ _ _ _ _ (H0 _ _ _)))).
+  clear H0.
+  replace (m * n) with (m * n + 0) by omega.
+  generalize 0 as o, (instnat 0) as i3, (eval_instnat 0).
+  induction m ; intros ; simpl.
+  eexists ; split ; [apply H0 | evalauto ].
+  do 3 evalstep.
+  destruct (instnat_add_proof o n i3 i1 vs
+    (replicate m (instpair (instpair instpush i1) instnat_add) ++ ps) H0 H) as [i4 [H1 H2]].
+  eapply (exists_map _ _ _ (fun _ => and_map_right _ _ _ (rt_trans _ _ _ _ _ H2))).
+  replace (n + m * n + o) with (m * n + (o + n)) by omega.
+  eapply (IHm (o + n) i4 H1).
 Qed.

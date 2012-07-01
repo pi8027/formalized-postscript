@@ -1,7 +1,7 @@
 Require Import Basics.
 Require Import List.
 
-Require Import Listutils.
+Require Import Utils.
 Require Import PsCore.
 
 Definition insttrue_spec (i1 : inst) : Prop :=
