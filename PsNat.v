@@ -175,14 +175,14 @@ Lemma instnat_add_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
       (i2 :: i1 :: vs, instnat_add :: ps) |=>* (i3 :: vs, ps).
   intros.
   evalauto.
-  eapply (exists_map _ _ _
+  apply (exists_map _ _ _
     (fun _ => and_map_right _ _ _ (rt_trans _ _ _ _ _ (H _ _ _)))).
   generalize m as m', i2 as i3, H0 ; clear H H0.
   induction n ; intros ; simpl.
-  eexists ; split ; [ apply H0 | evalauto ].
+  evalauto ; apply H0.
   destruct (instnat_succ_proof m' i3 vs (replicate n instnat_succ ++ ps) H0)
     as [i4 [H1 H2]].
-  eapply (exists_map _ _ _
+  apply (exists_map _ _ _
     (fun _ => and_map_right _ _ _ (rt_trans _ _ _ _ _ H2))).
   replace (S (n + m')) with (n + S m') by omega.
   apply (IHn (S m') i4 H1).
@@ -197,10 +197,7 @@ Lemma eval_instnatq_add : forall (n m : nat) (vs ps : stack),
     (instnatq (n + m) :: vs, ps).
   intros.
   evalpartial evalseq.
-  evalpartial eval_instnat_unquote.
-  evalstep.
-  evalpartial eval_instnat_unquote.
-  evalstep.
+  do 2 (evalpartial eval_instnat_unquote ; evalstep).
   destruct (instnat_add_proof n m (instnat n) (instnat m)
     vs (instnat_quote :: ps) (eval_instnat n) (eval_instnat m)) as [x [H H0]].
   evalpartial H0.
@@ -217,18 +214,21 @@ Lemma instnat_mult_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
       (i2 :: i1 :: vs, instnat_mult :: ps) |=>* (i3 :: vs, ps).
   intros.
   evalauto.
-  eapply (exists_map _ _ _ (fun _ => and_map_right _ _ _ (rt_trans _ _ _ _ _ (H0 _ _ _)))).
+  apply (exists_map _ _ _
+    (fun _ => and_map_right _ _ _ (rt_trans _ _ _ _ _ (H0 _ _ _)))).
   clear H0.
   replace (m * n) with (m * n + 0) by omega.
   generalize 0 as o, (instnat 0) as i3, (eval_instnat 0).
   induction m ; intros ; simpl.
-  eexists ; split ; [apply H0 | evalauto ].
+  evalauto ; apply H0.
   do 3 evalstep.
   destruct (instnat_add_proof o n i3 i1 vs
-    (replicate m (instpair (instpair instpush i1) instnat_add) ++ ps) H0 H) as [i4 [H1 H2]].
-  eapply (exists_map _ _ _ (fun _ => and_map_right _ _ _ (rt_trans _ _ _ _ _ H2))).
+    (replicate m (instpair (instpair instpush i1) instnat_add) ++ ps) H0 H)
+      as [i4 [H1 H2]].
+  apply (exists_map _ _ _
+    (fun _ => and_map_right _ _ _ (rt_trans _ _ _ _ _ H2))).
   replace (n + m * n + o) with (m * n + (o + n)) by omega.
-  eapply (IHm (o + n) i4 H1).
+  apply IHm ; auto.
 Qed.
 
 Definition instnatq_mult : inst := instseq
@@ -240,12 +240,9 @@ Lemma eval_instnatq_mult : forall (n m : nat) (vs ps : stack),
     (instnatq (m * n) :: vs, ps).
   intros.
   evalpartial evalseq.
-  evalpartial eval_instnat_unquote.
-  evalstep.
-  evalpartial eval_instnat_unquote.
-  evalstep.
+  do 2 (evalpartial eval_instnat_unquote ; evalstep).
   destruct (instnat_mult_proof n m (instnat n) (instnat m)
-    vs (instnat_quote :: ps) (eval_instnat n) (eval_instnat m)) as [x [H1 H2]].
-  evalpartial H2.
-  apply (eval_instnat_quote (m * n) x vs ps H1).
+    vs (instnat_quote :: ps) (eval_instnat n) (eval_instnat m)) as [x [H H0]].
+  evalpartial H0.
+  apply eval_instnat_quote ; auto.
 Qed.

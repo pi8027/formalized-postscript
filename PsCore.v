@@ -198,6 +198,7 @@ evalstep:
 *)
 
 Ltac evalstep' e1 e2 :=
+  try apply rt_refl ;
   match eval hnf in (decide_eval e1) with
     | or_introl _ (ex_intro _ ?e3 ?p) =>
       apply (rt_trans _ _ _ _ _ (rt_step _ _ _ _ p))
@@ -205,6 +206,7 @@ Ltac evalstep' e1 e2 :=
   end.
 
 Ltac evalstep'' e1 e2 :=
+  try (eexists ; split ; [ | apply rt_refl ; fail ]) ;
   match eval hnf in (decide_eval e1) with
     | or_introl _ (ex_intro _ ?e3 ?p) =>
       apply (exists_map _ _ _ (fun _ =>
@@ -213,7 +215,6 @@ Ltac evalstep'' e1 e2 :=
   end.
 
 Ltac evalstep :=
-  try apply rt_refl ;
   match goal with
     | |- ?e1 |=>* ?e2 => evalstep' e1 e2
     | |- clos_refl_trans _ eval ?e1 ?e2 => evalstep' e1 e2
@@ -221,14 +222,14 @@ Ltac evalstep :=
       evalstep'' e1 e2
     | [ |- exists i : inst, ?P /\ clos_refl_trans _ eval ?e1 ?e2 ] =>
       evalstep'' e1 e2
-    | _ => fail 2 "The goal is invalid."
+    | _ => fail "The goal is invalid."
   end.
 
 (*
 evalauto:
   evalstep を適用できなくなるまで繰り返す。
 *)
-Ltac evalauto := repeat evalstep.
+Ltac evalauto := evalstep ; repeat evalstep.
 
 (*
 evalpartial, evalpartial':
