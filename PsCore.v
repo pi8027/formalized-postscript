@@ -232,40 +232,24 @@ evalauto:
 Ltac evalauto := evalstep ; repeat evalstep.
 
 (*
-evalpartial, evalpartial':
-  指定した関数を適用することで計算を途中まで進める。evalpartial は適用した結果と
-  してサブゴールが残ることを許容しないが、evalpartial' ではそれを許容する。
+evalpartial:
+  指定した関数を適用することで計算を途中まで進める。
 *)
 
-Ltac evalpartial H :=
-  match goal with
-    | |- ?e1 |=>* ?e2 =>
-      eapply rt_trans ; [ apply H ; fail | ]
-    | |- clos_refl_trans _ eval ?e1 ?e2 =>
-      eapply rt_trans ; [ apply H ; fail | ]
-    | [ |- exists i : inst, ?P /\ ?e1 |=>* ?e2 ] =>
-      refine (exists_map _ _ _ (fun _ =>
-        and_map_right _ _ _ (rt_trans _ _ _ _ _ _)) _) ; [ apply H ; fail | ]
-    | [ |- exists i : inst, ?P /\ clos_refl_trans _ eval ?e1 ?e2 ] =>
-      refine (exists_map _ _ _ (fun _ =>
-        and_map_right _ _ _ (rt_trans _ _ _ _ _ _)) _) ; [ apply H ; fail | ]
-    | _ => fail "The goal is invalid."
-  end.
+Tactic Notation "evalpartial" constr(H) "by" tactic(tac) :=
+  (eapply rt_trans ; [ eapply H ; tac ; fail | ]) ||
+  (edestruct H as [? [? eptemp]] ; eapply rt_trans ;
+   [ eapply eptemp ; tac ; fail | ] ; clear eptemp) ||
+  (refine (exists_map _ _ _ (fun _ =>
+     and_map_right _ _ _ (rt_trans _ _ _ _ _ _)) _) ;
+   [ eapply H ; tac ; fail | ]) ||
+  (edestruct H as [? [? eptemp]] ;
+   refine (exists_map _ _ _ (fun _ =>
+     and_map_right _ _ _ (rt_trans _ _ _ _ _ _)) _) ;
+   [ eapply eptemp ; tac ; fail | ] ; clear eptemp) ||
+  fail.
 
-Ltac evalpartial' H :=
-  match goal with
-    | |- ?e1 |=>* ?e2 =>
-      eapply rt_trans ; [ apply H | ]
-    | |- clos_refl_trans _ eval ?e1 ?e2 =>
-      eapply rt_trans ; [ apply H | ]
-    | [ |- exists i : inst, ?P /\ ?e1 |=>* ?e2 ] =>
-      refine (exists_map _ _ _ (fun _ =>
-        and_map_right _ _ _ (rt_trans _ _ _ _ _ _)) _) ; [ eapply H | ]
-    | [ |- exists i : inst, ?P /\ clos_refl_trans _ eval ?e1 ?e2 ] =>
-      refine (exists_map _ _ _ (fun _ =>
-        and_map_right _ _ _ (rt_trans _ _ _ _ _ _)) _) ; [ eapply H | ]
-    | _ => fail "The goal is invalid."
-  end.
+Tactic Notation "evalpartial" constr(H) := evalpartial H by idtac.
 
 (*
 rtcrefl:

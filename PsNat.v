@@ -100,7 +100,7 @@ Lemma instnat_eqmap : forall (n m : nat) (i : inst),
     (([], replicate n instpop) |=>*' ([], replicate m instpop) \/
      ([], replicate m instpop) |=>*' ([], replicate n instpop)).
     repeat erewrite <- evalrtc_is_evalrtc'.
-    apply (@evalrtc_confluence ([ instpop ], [ i ])).
+    apply (evalrtc_confluence ([ instpop ], [ i ])).
     evalpartial H.
     erewrite app_nil_r.
     evalauto.
@@ -115,8 +115,7 @@ Lemma instnat_eqmap : forall (n m : nat) (i : inst),
     (auto || congruence || f_equal ; apply IHn ; congruence).
 Qed.
 
-Definition instnatq_succ : inst :=
-  instseq [ instpush ; instincr ; instcons ].
+Definition instnatq_succ : inst := instseq [ instpush ; instincr ; instcons ].
 
 Lemma eval_instnatq_succ : forall (n : nat) (vs ps : stack),
   (instnatq n :: vs, instnatq_succ :: ps) |=>* (instnatq (S n) :: vs, ps).
@@ -149,8 +148,7 @@ Lemma eval_instnat_succ :
     (i :: vs, instnat_succ :: ps) |=>* (instnat (S n) :: vs, ps).
   intros.
   evalpartial evalseq.
-  evalpartial' eval_instnat_quote.
-  apply H.
+  evalpartial eval_instnat_quote by eauto.
   evalpartial eval_instnatq_succ.
   evalauto.
 Qed.
@@ -160,10 +158,8 @@ Lemma instnat_succ_proof :
     exists i2 : inst, instnat_spec (S n) i2 /\
       (i1 :: vs, instnat_succ :: ps) |=>* (i2 :: vs, ps).
   intros.
-  exists (instnat (S n)).
-  split.
-  apply eval_instnat.
-  apply eval_instnat_succ ; auto.
+  evalpartial eval_instnat_succ by eauto.
+  exists (instnat (S n)) ; split ; [ apply (eval_instnat (S n)) | evalauto ].
 Qed.
 
 Definition instnat_add : inst := instseq
@@ -179,11 +175,9 @@ Lemma instnat_add_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   generalize m as m', i2 as i3, H0 ; clear H H0.
   induction n ; intros ; simpl.
   evalauto ; apply H0.
-  destruct (instnat_succ_proof m' i3 vs (replicate n instnat_succ ++ ps) H0)
-    as [i4 [H1 H2]].
-  evalpartial H2.
+  evalpartial (instnat_succ_proof _ _ vs (replicate n instnat_succ ++ ps) H0).
   replace (S (n + m')) with (n + S m') by omega.
-  apply (IHn (S m') i4 H1).
+  apply (IHn (S m') x H).
 Qed.
 
 Definition instnatq_add : inst := instseq
@@ -196,9 +190,8 @@ Lemma eval_instnatq_add : forall (n m : nat) (vs ps : stack),
   intros.
   evalpartial evalseq.
   do 2 (evalpartial eval_instnat_unquote ; evalstep).
-  destruct (instnat_add_proof n m (instnat n) (instnat m)
-    vs (instnat_quote :: ps) (eval_instnat n) (eval_instnat m)) as [x [H H0]].
-  evalpartial H0.
+  evalpartial (instnat_add_proof _ _ _ _
+    vs (instnat_quote :: ps) (eval_instnat n) (eval_instnat m)).
   apply (eval_instnat_quote (n + m) x vs ps H).
 Qed.
 
@@ -219,10 +212,8 @@ Lemma instnat_mult_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   induction m ; intros ; simpl.
   evalauto ; apply H0.
   do 3 evalstep.
-  destruct (instnat_add_proof o n i3 i1 vs
-    (replicate m (instpair (instpair instpush i1) instnat_add) ++ ps) H0 H)
-      as [i4 [H1 H2]].
-  evalpartial H2.
+  evalpartial (instnat_add_proof _ _ _ _
+    vs (replicate m (instpair (instpair instpush i1) instnat_add) ++ ps) H0 H).
   replace (n + m * n + o) with (m * n + (o + n)) by omega.
   apply IHm ; auto.
 Qed.
@@ -237,8 +228,7 @@ Lemma eval_instnatq_mult : forall (n m : nat) (vs ps : stack),
   intros.
   evalpartial evalseq.
   do 2 (evalpartial eval_instnat_unquote ; evalstep).
-  destruct (instnat_mult_proof n m (instnat n) (instnat m)
-    vs (instnat_quote :: ps) (eval_instnat n) (eval_instnat m)) as [x [H H0]].
-  evalpartial H0.
+  evalpartial (instnat_mult_proof _ _ _ _
+    vs (instnat_quote :: ps) (eval_instnat n) (eval_instnat m)).
   apply eval_instnat_quote ; auto.
 Qed.
