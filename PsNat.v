@@ -202,9 +202,9 @@ Lemma eval_instnatq_add : forall (n m : nat) (vs ps : stack),
   evalpartial eval_instnat_unquote.
   evalstep.
   destruct (instnat_add_proof n m (instnat n) (instnat m)
-    vs (instnat_quote :: ps) (eval_instnat n) (eval_instnat m)) as [x [H1 H2]].
-  evalpartial H2.
-  apply (eval_instnat_quote (n + m) x vs ps H1).
+    vs (instnat_quote :: ps) (eval_instnat n) (eval_instnat m)) as [x [H H0]].
+  evalpartial H0.
+  apply (eval_instnat_quote (n + m) x vs ps H).
 Qed.
 
 Definition instnat_mult : inst := instseq
