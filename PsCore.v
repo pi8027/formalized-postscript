@@ -236,9 +236,36 @@ evalpartial, evalpartial':
   指定した関数を適用することで計算を途中まで進める。evalpartial は適用した結果と
   してサブゴールが残ることを許容しないが、evalpartial' ではそれを許容する。
 *)
-Ltac evalpartial H := eapply rt_trans ; [ apply H ; fail | ].
 
-Ltac evalpartial' H := eapply rt_trans ; [ eapply H | ].
+Ltac evalpartial H :=
+  match goal with
+    | |- ?e1 |=>* ?e2 =>
+      eapply rt_trans ; [ apply H ; fail | ]
+    | |- clos_refl_trans _ eval ?e1 ?e2 =>
+      eapply rt_trans ; [ apply H ; fail | ]
+    | [ |- exists i : inst, ?P /\ ?e1 |=>* ?e2 ] =>
+      refine (exists_map _ _ _ (fun _ =>
+        and_map_right _ _ _ (rt_trans _ _ _ _ _ _)) _) ; [ apply H ; fail | ]
+    | [ |- exists i : inst, ?P /\ clos_refl_trans _ eval ?e1 ?e2 ] =>
+      refine (exists_map _ _ _ (fun _ =>
+        and_map_right _ _ _ (rt_trans _ _ _ _ _ _)) _) ; [ apply H ; fail | ]
+    | _ => fail "The goal is invalid."
+  end.
+
+Ltac evalpartial' H :=
+  match goal with
+    | |- ?e1 |=>* ?e2 =>
+      eapply rt_trans ; [ apply H | ]
+    | |- clos_refl_trans _ eval ?e1 ?e2 =>
+      eapply rt_trans ; [ apply H | ]
+    | [ |- exists i : inst, ?P /\ ?e1 |=>* ?e2 ] =>
+      refine (exists_map _ _ _ (fun _ =>
+        and_map_right _ _ _ (rt_trans _ _ _ _ _ _)) _) ; [ eapply H | ]
+    | [ |- exists i : inst, ?P /\ clos_refl_trans _ eval ?e1 ?e2 ] =>
+      refine (exists_map _ _ _ (fun _ =>
+        and_map_right _ _ _ (rt_trans _ _ _ _ _ _)) _) ; [ eapply H | ]
+    | _ => fail "The goal is invalid."
+  end.
 
 (*
 rtcrefl:

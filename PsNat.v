@@ -175,15 +175,13 @@ Lemma instnat_add_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
       (i2 :: i1 :: vs, instnat_add :: ps) |=>* (i3 :: vs, ps).
   intros.
   evalauto.
-  apply (exists_map _ _ _
-    (fun _ => and_map_right _ _ _ (rt_trans _ _ _ _ _ (H _ _ _)))).
+  evalpartial H.
   generalize m as m', i2 as i3, H0 ; clear H H0.
   induction n ; intros ; simpl.
   evalauto ; apply H0.
   destruct (instnat_succ_proof m' i3 vs (replicate n instnat_succ ++ ps) H0)
     as [i4 [H1 H2]].
-  apply (exists_map _ _ _
-    (fun _ => and_map_right _ _ _ (rt_trans _ _ _ _ _ H2))).
+  evalpartial H2.
   replace (S (n + m')) with (n + S m') by omega.
   apply (IHn (S m') i4 H1).
 Qed.
@@ -214,8 +212,7 @@ Lemma instnat_mult_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
       (i2 :: i1 :: vs, instnat_mult :: ps) |=>* (i3 :: vs, ps).
   intros.
   evalauto.
-  apply (exists_map _ _ _
-    (fun _ => and_map_right _ _ _ (rt_trans _ _ _ _ _ (H0 _ _ _)))).
+  evalpartial H0.
   clear H0.
   replace (m * n) with (m * n + 0) by omega.
   generalize 0 as o, (instnat 0) as i3, (eval_instnat 0).
@@ -225,8 +222,7 @@ Lemma instnat_mult_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   destruct (instnat_add_proof o n i3 i1 vs
     (replicate m (instpair (instpair instpush i1) instnat_add) ++ ps) H0 H)
       as [i4 [H1 H2]].
-  apply (exists_map _ _ _
-    (fun _ => and_map_right _ _ _ (rt_trans _ _ _ _ _ H2))).
+  evalpartial H2.
   replace (n + m * n + o) with (m * n + (o + n)) by omega.
   apply IHm ; auto.
 Qed.
