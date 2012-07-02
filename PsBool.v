@@ -1,4 +1,5 @@
 Require Import Basics.
+Require Import Relations.
 Require Import List.
 
 Require Import Utils.
@@ -42,13 +43,8 @@ Lemma instnot_proof : forall (b : bool) (i1 : inst) (vs ps : stack),
     exists i2 : inst,
       instbool_spec (negb b) i2 /\
       (i1 :: vs, instnot :: ps) |=>* (i2 :: vs, ps).
-  intros.
-  eexists.
-  destruct b ; eapply (flip (@conj _ _)).
-  evalauto.
-  repeat intro ; evalauto ; evalpartial H ; evalauto.
-  evalauto.
-  repeat intro ; evalauto ; evalpartial H ; evalauto.
+  intros ; evalauto ; destruct b ;
+    repeat intro ; evalauto ; evalpartial H ; evalauto.
 Qed.
 
 Definition instif := instseq [ instexec ; instpop ].
@@ -76,8 +72,6 @@ Lemma instxor_proof : forall (b1 b2 : bool) (i1 i2 : inst) (vs ps : stack),
     exists i3 : inst,
       instbool_spec (xorb b1 b2) i3 /\
       (i2 :: i1 :: vs, instxor :: ps) |=>* (i3 :: vs, ps).
-  intros.
-  destruct b1, b2 ; eexists ;
-    (eapply (flip (@conj _ _)) ; [ evalauto |
-      repeat intro ; evalauto ; evalpartial H ; evalpartial H0 ; evalauto ]).
+  intros ; evalauto ; destruct b1, b2 ; repeat intro ;
+    evalauto ; evalpartial H ; evalpartial H0 ; evalauto.
 Qed.

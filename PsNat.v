@@ -128,18 +128,6 @@ Lemma eval_instnatq_succ : forall (n : nat) (vs ps : stack),
   apply eq_sym, instseq_replicate.
 Qed.
 
-Lemma eval_instnatq_succ_replicate : forall (n m : nat) (vs ps : stack),
-  (instnatq n :: vs, replicate m instnatq_succ ++ ps) |=>*
-    (instnatq (m + n) :: vs, ps).
-  intros ; revert n.
-  induction m ; intros.
-  evalauto.
-  simpl.
-  evalpartial eval_instnatq_succ.
-  evalpartial IHm.
-  rtcrefl ; omega.
-Qed.
-
 Definition instnat_succ : inst :=
   instseq [ instnat_quote ; instnatq_succ ; instnat_unquote ].
 
@@ -159,7 +147,8 @@ Lemma instnat_succ_proof :
       (i1 :: vs, instnat_succ :: ps) |=>* (i2 :: vs, ps).
   intros.
   evalpartial eval_instnat_succ by eauto.
-  exists (instnat (S n)) ; split ; [ apply (eval_instnat (S n)) | evalauto ].
+  evalauto.
+  apply (eval_instnat (S n)).
 Qed.
 
 Definition instnat_add : inst := instseq
