@@ -108,35 +108,18 @@ decide_eval:
 Lemma decide_eval : forall (e1 : environment),
   decidable (exists e2 : environment, e1 |=> e2).
   intros.
-  destruct e1.
-  destruct s0.
-  right ; intro.
-  destruct H.
-  inversion H.
-  destruct i.
-  destruct s.
-  right ; intro ; destruct H ; inversion H.
-  left ; eexists ; apply evalpop.
-  destruct s.
-  right ; intro ; destruct H ; inversion H.
-  left ; eexists ; apply evaldup.
-  destruct s.
-  right ; intro ; destruct H ; inversion H.
-  destruct s.
-  right ; intro ; destruct H ; inversion H.
-  left ; eexists ; apply evalswap.
-  destruct s.
-  right ; intro ; destruct H ; inversion H.
-  destruct s.
-  right ; intro ; destruct H ; inversion H.
-  left ; eexists ; apply evalcons.
-  destruct s0.
-  right ; intro ; destruct H ; inversion H.
-  left ; eexists ; apply evalpush.
-  destruct s.
-  right ; intro ; destruct H ; inversion H.
-  left ; eexists ; apply evalexec.
-  left ; eexists ; apply evalpair.
+  Local Ltac decide_eval_solve :=
+    (right ; intro ; do 2 inversion 0 ; fail) ||
+    (left ; eexists ; constructor ; fail).
+  destruct e1 as [vs [ | [ | | | | | | ] ps]].
+  decide_eval_solve.
+  destruct vs ; decide_eval_solve.
+  destruct vs ; decide_eval_solve.
+  destruct vs as [ | ? [ | ? ?]] ; decide_eval_solve.
+  destruct vs as [ | ? [ | ? ?]] ; decide_eval_solve.
+  destruct ps ; decide_eval_solve.
+  destruct vs ; decide_eval_solve.
+  decide_eval_solve.
 Defined.
 
 (*
@@ -146,18 +129,8 @@ uniqueness_of_eval:
 Lemma uniqueness_of_eval :
   forall (e1 e2 e3 : environment), e1 |=> e2 -> e1 |=> e3 -> e2 = e3.
   intros.
-  destruct e1, e2, e3.
-  destruct s0.
-  inversion H.
-  destruct i.
-  destruct s ; [ inversion H | inversion H ; inversion H0 ; congruence ].
-  destruct s ; [ inversion H | inversion H ; inversion H0 ; congruence ].
-  destruct s ; [ inversion H | inversion H ; inversion H0 ; congruence ].
-  destruct s ; [ inversion H | inversion H ; inversion H0 ; congruence ].
-  destruct s ; [ inversion H | inversion H ; inversion H0 ; congruence ].
-  destruct s0 ; [ inversion H | inversion H ; inversion H0 ; congruence ].
-  destruct s ; [ inversion H | inversion H ; inversion H0 ; congruence ].
-  inversion H ; inversion H0 ; congruence.
+  destruct e1 as [[ | v vs] [ | [ | | | | | | ] [ | p ps]]] ;
+    inversion H ; inversion H0 ; congruence.
 Qed.
 
 (*
@@ -206,7 +179,7 @@ Ltac evalstep' e1 e2 :=
   end.
 
 Ltac evalstep'' e1 e2 :=
-  try (eexists ; split ; [ | apply rt_refl ; fail ]) ;
+  try (eexists ; split ; [ | apply rt_refl ]) ;
   match eval hnf in (decide_eval e1) with
     | or_introl _ (ex_intro _ ?e3 ?p) =>
       apply (exists_map _ _ _ (fun _ =>
