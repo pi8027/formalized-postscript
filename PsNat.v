@@ -164,7 +164,8 @@ Lemma instnat_add_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   generalize m as m', i2 as i3, H0 ; clear H H0.
   induction n ; intros ; simpl.
   evalauto ; apply H0.
-  evalpartial (instnat_succ_proof _ _ vs (replicate n instnat_succ ++ ps) H0).
+  edestruct (instnat_succ_proof _ _ _ _ H0) as [? [? ?]].
+  evalpartial H1.
   replace (S (n + m')) with (n + S m') by omega.
   apply (IHn (S m') x H).
 Qed.
@@ -179,8 +180,9 @@ Lemma eval_instnatq_add : forall (n m : nat) (vs ps : stack),
   intros.
   evalpartial evalseq.
   do 2 (evalpartial eval_instnat_unquote ; evalstep).
-  evalpartial (instnat_add_proof _ _ _ _
-    vs (instnat_quote :: ps) (eval_instnat n) (eval_instnat m)).
+  edestruct (instnat_add_proof _ _ _ _ _ _
+    (eval_instnat n) (eval_instnat m)) as [? [? ?]].
+  evalpartial H0.
   apply (eval_instnat_quote (n + m) x vs ps H).
 Qed.
 
@@ -201,8 +203,8 @@ Lemma instnat_mult_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   induction m ; intros ; simpl.
   evalauto ; apply H0.
   do 3 evalstep.
-  evalpartial (instnat_add_proof _ _ _ _
-    vs (replicate m (instpair (instpair instpush i1) instnat_add) ++ ps) H0 H).
+  edestruct (instnat_add_proof _ _ _ _ _ _ H0 H) as [? [? ?]].
+  evalpartial H2.
   replace (n + m * n + o) with (m * n + (o + n)) by omega.
   apply IHm ; auto.
 Qed.
@@ -217,7 +219,8 @@ Lemma eval_instnatq_mult : forall (n m : nat) (vs ps : stack),
   intros.
   evalpartial evalseq.
   do 2 (evalpartial eval_instnat_unquote ; evalstep).
-  evalpartial (instnat_mult_proof _ _ _ _
-    vs (instnat_quote :: ps) (eval_instnat n) (eval_instnat m)).
+  edestruct (instnat_mult_proof _ _ _ _ _ _
+    (eval_instnat n) (eval_instnat m)) as [? [? ?]].
+  evalpartial H0.
   apply eval_instnat_quote ; auto.
 Qed.

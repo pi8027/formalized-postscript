@@ -238,15 +238,9 @@ evalpartial:
 
 Tactic Notation "evalpartial" constr(H) "by" tactic(tac) :=
   (eapply rt_trans ; [ eapply H ; tac ; fail | ]) ||
-  (edestruct H as [? [? eptemp]] ; eapply rt_trans ;
-   [ eapply eptemp ; tac ; fail | ] ; clear eptemp) ||
   (refine (exists_map _ _ _ (fun _ =>
      and_map_right _ _ _ (rt_trans _ _ _ _ _ _)) _) ;
    [ eapply H ; tac ; fail | ]) ||
-  (edestruct H as [? [? eptemp]] ;
-   refine (exists_map _ _ _ (fun _ =>
-     and_map_right _ _ _ (rt_trans _ _ _ _ _ _)) _) ;
-   [ eapply eptemp ; tac ; fail | ] ; clear eptemp) ||
   fail.
 
 Tactic Notation "evalpartial" constr(H) := evalpartial H by idtac.
