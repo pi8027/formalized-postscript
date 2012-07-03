@@ -5,20 +5,20 @@ Require Import List.
 Require Import Utils.
 Require Import PsCore.
 
-Definition insttrue_spec (i1 : inst) : Prop :=
+Definition instfalse_spec (i1 : inst) : Prop :=
   forall (i2 i3 : inst) (vs ps : stack),
     (i3 :: i2 :: vs, i1 :: ps) |=>* (i3 :: i2 :: vs, ps).
 
-Definition instfalse_spec (i1 : inst) : Prop :=
+Definition insttrue_spec (i1 : inst) : Prop :=
   forall (i2 i3 : inst) (vs ps : stack),
     (i3 :: i2 :: vs, i1 :: ps) |=>* (i2 :: i3 :: vs, ps).
 
 Definition instbool_spec (b : bool) (i : inst) : Prop :=
   if b then insttrue_spec i else instfalse_spec i.
 
-Definition insttrue := instnop.
+Definition instfalse := instnop.
 
-Definition instfalse := instswap.
+Definition insttrue := instswap.
 
 Lemma eval_insttrue : insttrue_spec insttrue.
   repeat intro ; evalauto.
@@ -26,14 +26,6 @@ Qed.
 
 Lemma eval_instfalse : instfalse_spec instfalse.
   repeat intro ; evalauto.
-Qed.
-
-Lemma insttrue_proof : instbool_spec true insttrue.
-  apply eval_insttrue.
-Qed.
-
-Lemma instfalse_proof : instbool_spec false instfalse.
-  apply eval_instfalse.
 Qed.
 
 Definition instnot := instseq [ instpush ; instswap ; instcons ].
@@ -47,7 +39,7 @@ Lemma instnot_proof : forall (b : bool) (i1 : inst) (vs ps : stack),
     repeat intro ; evalauto ; evalpartial H ; evalauto.
 Qed.
 
-Definition instif := instseq [ instexec ; instpop ].
+Definition instif := instseq [ instexec ; instswap ; instpop ].
 
 Lemma eval_instif : forall (b : bool) (i1 i2 i3 : inst) (vs ps : stack),
   instbool_spec b i3 -> (i3 :: i2 :: i1 :: vs, instif :: ps) |=>*
@@ -65,7 +57,7 @@ Lemma eval_instexecif : forall (b : bool) (i1 i2 i3 : inst) (vs ps : stack),
   destruct b ; evalauto ; evalpartial H ; evalauto.
 Qed.
 
-Definition instxor := instseq [ instcons ; instnot ].
+Definition instxor := instcons.
 
 Lemma instxor_proof : forall (b1 b2 : bool) (i1 i2 : inst) (vs ps : stack),
   instbool_spec b1 i1 -> instbool_spec b2 i2 ->
