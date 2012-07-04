@@ -250,7 +250,7 @@ Lemma instnat_even_proof :
   repeat intro ; evalpartial H1 ; evalauto.
   inversion H ; inversion H3.
   evalauto.
-  eapply IHn.
+  apply IHn.
   inversion H ; inversion H3 ; auto.
   repeat intro ; evalauto ; evalpartial H1 ; evalauto.
 Qed.
@@ -274,7 +274,7 @@ Lemma instnat_even_proof' :
   evalauto.
   repeat intro ; evalauto ; evalpartial H1 ; evalauto.
   evalauto.
-  eapply IHn.
+  apply IHn.
   inversion H ; inversion H3 ; auto.
   repeat intro ; evalauto ; evalpartial H1 ; evalauto.
 Qed.
@@ -303,7 +303,7 @@ Lemma instnat_iszero_proof :
   evalauto.
   repeat intro ; evalauto.
   evalauto.
-  eapply IHn.
+  apply IHn.
 Qed.
 
 Definition instnat_pred : inst := instseq
@@ -335,8 +335,28 @@ Lemma instnat_pred_proof :
     evalauto.
     replace (n + m) with (n + S m - 1) by omega.
     refine (IHn (S m) i2 x _ H1).
-    replace (S m - 1) with m by omega.
-    apply H0.
-  replace (n - 1) with (n + 0 - 1) by omega.
-  apply H ; apply (eval_instnat 0).
+    replace (S m - 1) with m by omega ; apply H0.
+  replace (n - 1) with (n + 0 - 1) by omega ;
+    apply H ; apply (eval_instnat 0).
+Qed.
+
+Definition instnat_sub : inst := instseq
+  [ instpush ; instnat_pred ; instquote ; instsnoc ; instexec ].
+
+Lemma instnat_sub_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
+  instnat_spec n i1 -> instnat_spec m i2 ->
+    exists i3 : inst, instnat_spec (n - m) i3 /\
+      (i2 :: i1 :: vs, instnat_sub :: ps) |=>* (i3 :: vs, ps).
+  intros.
+  evalauto.
+  evalpartial H0 ; clear H0 i2.
+  revert n i1 H.
+  induction m ; intros.
+  evalauto.
+  replace (n - 0) with n by omega ; apply H.
+  replace (n - S m) with (n - 1 - m) by omega.
+  destruct (instnat_pred_proof n i1 vs (replicate m instnat_pred ++ ps) H)
+    as [? [? ?]].
+  evalpartial H1.
+  apply IHm, H0.
 Qed.
