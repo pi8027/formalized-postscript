@@ -232,13 +232,13 @@ Definition instnat_even : inst := instseq
     instpush ; insttrue ; instswap ; instexec ].
 
 Lemma instnat_even_proof :
-  forall (n : nat) (i1 : inst) (vs ps : stack), even n -> instnat_spec n i1 ->
+  forall (n : nat) (i1 : inst) (vs ps : stack), instnat_spec n i1 -> even n ->
     exists i2 : inst, insttrue_spec i2 /\
       (i1 :: vs, instnat_even :: ps) |=>* (i2 :: vs, ps).
   intros.
   evalauto.
-  evalpartial H0.
-  generalize insttrue, H, eval_insttrue.
+  evalpartial H.
+  generalize insttrue, H0, eval_insttrue.
   clear H.
   refine ((fix IHn (n : nat) :=
     match n with
@@ -247,22 +247,22 @@ Lemma instnat_even_proof :
       | S (S n) => _
     end) n) ; intros.
   evalauto.
-  repeat intro ; evalpartial H1 ; evalauto.
-  inversion H ; inversion H3.
+  apply H.
+  inversion H1 ; inversion H3.
   evalauto.
   apply IHn.
-  inversion H ; inversion H3 ; auto.
-  repeat intro ; evalauto ; evalpartial H1 ; evalauto.
+  inversion H1 ; inversion H3 ; auto.
+  repeat intro ; evalauto ; evalpartial H ; evalauto.
 Qed.
 
 Lemma instnat_even_proof' :
-  forall (n : nat) (i1 : inst) (vs ps : stack), odd n -> instnat_spec n i1 ->
+  forall (n : nat) (i1 : inst) (vs ps : stack), instnat_spec n i1 -> odd n ->
     exists i2 : inst, instfalse_spec i2 /\
       (i1 :: vs, instnat_even :: ps) |=>* (i2 :: vs, ps).
   intros.
   evalauto.
-  evalpartial H0.
-  generalize insttrue, H, eval_insttrue.
+  evalpartial H.
+  generalize insttrue, H0, eval_insttrue.
   clear H.
   refine ((fix IHn (n : nat) :=
     match n with
@@ -270,13 +270,13 @@ Lemma instnat_even_proof' :
       | S 0 => _
       | S (S n) => _
     end) n) ; intros.
-  inversion H.
+  inversion H1.
   evalauto.
-  repeat intro ; evalauto ; evalpartial H1 ; evalauto.
+  repeat intro ; evalauto ; evalpartial H ; evalauto.
   evalauto.
   apply IHn.
-  inversion H ; inversion H3 ; auto.
-  repeat intro ; evalauto ; evalpartial H1 ; evalauto.
+  inversion H1 ; inversion H3 ; auto.
+  repeat intro ; evalauto ; evalpartial H ; evalauto.
 Qed.
 
 Definition instnat_iszero : inst := instseq
@@ -358,4 +358,36 @@ Lemma instnat_sub_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   edestruct (instnat_pred_proof n i1 _ _ H) as [? [? ?]].
   evalpartial H1.
   apply IHm, H0.
+Qed.
+
+Definition instnat_lt : inst := instpair instnat_sub instnat_iszero.
+
+Lemma instnat_lt_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
+  instnat_spec n i1 -> instnat_spec m i2 -> n <= m ->
+    exists i3 : inst, insttrue_spec i3 /\
+      (i2 :: i1 :: vs, instnat_lt :: ps) |=>* (i3 :: vs, ps).
+  intros.
+  evalstep.
+  edestruct (instnat_sub_proof n m i1 i2 _ _ H H0) as [? [? ?]].
+  evalpartial H3.
+  edestruct (instnat_iszero_proof (n - m) x _ _ H2) as [? [? ?]].
+  evalpartial H5.
+  evalauto.
+  replace (n - m) with 0 in * by omega.
+  apply H4.
+Qed.
+
+Lemma instnat_lt_proof' : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
+  instnat_spec n i1 -> instnat_spec m i2 -> ~ (n <= m) ->
+    exists i3 : inst, instfalse_spec i3 /\
+      (i2 :: i1 :: vs, instnat_lt :: ps) |=>* (i3 :: vs, ps).
+  intros.
+  evalstep.
+  edestruct (instnat_sub_proof n m i1 i2 _ _ H H0) as [? [? ?]].
+  evalpartial H3.
+  edestruct (instnat_iszero_proof (n - m) x _ _ H2) as [? [? ?]].
+  evalpartial H5.
+  evalauto.
+  replace (n - m) with (S (n - m - 1)) in * by omega.
+  apply H4.
 Qed.
