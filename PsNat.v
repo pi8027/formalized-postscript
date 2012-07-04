@@ -1,10 +1,12 @@
 Require Import Basics.
 Require Import Relations.
+Require Import Arith.Even.
 Require Import List.
 Require Import Omega.
 
 Require Import Utils.
 Require Import PsCore.
+Require Import PsBool.
 
 Definition instincr : inst := instseq
   [ instdup ; instquote ; instswap ; instquote ; instcons ;
@@ -223,4 +225,56 @@ Lemma eval_instnatq_mult : forall (n m : nat) (vs ps : stack),
     (eval_instnat n) (eval_instnat m)) as [? [? ?]].
   evalpartial H0.
   apply eval_instnat_quote ; auto.
+Qed.
+
+Definition instnat_even : inst := instseq
+  [ instpush ; instnot ; instquote ; instsnoc ;
+    instpush ; insttrue ; instswap ; instexec ].
+
+Lemma instnat_even_proof :
+  forall (n : nat) (i1 : inst) (vs ps : stack), even n -> instnat_spec n i1 ->
+    exists i2 : inst, insttrue_spec i2 /\
+      (i1 :: vs, instnat_even :: ps) |=>* (i2 :: vs, ps).
+  intros.
+  evalauto.
+  evalpartial H0.
+  generalize insttrue, H, insttrue_proof.
+  clear H.
+  refine ((fix IHn (n : nat) :=
+    match n with
+      | 0 => _
+      | S 0 => _
+      | S (S n) => _
+    end) n) ; intros.
+  evalauto.
+  repeat intro ; evalpartial H1 ; evalauto.
+  inversion H ; inversion H3.
+  evalauto.
+  eapply IHn.
+  inversion H ; inversion H3 ; auto.
+  repeat intro ; evalauto ; evalpartial H1 ; evalauto.
+Qed.
+
+Lemma instnat_even_proof' :
+  forall (n : nat) (i1 : inst) (vs ps : stack), odd n -> instnat_spec n i1 ->
+    exists i2 : inst, instfalse_spec i2 /\
+      (i1 :: vs, instnat_even :: ps) |=>* (i2 :: vs, ps).
+  intros.
+  evalauto.
+  evalpartial H0.
+  generalize insttrue, H, insttrue_proof.
+  clear H.
+  refine ((fix IHn (n : nat) :=
+    match n with
+      | 0 => _
+      | S 0 => _
+      | S (S n) => _
+    end) n) ; intros.
+  inversion H.
+  evalauto.
+  repeat intro ; evalauto ; evalpartial H1 ; evalauto.
+  evalauto.
+  eapply IHn.
+  inversion H ; inversion H3 ; auto.
+  repeat intro ; evalauto ; evalpartial H1 ; evalauto.
 Qed.
