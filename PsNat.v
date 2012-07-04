@@ -336,7 +336,7 @@ Lemma instnat_pred_proof :
   evalauto.
   replace (n + m) with (n + S m - 1) by omega.
   refine (IHn (S m) i2 x _ H1).
-  replace (S m - 1) with m by omega ; apply H0.
+  replace (S m - 1) with m by omega ; auto.
 Qed.
 
 Definition instnat_sub : inst := instseq
