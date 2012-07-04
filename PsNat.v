@@ -238,7 +238,7 @@ Lemma instnat_even_proof :
   intros.
   evalauto.
   evalpartial H0.
-  generalize insttrue, H, insttrue_proof.
+  generalize insttrue, H, eval_insttrue.
   clear H.
   refine ((fix IHn (n : nat) :=
     match n with
@@ -262,7 +262,7 @@ Lemma instnat_even_proof' :
   intros.
   evalauto.
   evalpartial H0.
-  generalize insttrue, H, insttrue_proof.
+  generalize insttrue, H, eval_insttrue.
   clear H.
   refine ((fix IHn (n : nat) :=
     match n with
