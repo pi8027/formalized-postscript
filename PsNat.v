@@ -207,8 +207,7 @@ Lemma instnat_mult_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   do 3 evalstep.
   edestruct (instnat_add_proof _ _ _ _ _ _ H0 H) as [? [? ?]].
   evalpartial H2.
-  replace (n + m * n + o) with (m * n + (o + n)) by omega.
-  apply IHm ; auto.
+  replace (n + m * n + o) with (m * n + (o + n)) by omega ; auto.
 Qed.
 
 Definition instnatq_mult : inst := instseq
@@ -302,8 +301,7 @@ Lemma instnat_iszero_proof :
   induction n ; intros.
   evalauto.
   repeat intro ; evalauto.
-  evalauto.
-  apply IHn.
+  evalauto ; auto.
 Qed.
 
 Definition instnat_pred : inst := instseq
@@ -327,8 +325,7 @@ Lemma instnat_pred_proof :
     (eval_instnat (0 - 1)), (eval_instnat 0).
   generalize 0 at 1 3 4 as m.
   induction n ; intros ; simpl.
-  evalauto.
-  apply H.
+  evalauto ; auto.
   replace (n + m - 0) with (n + m) by omega.
   do 10 evalstep.
   edestruct (instnat_succ_proof m i2 _ _ H0) as [? [? ?]].
@@ -355,8 +352,7 @@ Lemma instnat_sub_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   replace (n - 0) with n by omega ; apply H.
   replace (n - S m) with (n - 1 - m) by omega.
   edestruct (instnat_pred_proof n i1 _ _ H) as [? [? ?]].
-  evalpartial H1.
-  apply IHm, H0.
+  evalpartial H1 ; auto.
 Qed.
 
 Definition instnat_lt : inst := instpair instnat_sub instnat_iszero.
@@ -372,8 +368,7 @@ Lemma instnat_lt_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   edestruct (instnat_iszero_proof (n - m) x _ _ H2) as [? [? ?]].
   evalpartial H5.
   evalauto.
-  replace (n - m) with 0 in * by omega.
-  apply H4.
+  replace (n - m) with 0 in * by omega ; auto.
 Qed.
 
 Lemma instnat_lt_proof' : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
@@ -387,6 +382,5 @@ Lemma instnat_lt_proof' : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   edestruct (instnat_iszero_proof (n - m) x _ _ H2) as [? [? ?]].
   evalpartial H5.
   evalauto.
-  replace (n - m) with (S (n - m - 1)) in * by omega.
-  apply H4.
+  replace (n - m) with (S (n - m - 1)) in * by omega ; auto.
 Qed.
