@@ -319,25 +319,24 @@ Lemma instnat_pred_proof :
   evalauto.
   evalpartial H.
   clear i1 H.
-  assert (forall (m : nat) (i1 i2 : inst),
-    instnat_spec (m - 1) i1 -> instnat_spec m i2 ->
-    exists i3 : inst, instnat_spec (n + m - 1) i3 /\
-      (i1 :: i2 :: vs, replicate n
-        (instseq [instpop ; instdup ; instnat_succ ; instswap]) ++
-        instswap :: instpop :: ps) |=>* (i3 :: vs, ps)).
-    induction n ; intros ; simpl.
-    evalauto.
-    apply H.
-    replace (n + m - 0) with (n + m) by omega.
-    do 10 evalstep.
-    edestruct (instnat_succ_proof m i2 _ _ H0) as [? [? ?]].
-    evalpartial H2 ; clear H2.
-    evalauto.
-    replace (n + m) with (n + S m - 1) by omega.
-    refine (IHn (S m) i2 x _ H1).
-    replace (S m - 1) with m by omega ; apply H0.
-  replace (n - 1) with (n + 0 - 1) by omega ;
-    apply H ; apply (eval_instnat 0).
+  replace (n - 1) with (n + 0 - 1) by omega.
+  replace (instnat 0 :: instnat 0 :: vs)
+    with (instnat (0 - 1) :: instnat 0 :: vs)
+    by (f_equal ; omega).
+  generalize (instnat (0 - 1)) as i1, (instnat 0) as i2,
+    (eval_instnat (0 - 1)), (eval_instnat 0).
+  generalize 0 at 1 3 4 as m.
+  induction n ; intros ; simpl.
+  evalauto.
+  apply H.
+  replace (n + m - 0) with (n + m) by omega.
+  do 10 evalstep.
+  edestruct (instnat_succ_proof m i2 _ _ H0) as [? [? ?]].
+  evalpartial H2 ; clear H2.
+  evalauto.
+  replace (n + m) with (n + S m - 1) by omega.
+  refine (IHn (S m) i2 x _ H1).
+  replace (S m - 1) with m by omega ; apply H0.
 Qed.
 
 Definition instnat_sub : inst := instseq
