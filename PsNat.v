@@ -278,3 +278,30 @@ Lemma instnat_even_proof' :
   inversion H ; inversion H3 ; auto.
   repeat intro ; evalauto ; evalpartial H1 ; evalauto.
 Qed.
+
+Definition instnat_iszero : inst := instseq
+  [ instpush ; instpop ; instpush ; instfalse ; instquote ;
+    instcons ; instquote ; instsnoc ;
+    instpush ; insttrue ; instswap ; instexec ].
+
+Lemma instnat_iszero_proof :
+  forall (n : nat) (i1 : inst) (vs ps : stack), instnat_spec n i1 ->
+    exists i2 : inst,
+      (instbool_spec (match n with 0 => true | S _ => false end) i2) /\
+      (i1 :: vs, instnat_iszero :: ps) |=>* (i2 :: vs, ps).
+  intros.
+  destruct n.
+  evalauto.
+  evalpartial H.
+  evalauto.
+  repeat intro ; evalauto.
+  evalauto.
+  evalpartial H.
+  evalauto.
+  clear H.
+  induction n ; intros.
+  evalauto.
+  repeat intro ; evalauto.
+  evalauto.
+  eapply IHn.
+Qed.
