@@ -351,12 +351,11 @@ Lemma instnat_sub_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   evalauto.
   evalpartial H0 ; clear H0 i2.
   revert n i1 H.
-  induction m ; intros.
+  induction m ; intros ; simpl.
   evalauto.
   replace (n - 0) with n by omega ; apply H.
   replace (n - S m) with (n - 1 - m) by omega.
-  destruct (instnat_pred_proof n i1 vs (replicate m instnat_pred ++ ps) H)
-    as [? [? ?]].
+  edestruct (instnat_pred_proof n i1 _ _ H) as [? [? ?]].
   evalpartial H1.
   apply IHm, H0.
 Qed.
