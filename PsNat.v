@@ -287,7 +287,7 @@ Definition instnat_iszero : inst := instseq
 Lemma instnat_iszero_proof :
   forall (n : nat) (i1 : inst) (vs ps : stack), instnat_spec n i1 ->
     exists i2 : inst,
-      (instbool_spec (match n with 0 => true | S _ => false end) i2) /\
+      instbool_spec (match n with 0 => true | S _ => false end) i2 /\
       (i1 :: vs, instnat_iszero :: ps) |=>* (i2 :: vs, ps).
   intros.
   destruct n.
@@ -304,4 +304,39 @@ Lemma instnat_iszero_proof :
   repeat intro ; evalauto.
   evalauto.
   eapply IHn.
+Qed.
+
+Definition instnat_pred : inst := instseq
+  [ instpush ; instnat 0 ; instquote ; instdup ; instcons ;
+    instpush ; instseq [ instpop ; instdup ; instnat_succ ; instswap ] ;
+    instquote ; instcons ; instsnoc ; instexec ; instswap ; instpop ].
+
+Lemma instnat_pred_proof :
+  forall (n : nat) (i1 : inst) (vs ps : stack), instnat_spec n i1 ->
+    exists i2 : inst, instnat_spec (n - 1) i2 /\
+      (i1 :: vs, instnat_pred :: ps) |=>* (i2 :: vs, ps).
+  intros.
+  evalauto.
+  evalpartial H.
+  clear i1 H.
+  assert (forall (m : nat) (i1 i2 : inst),
+    instnat_spec (m - 1) i1 -> instnat_spec m i2 ->
+    exists i3 : inst, instnat_spec (n + m - 1) i3 /\
+      (i1 :: i2 :: vs, replicate n
+        (instseq [instpop ; instdup ; instnat_succ ; instswap]) ++
+        instswap :: instpop :: ps) |=>* (i3 :: vs, ps)).
+    induction n ; intros ; simpl.
+    evalauto.
+    apply H.
+    replace (n + m - 0) with (n + m) by omega.
+    do 10 evalstep.
+    edestruct (instnat_succ_proof m i2 _ _ H0) as [? [? ?]].
+    evalpartial H2 ; clear H2.
+    evalauto.
+    replace (n + m) with (n + S m - 1) by omega.
+    refine (IHn (S m) i2 x _ H1).
+    replace (S m - 1) with m by omega.
+    apply H0.
+  replace (n - 1) with (n + 0 - 1) by omega.
+  apply H ; apply (eval_instnat 0).
 Qed.
