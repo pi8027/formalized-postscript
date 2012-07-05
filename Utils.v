@@ -36,30 +36,3 @@ Lemma replicate_rev_id :
   replace (n + 1) with (S n) by omega.
   auto.
 Qed.
-
-(*
-exists_map, and_map_left, and_map_right, or_map_left, or_map_right:
-  exists, and, or の部分を書き換える。
-*)
-
-Lemma exists_map :
-  forall (A : Set) (P Q : A -> Prop),
-  (forall (a : A), P a -> Q a) -> (exists a : A, P a) -> (exists a : A, Q a).
-  intros ; firstorder auto.
-Qed.
-
-Lemma and_map_left : forall (P P' Q : Prop), (P -> P') -> P /\ Q -> P' /\ Q.
-  intros ; tauto.
-Qed.
-
-Lemma and_map_right : forall (P Q Q' : Prop), (Q -> Q') -> P /\ Q -> P /\ Q'.
-  intros ; tauto.
-Qed.
-
-Lemma or_map_left : forall (P P' Q : Prop), (P -> P') -> P /\ Q -> P' /\ Q.
-  intro ; tauto.
-Qed.
-
-Lemma or_map_right : forall (P Q Q' : Prop), (Q -> Q') -> P /\ Q -> P /\ Q'.
-  intro ; tauto.
-Qed.

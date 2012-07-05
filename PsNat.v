@@ -1,6 +1,7 @@
+Require Import Arith.Even.
+Require Import Arith.Euclid.
 Require Import Basics.
 Require Import Relations.
-Require Import Arith.Even.
 Require Import List.
 Require Import Omega.
 
@@ -146,7 +147,7 @@ Qed.
 Lemma instnat_succ_proof :
   forall (n : nat) (i1 : inst) (vs ps : stack), instnat_spec n i1 ->
     exists i2 : inst, instnat_spec (S n) i2 /\
-      (i1 :: vs, instnat_succ :: ps) |=>* (i2 :: vs, ps).
+    (i1 :: vs, instnat_succ :: ps) |=>* (i2 :: vs, ps).
   intros.
   evalpartial eval_instnat_succ by eauto.
   evalauto.
@@ -159,7 +160,7 @@ Definition instnat_add : inst := instseq
 Lemma instnat_add_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   instnat_spec n i1 -> instnat_spec m i2 ->
     exists i3 : inst, instnat_spec (n + m) i3 /\
-      (i2 :: i1 :: vs, instnat_add :: ps) |=>* (i3 :: vs, ps).
+    (i2 :: i1 :: vs, instnat_add :: ps) |=>* (i3 :: vs, ps).
   intros.
   evalauto.
   evalpartial H.
@@ -195,7 +196,7 @@ Definition instnat_mult : inst := instseq
 Lemma instnat_mult_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   instnat_spec n i1 -> instnat_spec m i2 ->
     exists i3 : inst, instnat_spec (m * n) i3 /\
-      (i2 :: i1 :: vs, instnat_mult :: ps) |=>* (i3 :: vs, ps).
+    (i2 :: i1 :: vs, instnat_mult :: ps) |=>* (i3 :: vs, ps).
   intros.
   evalauto.
   evalpartial H0.
@@ -233,7 +234,7 @@ Definition instnat_even : inst := instseq
 Lemma instnat_even_proof :
   forall (n : nat) (i1 : inst) (vs ps : stack), instnat_spec n i1 -> even n ->
     exists i2 : inst, insttrue_spec i2 /\
-      (i1 :: vs, instnat_even :: ps) |=>* (i2 :: vs, ps).
+    (i1 :: vs, instnat_even :: ps) |=>* (i2 :: vs, ps).
   intros.
   evalauto.
   evalpartial H.
@@ -257,7 +258,7 @@ Qed.
 Lemma instnat_even_proof' :
   forall (n : nat) (i1 : inst) (vs ps : stack), instnat_spec n i1 -> odd n ->
     exists i2 : inst, instfalse_spec i2 /\
-      (i1 :: vs, instnat_even :: ps) |=>* (i2 :: vs, ps).
+    (i1 :: vs, instnat_even :: ps) |=>* (i2 :: vs, ps).
   intros.
   evalauto.
   evalpartial H.
@@ -312,7 +313,7 @@ Definition instnat_pred : inst := instseq
 Lemma instnat_pred_proof :
   forall (n : nat) (i1 : inst) (vs ps : stack), instnat_spec n i1 ->
     exists i2 : inst, instnat_spec (n - 1) i2 /\
-      (i1 :: vs, instnat_pred :: ps) |=>* (i2 :: vs, ps).
+    (i1 :: vs, instnat_pred :: ps) |=>* (i2 :: vs, ps).
   intros.
   evalauto.
   evalpartial H.
@@ -342,7 +343,7 @@ Definition instnat_sub : inst := instseq
 Lemma instnat_sub_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   instnat_spec n i1 -> instnat_spec m i2 ->
     exists i3 : inst, instnat_spec (n - m) i3 /\
-      (i2 :: i1 :: vs, instnat_sub :: ps) |=>* (i3 :: vs, ps).
+    (i2 :: i1 :: vs, instnat_sub :: ps) |=>* (i3 :: vs, ps).
   intros.
   evalauto.
   evalpartial H0 ; clear H0 i2.
@@ -360,7 +361,7 @@ Definition instnat_lt : inst := instpair instnat_sub instnat_iszero.
 Lemma instnat_lt_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   instnat_spec n i1 -> instnat_spec m i2 -> n <= m ->
     exists i3 : inst, insttrue_spec i3 /\
-      (i2 :: i1 :: vs, instnat_lt :: ps) |=>* (i3 :: vs, ps).
+    (i2 :: i1 :: vs, instnat_lt :: ps) |=>* (i3 :: vs, ps).
   intros.
   evalstep.
   edestruct (instnat_sub_proof n m i1 i2 _ _ H H0) as [? [? ?]].
@@ -374,7 +375,7 @@ Qed.
 Lemma instnat_lt_proof' : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   instnat_spec n i1 -> instnat_spec m i2 -> ~ (n <= m) ->
     exists i3 : inst, instfalse_spec i3 /\
-      (i2 :: i1 :: vs, instnat_lt :: ps) |=>* (i3 :: vs, ps).
+    (i2 :: i1 :: vs, instnat_lt :: ps) |=>* (i3 :: vs, ps).
   intros.
   evalstep.
   edestruct (instnat_sub_proof n m i1 i2 _ _ H H0) as [? [? ?]].
@@ -384,3 +385,21 @@ Lemma instnat_lt_proof' : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   evalauto.
   replace (n - m) with (S (n - m - 1)) in * by omega ; auto.
 Qed.
+
+Definition instnat_mod : inst := instseq
+  [ instpush ; instnat 0 ; instpush ; instseq
+      [] ;
+    instdup ; instexec ].
+
+Lemma instnat_mod_proof :
+  forall (n m : nat) (i1 i2 : inst) (vs ps : stack) (eucl : diveucl n m),
+  instnat_spec n i1 -> instnat_spec m i2 ->
+  match eucl with divex q r _ _ =>
+    exists i3 : inst, instnat_spec q i3 /\
+    exists i4 : inst, instnat_spec r i4 /\
+    (i2 :: i1 :: vs, instnat_mod :: ps) |=>* (i4 :: i3 :: vs, ps)
+  end.
+  intros.
+  destruct eucl.
+  do 14 evalstep.
+Abort.

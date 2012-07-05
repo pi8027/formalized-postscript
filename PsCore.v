@@ -20,6 +20,16 @@ Inductive inst : Set :=
   | instpair : inst -> inst -> inst.
 
 (*
+inst_countcons:
+  命令を構成するコンストラクタの数を計算する。
+*)
+Fixpoint inst_countcons (i : inst) : nat :=
+  match i with
+    | instpair i1 i2 => S (inst_countcons i1 + inst_countcons i2)
+    | _ => 1
+  end.
+
+(*
 stack:
   スタックは命令のリスト。
 *)
@@ -170,20 +180,25 @@ evalstep:
   ゴールを e3 |=>* e2 で置き換えるタクティク。計算を自動的に1段階進める。
 *)
 
+Lemma exists_and_right_map : forall (P Q R : inst -> Prop),
+  (forall (a : inst), Q a -> R a) ->
+  (exists a : inst, P a /\ Q a) -> (exists a : inst, P a /\ R a).
+  intros.
+  firstorder auto.
+Qed.
+
 Ltac evalstep' e1 e2 :=
   try apply rt_refl ;
-  match eval hnf in (decide_eval e1) with
-    | or_introl _ (ex_intro _ ?e3 ?p) =>
-      apply (rt_trans _ _ _ _ _ (rt_step _ _ _ _ p))
-    | _ => idtac
-  end.
-
-Ltac evalstep'' e1 e2 :=
   try (eexists ; split ; [ | apply rt_refl ]) ;
+  try (eexists ; split ; [ | eexists ; split ; [ | apply rt_refl ] ]) ;
   match eval hnf in (decide_eval e1) with
     | or_introl _ (ex_intro _ ?e3 ?p) =>
-      apply (exists_map _ _ _ (fun _ =>
-        and_map_right _ _ _ (rt_trans _ _ _ _ _ (rt_step _ _ _ _ p))))
+      apply (rt_trans _ _ _ _ _ (rt_step _ _ _ _ p)) ||
+      apply (exists_and_right_map _ _ _ (fun _ =>
+             rt_trans _ _ _ _ _ (rt_step _ _ _ _ p))) ||
+      apply (exists_and_right_map _ _ _ (fun _ =>
+             exists_and_right_map _ _ _ (fun _ =>
+             rt_trans _ _ _ _ _ (rt_step _ _ _ _ p))))
     | _ => idtac
   end.
 
@@ -191,10 +206,16 @@ Ltac evalstep :=
   match goal with
     | |- ?e1 |=>* ?e2 => evalstep' e1 e2
     | |- clos_refl_trans _ eval ?e1 ?e2 => evalstep' e1 e2
-    | [ |- exists i : inst, ?P /\ ?e1 |=>* ?e2 ] =>
-      evalstep'' e1 e2
-    | [ |- exists i : inst, ?P /\ clos_refl_trans _ eval ?e1 ?e2 ] =>
-      evalstep'' e1 e2
+    | |- exists i1 : inst, _ /\
+         ?e1 |=>* ?e2 => evalstep' e1 e2
+    | |- exists i1 : inst, _ /\
+         clos_refl_trans _ eval ?e1 ?e2 => evalstep' e1 e2
+    | |- exists i1 : inst, _ /\
+         exists i2 : inst, _ /\
+         ?e1 |=>* ?e2 => evalstep' e1 e2
+    | |- exists i1 : inst, _ /\
+         exists i2 : inst, _ /\
+         clos_refl_trans _ eval ?e1 ?e2 => evalstep' e1 e2
     | _ => fail "The goal is invalid."
   end.
 
@@ -210,9 +231,14 @@ evalpartial:
 *)
 
 Tactic Notation "evalpartial" constr(H) "by" tactic(tac) :=
-  (eapply rt_trans ; [ eapply H ; tac ; fail | ]) ||
-  (refine (exists_map _ _ _ (fun _ =>
-     and_map_right _ _ _ (rt_trans _ _ _ _ _ _)) _) ;
+  (eapply  rt_trans ;
+   [ eapply H ; tac ; fail | ]) ||
+  (refine (exists_and_right_map _ _ _ (fun _ =>
+           rt_trans _ _ _ _ _ _) _) ;
+   [ eapply H ; tac ; fail | ]) ||
+  (refine (exists_and_right_map _ _ _ (fun _ =>
+           exists_and_right_map _ _ _ (fun _ =>
+           rt_trans _ _ _ _ _ _)) _) ;
    [ eapply H ; tac ; fail | ]) ||
   fail.
 
@@ -249,9 +275,7 @@ Definition instseq' : list inst -> inst -> inst := fold_left instpair.
 
 Lemma evalseq' : forall (is : list inst) (i : inst) (vs ps : stack),
   (vs, instseq' is i :: ps) |=>* (vs, i :: is ++ ps).
-  induction is ; intros.
-  evalauto.
-  evalpartial IHis ; evalauto.
+  induction is ; intros ; [ | evalpartial IHis ] ; evalauto.
 Qed.
 
 Definition instseq (is : list inst) : inst := instseq' is instnop.
