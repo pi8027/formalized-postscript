@@ -209,9 +209,8 @@ Lemma instnat_mult_proof : forall (n m : nat) (i1 i2 : inst) (vs ps : stack),
   clear H0.
   replace (m * n) with (m * n + 0) by omega.
   generalize 0 as o, (instnat 0) as i3, (eval_instnat 0).
-  induction m ; intros ; simpl.
-  evalauto ; apply H0.
-  do 3 evalstep.
+  induction m ; intros ; simpl ; evalauto.
+  apply H0.
   edestruct (instnat_add_proof _ _ _ _ _ _ H0 H) as [? [? ?]].
   evalpartial H2.
   replace (n + m * n + o) with (m * n + (o + n)) by omega ; auto.
@@ -342,7 +341,7 @@ Lemma instnat_pred_proof :
   induction n ; intros ; simpl.
   evalauto ; auto.
   replace (n + m - 0) with (n + m) by omega.
-  do 10 evalstep.
+  evalauto.
   edestruct (instnat_succ_proof m i2 _ _ H0) as [? [? ?]].
   evalpartial H2 ; clear H2.
   evalauto.

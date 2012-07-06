@@ -1,5 +1,4 @@
-Require Import List.
-Require Import Omega.
+Require Import List Omega.
 
 Notation "[]" := nil : list_scope.
 Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..) : list_scope.
