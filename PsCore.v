@@ -1,9 +1,4 @@
-Require Import Basics.
-Require Import Relations.
-Require Import Relation_Operators.
-Require Import Logic.Decidable.
-Require Import List.
-
+Require Import Basics Relations Relation_Operators Logic.Decidable List.
 Require Import Utils.
 
 (*
