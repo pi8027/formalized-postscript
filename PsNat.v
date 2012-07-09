@@ -3,6 +3,10 @@ Require Import
   List Basics Relations Omega ArithRing.
 Require Import Utils PsCore PsBool.
 
+(*
+instincr:
+  自然数を構成するための補助的な命令。
+*)
 Definition instincr : inst := instseq
   [ instdup ; instquote ; instswap ; instquote ; instcons ;
     instswap ; instquote ; instcons ; instexec ;
@@ -20,6 +24,14 @@ Lemma eval_instincr_replicate : forall (n : nat) (i1 i2 : inst) (vs cs : stack),
   evalpartial IHn ; evalauto.
 Qed.
 
+(*
+instnatq, instnat:
+  どちらも自然数の定義である。近い意味を持つが、違う形をしている。
+  instnatq は、自然数 n を instincr を n 個並べた形で表現するものである。
+  instnat は、自然数 n を実行することによって、値のスタックの先頭にある命令を n
+  個継続のスタックにコピーする(つまり多くの場合においてはそれが n 回実行される)
+  命令である。
+*)
 Definition instnatq (n : nat) : inst := instseq (replicate n instincr).
 
 Lemma eval_instnatq : forall (n : nat) (i1 i2 : inst) (vs cs : stack),
@@ -45,6 +57,10 @@ Lemma eval_instnat : forall (n : nat), instnat_spec n (instnat n).
   apply evalseq.
 Qed.
 
+(*
+instnat_quote, instnat_unquote:
+  instnat, instnatq を相互に変換する命令。
+*)
 Definition instnat_quote : inst := instseq
   [ instpush ; instnop ; instquote ;
     instpush ; instincr ; instquote ; instcons ;
@@ -76,6 +92,12 @@ Qed.
 
 Opaque instnat_unquote.
 
+(*
+instnatq_eqmap:
+  任意の自然数 n, m について、instnatq n = instnatq m であれば n = m。
+  対偶を取ると n /= m であれば instnatq n /= instnatq m であり、表現する対象の自
+  然数が違えば命令も必ず同値ではないことを表している。
+*)
 Lemma instnatq_eqmap : forall (n m : nat), instnatq n = instnatq m -> n = m.
   intro.
   induction n ; intros ; destruct m.
@@ -94,6 +116,13 @@ Lemma instnatq_eqmap : forall (n m : nat), instnatq n = instnatq m -> n = m.
   auto.
 Qed.
 
+(*
+instnat_eqmap:
+  任意の自然数 n, m と任意の命令 i について、i が自然数 n, m としての仕様を同時
+  に満たしていれば、必ず n = m である。
+  よって、n /= m であればある命令が自然数 n, m としての仕様を同時に満たすことは
+  ない。
+*)
 Lemma instnat_eqmap : forall (n m : nat) (i : inst),
   instnat_spec n i -> instnat_spec m i -> n = m.
   intros.
@@ -116,6 +145,10 @@ Lemma instnat_eqmap : forall (n m : nat) (i : inst),
     (auto || congruence || f_equal ; apply IHn ; congruence).
 Qed.
 
+(*
+instnatq_succ, instnat_succ
+  後者関数に相当する命令。
+*)
 Definition instnatq_succ : inst := instseq [ instpush ; instincr ; instcons ].
 
 Lemma eval_instnatq_succ : forall (n : nat) (vs cs : stack),
@@ -156,6 +189,10 @@ Lemma instnat_succ_proof :
   apply (eval_instnat (S n)).
 Qed.
 
+(*
+instnat_add, instnatq_add:
+  加算命令。
+*)
 Definition instnat_add : inst := instseq
   [ instswap ; instpush ; instnat_succ ; instswap ; instexec ].
 
@@ -195,6 +232,10 @@ Qed.
 
 Opaque instnatq_add.
 
+(*
+instnat_mult, instnatq_mult:
+  乗算命令。
+*)
 Definition instnat_mult : inst := instseq
   [ instswap ; instquote ; instpush ; instnat_add ; instcons ; instquote ;
     instsnoc ; instpush ; instnat 0 ; instquote ; instsnoc ; instexec ].
@@ -236,6 +277,10 @@ Qed.
 
 Opaque instnatq_mult.
 
+(*
+instnat_even:
+  偶奇判定の命令。
+*)
 Definition instnat_even : inst := instseq
   [ instpush ; instnot ; instquote ; instsnoc ;
     instpush ; insttrue ; instswap ; instexec ].
@@ -290,6 +335,10 @@ Qed.
 
 Opaque instnat_even.
 
+(*
+instnat_iszero:
+  ゼロとの比較をする命令。
+*)
 Definition instnat_iszero : inst := instseq
   [ instpush ; instpop ; instpush ; instfalse ; instquote ;
     instcons ; instquote ; instsnoc ;
@@ -318,6 +367,10 @@ Qed.
 
 Opaque instnat_iszero.
 
+(*
+instnat_pred:
+  自然数から1を引く命令。元の数が0であれば結果も0となる。
+*)
 Definition instnat_pred : inst := instseq
   [ instpush ; instnat 0 ; instquote ; instdup ; instcons ;
     instpush ; instseq [ instpop ; instdup ; instnat_succ ; instswap ] ;
@@ -352,6 +405,10 @@ Qed.
 
 Opaque instnat_pred.
 
+(*
+instnat_sub:
+  減算命令。
+*)
 Definition instnat_sub : inst := instseq
   [ instpush ; instnat_pred ; instquote ; instsnoc ; instexec ].
 
@@ -373,6 +430,10 @@ Qed.
 
 Opaque instnat_sub.
 
+(*
+instnat_le:
+  自然数 n, m に関して n <= m かそうでないかを判定する命令。
+*)
 Definition instnat_le : inst := instpair instnat_sub instnat_iszero.
 
 Lemma instnat_le_proof : forall (n m : nat) (i1 i2 : inst) (vs cs : stack),
@@ -405,6 +466,10 @@ Qed.
 
 Opaque instnat_le.
 
+(*
+instnat_mod:
+  割り算を行い、商と余りを計算する命令。
+*)
 Definition instnat_mod_iter : inst := instseq
   [ instquote ;
     instswap ; instquote ; instcons ;
