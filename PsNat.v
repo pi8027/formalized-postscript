@@ -25,7 +25,7 @@ Lemma eval_instincr_replicate : forall (n : nat) (i1 i2 : inst) (vs cs : stack),
 Qed.
 
 (*
-instnatq, instnat:
+instnatq, instnat_spec:
   どちらも自然数の定義である。近い意味を持つが、違う形をしている。
   instnatq は、自然数 n を instincr を n 個並べた形で表現するものである。
   instnat は、自然数 n を実行することによって、値のスタックの先頭にある命令を n
@@ -47,6 +47,10 @@ Definition instnat_spec (n : nat) (i1 : inst) : Prop :=
   forall (i2 : inst) (vs cs : stack),
     (i2 :: vs, i1 :: cs) |=>* (vs, replicate n i2 ++ cs).
 
+(*
+instnat:
+  任意の自然数に関して、自然数の仕様を満たす命令を構成する。
+*)
 Definition instnat (n : nat) : inst := instseq
   [ instpush ; instnop ; instswap ; instnatq n ; instpop ; instexec ].
 
