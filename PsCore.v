@@ -58,26 +58,26 @@ eval:
 *)
 Inductive eval : relation environment :=
   | evalpop  :
-      forall (i : inst) (vs ps : stack),
-      eval (i :: vs, instpop :: ps) (vs, ps)
+      forall (i : inst) (vs cs : stack),
+      eval (i :: vs, instpop :: cs) (vs, cs)
   | evaldup  :
-      forall (i : inst) (vs ps : stack),
-      eval (i :: vs, instdup :: ps) (i :: i :: vs, ps)
+      forall (i : inst) (vs cs : stack),
+      eval (i :: vs, instdup :: cs) (i :: i :: vs, cs)
   | evalswap :
-      forall (i1 i2 : inst) (vs ps : stack),
-      eval (i1 :: i2 :: vs, instswap :: ps) (i2 :: i1 :: vs, ps)
+      forall (i1 i2 : inst) (vs cs : stack),
+      eval (i1 :: i2 :: vs, instswap :: cs) (i2 :: i1 :: vs, cs)
   | evalcons :
-      forall (i1 i2 : inst) (vs ps : stack),
-      eval (i1 :: i2 :: vs, instcons :: ps) (instpair i2 i1 :: vs, ps)
+      forall (i1 i2 : inst) (vs cs : stack),
+      eval (i1 :: i2 :: vs, instcons :: cs) (instpair i2 i1 :: vs, cs)
   | evalpush :
-      forall (i : inst) (vs ps : stack),
-      eval (vs, instpush :: i :: ps) (i :: vs, ps)
+      forall (i : inst) (vs cs : stack),
+      eval (vs, instpush :: i :: cs) (i :: vs, cs)
   | evalexec :
-      forall (i : inst) (vs ps : stack),
-      eval (i :: vs, instexec :: ps) (vs, i :: ps)
+      forall (i : inst) (vs cs : stack),
+      eval (i :: vs, instexec :: cs) (vs, i :: cs)
   | evalpair  :
-      forall (i1 i2 : inst) (vs ps : stack),
-      eval (vs, instpair i1 i2 :: ps) (vs, i1 :: i2 :: ps).
+      forall (i1 i2 : inst) (vs cs : stack),
+      eval (vs, instpair i1 i2 :: cs) (vs, i1 :: i2 :: cs).
 
 (*
 evalrtc, evalrtc':
@@ -176,8 +176,8 @@ evalstep:
 *)
 
 Lemma exists_and_right_map : forall (P Q R : inst -> Prop),
-  (forall (a : inst), Q a -> R a) ->
-  (exists a : inst, P a /\ Q a) -> (exists a : inst, P a /\ R a).
+  (forall (i : inst), Q i -> R i) ->
+  (exists i : inst, P i /\ Q i) -> (exists i : inst, P i /\ R i).
   intros.
   firstorder auto.
 Qed.
@@ -255,9 +255,10 @@ Ltac rtcrefl :=
 instnop:
   何もしない(NOP)命令。
 *)
+
 Definition instnop : inst := instpair (instpair instpush instpop) instpop.
 
-Lemma evalnop : forall (vs ps : stack), (vs, instnop :: ps) |=>* (vs, ps).
+Lemma evalnop : forall (vs cs : stack), (vs, instnop :: cs) |=>* (vs, cs).
   intros ; evalauto.
 Qed.
 
@@ -268,15 +269,15 @@ instseq:
 *)
 Definition instseq' : list inst -> inst -> inst := fold_left instpair.
 
-Lemma evalseq' : forall (is : list inst) (i : inst) (vs ps : stack),
-  (vs, instseq' is i :: ps) |=>* (vs, i :: is ++ ps).
+Lemma evalseq' : forall (is : list inst) (i : inst) (vs cs : stack),
+  (vs, instseq' is i :: cs) |=>* (vs, i :: is ++ cs).
   induction is ; intros ; [ | evalpartial IHis ] ; evalauto.
 Qed.
 
 Definition instseq (is : list inst) : inst := instseq' is instnop.
 
-Lemma evalseq : forall (is : list inst) (vs ps : stack),
-  (vs, instseq is :: ps) |=>* (vs, is ++ ps).
+Lemma evalseq : forall (is : list inst) (vs cs : stack),
+  (vs, instseq is :: cs) |=>* (vs, is ++ cs).
   intros.
   evalpartial evalseq'.
   evalauto.
@@ -306,8 +307,8 @@ instsnoc:
 *)
 Definition instsnoc : inst := instseq [ instswap ; instcons ].
 
-Lemma evalsnoc : forall (i1 i2 : inst) (vs ps : stack),
-  (i1 :: i2 :: vs, instsnoc :: ps) |=>* (instpair i1 i2 :: vs, ps).
+Lemma evalsnoc : forall (i1 i2 : inst) (vs cs : stack),
+  (i1 :: i2 :: vs, instsnoc :: cs) |=>* (instpair i1 i2 :: vs, cs).
   intros ; evalauto.
 Qed.
 
@@ -318,7 +319,7 @@ instquote:
 *)
 Definition instquote : inst := instseq [instpush ; instpush ; instsnoc ].
 
-Lemma evalquote : forall (i : inst) (vs ps : stack),
-  (i :: vs, instquote :: ps) |=>* (instpair instpush i :: vs, ps).
+Lemma evalquote : forall (i : inst) (vs cs : stack),
+  (i :: vs, instquote :: cs) |=>* (instpair instpush i :: vs, cs).
   intros ; evalauto.
 Qed.
