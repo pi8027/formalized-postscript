@@ -129,9 +129,8 @@ Lemma instnat_eqmap : forall (n m : nat) (i : inst),
   instnat_spec n i -> instnat_spec m i -> n = m.
   intros.
   assert
-    (([], replicate n instpop) |=>*' ([], replicate m instpop) \/
-     ([], replicate m instpop) |=>*' ([], replicate n instpop)).
-    repeat erewrite <- evalrtc_is_evalrtc'.
+    (([], replicate n instpop) |=>* ([], replicate m instpop) \/
+     ([], replicate m instpop) |=>* ([], replicate n instpop)).
     apply (evalrtc_confluence ([ instpop ], [ i ])).
     evalpartial H.
     erewrite app_nil_r.

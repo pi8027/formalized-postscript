@@ -1,4 +1,4 @@
-Require Import List Omega.
+Require Import List Relations Relation_Operators Omega.
 
 Notation "[]" := nil : list_scope.
 Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..) : list_scope.
@@ -7,7 +7,6 @@ Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..) : list_scope.
 replicate:
   自然数 n と値 a を取り、a だけで構成された長さ n のリストを返す。
 *)
-
 Fixpoint replicate {A : Set} (n : nat) (a : A) :=
   match n with
     | 0 => nil
@@ -18,9 +17,8 @@ Lemma replicate_app : forall {A : Set} (n m : nat) (a : A),
   replicate n a ++ replicate m a = replicate (n + m) a.
   intros.
   induction n.
-  compute ; auto.
-  replace (S n + m) with (S (n + m)) by omega.
-  compute ; f_equal ; apply IHn.
+  auto.
+  simpl ; f_equal ; apply IHn.
 Qed.
 
 Lemma replicate_rev_id :
@@ -33,5 +31,19 @@ Lemma replicate_rev_id :
   fold (replicate 1 a).
   rewrite (replicate_app n 1 a).
   replace (n + 1) with (S n) by omega.
+  auto.
+Qed.
+
+(*
+rt1n_trans:
+  clos_refl_trans_1n は推移関係である。
+*)
+Theorem rt1n_trans' : (forall (A : Type) (R : relation A) (x y z : A),
+  clos_refl_trans_1n A R x y -> clos_refl_trans_1n A R y z ->
+  clos_refl_trans_1n A R x z).
+  intros.
+  induction H.
+  auto.
+  apply (rt1n_trans _ _ _ _ _ H).
   auto.
 Qed.

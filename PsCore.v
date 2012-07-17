@@ -76,14 +76,10 @@ Inductive eval : relation environment :=
       eval (vs, instpair i1 i2 :: cs) (vs, i1 :: i2 :: cs).
 
 (*
-evalrtc, evalrtc':
+evalrtc:
   eval の反射推移閉包。
-  NOTE:
-    clos_refl_trans と clos_refl_trans_1n はどちらも反射推移閉包であるが、定義が
-    異なる。
 *)
-Definition evalrtc : relation environment := clos_refl_trans _ eval.
-Definition evalrtc' : relation environment := clos_refl_trans_1n _ eval.
+Definition evalrtc : relation environment := clos_refl_trans_1n _ eval.
 
 (*
 |=>, |=>*, |=>*':
@@ -91,22 +87,12 @@ Definition evalrtc' : relation environment := clos_refl_trans_1n _ eval.
 *)
 Infix "|=>" := eval (at level 50, no associativity).
 Infix "|=>*" := evalrtc (at level 50, no associativity).
-Infix "|=>*'" := evalrtc' (at level 50, no associativity).
-
-(*
-evalrtc_is_evalrtc':
-  evalrtc, evalrtc' の同値性の証明。
-*)
-Lemma evalrtc_is_evalrtc' :
-  forall (e1 e2 : environment), e1 |=>* e2 <-> e1 |=>*' e2.
-  intros ; split ; [ apply clos_rt_rt1n | apply clos_rt1n_rt ].
-Qed.
 
 (*
 decide_eval:
   環境 e1 から eval によって書き換えられる環境 e2 の存在を決定する。
 *)
-Lemma decide_eval : forall (e1 : environment),
+Theorem decide_eval : forall (e1 : environment),
   decidable (exists e2 : environment, e1 |=> e2).
   intros.
   Local Ltac decide_eval_solve :=
@@ -128,7 +114,7 @@ Defined.
 uniqueness_of_eval:
   環境 e1 から eval によって書き換えられる環境 e2, e3 は同値である。
 *)
-Lemma uniqueness_of_eval :
+Theorem uniqueness_of_eval :
   forall (e1 e2 e3 : environment), e1 |=> e2 -> e1 |=> e3 -> e2 = e3.
   intros.
   destruct e1 as [[ | v vs] [ | [ | | | | | | | ] [ | p ps]]] ;
@@ -136,15 +122,14 @@ Lemma uniqueness_of_eval :
 Qed.
 
 (*
-evalrtc'_confluence:
-  e1 |=>*' e2 かつ e1 |=>*' e3 ならば e2 |=>*' e3 もしくは e3 |=>*' e2 が成り立
-  つ。
+evalrtc_confluence:
+  e1 |=>* e2 かつ e1 |=>* e3 ならば e2 |=>* e3 もしくは e3 |=>* e2 が成り立つ。
   NOTE:
     合流性より強い性質であるが、適切な名前を知らないので仮の名前として
     evalrtc'_confluence とした。
 *)
-Lemma evalrtc'_confluence : forall (e1 e2 e3 : environment),
-  e1 |=>*' e2 -> e1 |=>*' e3 -> e2 |=>*' e3 \/ e3 |=>*' e2.
+Theorem evalrtc_confluence : forall (e1 e2 e3 : environment),
+  e1 |=>* e2 -> e1 |=>* e3 -> e2 |=>* e3 \/ e3 |=>* e2.
   intros.
   induction H ; auto.
   inversion H0.
@@ -156,22 +141,10 @@ Lemma evalrtc'_confluence : forall (e1 e2 e3 : environment),
 Qed.
 
 (*
-evalrtc_confluence:
-  e1 |=>* e2 かつ e1 |=>* e3 ならば e2 |=>* e3 もしくは e3 |=>* e2 が成り立つ。
-*)
-Lemma evalrtc_confluence : forall (e1 e2 e3 : environment),
-  e1 |=>* e2 -> e1 |=>* e3 -> e2 |=>* e3 \/ e3 |=>* e2.
-  do 3 intro.
-  repeat erewrite evalrtc_is_evalrtc'.
-  eapply evalrtc'_confluence.
-Qed.
-
-(*
 evalstep:
   ゴールが e1 |=>* e2 の形である場合に、e1 から書き換え可能な環境 e3 を計算し、
   ゴールを e3 |=>* e2 で置き換えるタクティク。計算を自動的に1段階進める。
 *)
-
 Lemma exists_and_right_map : forall (P Q R : inst -> Prop),
   (forall (i : inst), Q i -> R i) ->
   (exists i : inst, P i /\ Q i) -> (exists i : inst, P i /\ R i).
@@ -179,34 +152,32 @@ Lemma exists_and_right_map : forall (P Q R : inst -> Prop),
 Qed.
 
 Ltac evalstep' e1 e2 :=
-  try apply rt_refl ;
-  try (eexists ; split ; [ | apply rt_refl ]) ;
-  try (eexists ; split ; [ | eexists ; split ; [ | apply rt_refl ] ]) ;
+  try apply rt1n_refl ;
+  try (eexists ; split ; [ | apply rt1n_refl ]) ;
+  try (eexists ; split ; [ | eexists ; split ; [ | apply rt1n_refl ] ]) ;
   match eval hnf in (decide_eval e1) with
     | or_introl _ (ex_intro _ ?e3 ?p) =>
-      apply (rt_trans _ _ _ _ _ (rt_step _ _ _ _ p)) ||
+      apply (rt1n_trans _ _ _ _ _ p) ||
+      apply (exists_and_right_map _ _ _ (fun _ => rt1n_trans _ _ _ _ _ p)) ||
       apply (exists_and_right_map _ _ _ (fun _ =>
-             rt_trans _ _ _ _ _ (rt_step _ _ _ _ p))) ||
-      apply (exists_and_right_map _ _ _ (fun _ =>
-             exists_and_right_map _ _ _ (fun _ =>
-             rt_trans _ _ _ _ _ (rt_step _ _ _ _ p))))
+             exists_and_right_map _ _ _ (fun _ => rt1n_trans _ _ _ _ _ p)))
     | _ => idtac
   end.
 
 Ltac evalstep :=
   match goal with
     | |- ?e1 |=>* ?e2 => evalstep' e1 e2
-    | |- clos_refl_trans _ eval ?e1 ?e2 => evalstep' e1 e2
+    | |- clos_refl_trans_1n _ eval ?e1 ?e2 => evalstep' e1 e2
     | |- exists i1 : inst, _ /\
          ?e1 |=>* ?e2 => evalstep' e1 e2
     | |- exists i1 : inst, _ /\
-         clos_refl_trans _ eval ?e1 ?e2 => evalstep' e1 e2
+         clos_refl_trans_1n _ eval ?e1 ?e2 => evalstep' e1 e2
     | |- exists i1 : inst, _ /\
          exists i2 : inst, _ /\
          ?e1 |=>* ?e2 => evalstep' e1 e2
     | |- exists i1 : inst, _ /\
          exists i2 : inst, _ /\
-         clos_refl_trans _ eval ?e1 ?e2 => evalstep' e1 e2
+         clos_refl_trans_1n _ eval ?e1 ?e2 => evalstep' e1 e2
     | _ => fail "The goal is invalid."
   end.
 
@@ -222,14 +193,14 @@ evalpartial:
 *)
 
 Tactic Notation "evalpartial" constr(H) "by" tactic(tac) :=
-  (eapply  rt_trans ;
+  (eapply  rt1n_trans' ;
    [ eapply H ; tac ; fail | ]) ||
   (refine (exists_and_right_map _ _ _ (fun _ =>
-           rt_trans _ _ _ _ _ _) _) ;
+           rt1n_trans' _ _ _ _ _ _) _) ;
    [ eapply H ; tac ; fail | ]) ||
   (refine (exists_and_right_map _ _ _ (fun _ =>
            exists_and_right_map _ _ _ (fun _ =>
-           rt_trans _ _ _ _ _ _)) _) ;
+           rt1n_trans' _ _ _ _ _ _)) _) ;
    [ eapply H ; tac ; fail | ]) ||
   fail.
 
@@ -242,8 +213,8 @@ rtcrefl:
 Ltac rtcrefl :=
   hnf ;
   match goal with
-    | |- clos_refl_trans _ _ ?e1 ?e2 =>
-      replace e1 with e2 ; [ apply rt_refl | repeat f_equal ]
+    | |- clos_refl_trans_1n _ _ ?e1 ?e2 =>
+      replace e1 with e2 ; [ apply rt1n_refl | repeat f_equal ]
     | _ => fail 2 "The goal is invalid."
   end.
 
