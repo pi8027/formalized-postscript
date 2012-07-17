@@ -8,7 +8,7 @@ instincr:
   自然数を構成するための補助的な命令。
 *)
 Definition instincr : inst := instseq
-  [ instdup ; instquote ; instswap ; instquote ; instcons ;
+  [ instcopy ; instquote ; instswap ; instquote ; instcons ;
     instswap ; instquote ; instcons ; instexec ;
     instsnoc ; instswap ].
 
@@ -52,7 +52,7 @@ instnat:
   任意の自然数に関して、自然数の仕様を満たす命令を構成する。
 *)
 Definition instnat (n : nat) : inst := instseq
-  [ instpush ; instnop ; instswap ; instnatq n ; instpop ; instexec ].
+  [ instpush instnop ; instswap ; instnatq n ; instpop ; instexec ].
 
 Lemma eval_instnat : forall (n : nat), instnat_spec n (instnat n).
   repeat intro.
@@ -66,10 +66,9 @@ instnat_quote, instnat_unquote:
   instnat, instnatq を相互に変換する命令。
 *)
 Definition instnat_quote : inst := instseq
-  [ instpush ; instnop ; instquote ;
-    instpush ; instincr ; instquote ; instcons ;
+  [ instpush (instpair (instpush instnop) (instpush instincr)) ;
     instswap ; instquote ; instcons ; instexec ;
-    instpush ; instincr ; instswap ; instexec ; instpop ].
+    instpush instincr ; instswap ; instexec ; instpop ].
 
 Lemma eval_instnat_quote :
   forall (n : nat) (i : inst) (vs cs : stack), instnat_spec n i ->
@@ -81,17 +80,16 @@ Qed.
 Opaque instnat_quote.
 
 Definition instnat_unquote : inst := instseq
-  [ instpush ; instnop ;
-    instpush ; instpush ; instcons ;
-    instpush ; instnop ; instcons ;
-    instpush ; instswap ; instcons ;
+  [ instpush instnop ; instpush (instpush instnop) ; instcons ;
+    instpush instswap ; instcons ;
     instsnoc ;
-    instpush ; instpop ; instcons ;
-    instpush ; instexec ; instcons ].
+    instpush instpop ; instcons ;
+    instpush instexec ; instcons ].
 
 Definition eval_instnat_unquote : forall (n : nat) (vs cs : stack),
   (instnatq n :: vs, instnat_unquote :: cs) |=>* (instnat n :: vs, cs).
-  repeat intro ; evalauto.
+  repeat intro.
+  evalauto.
 Qed.
 
 Opaque instnat_unquote.
@@ -153,7 +151,7 @@ Qed.
 instnatq_succ, instnat_succ
   後者関数に相当する命令。
 *)
-Definition instnatq_succ : inst := instseq [ instpush ; instincr ; instcons ].
+Definition instnatq_succ : inst := instpair (instpush instincr) instcons.
 
 Lemma eval_instnatq_succ : forall (n : nat) (vs cs : stack),
   (instnatq n :: vs, instnatq_succ :: cs) |=>* (instnatq (S n) :: vs, cs).
@@ -181,8 +179,6 @@ Lemma eval_instnat_succ :
   eapply eval_instnat_unquote.
 Qed.
 
-Opaque instnat_succ.
-
 Lemma instnat_succ_proof :
   forall (n : nat) (i1 : inst) (vs cs : stack), instnat_spec n i1 ->
     exists i2 : inst, instnat_spec (S n) i2 /\
@@ -193,12 +189,14 @@ Lemma instnat_succ_proof :
   apply (eval_instnat (S n)).
 Qed.
 
+Opaque instnat_succ.
+
 (*
 instnat_add, instnatq_add:
   加算命令。
 *)
 Definition instnat_add : inst := instseq
-  [ instswap ; instpush ; instnat_succ ; instswap ; instexec ].
+  [ instswap ; instpush instnat_succ ; instswap ; instexec ].
 
 Lemma instnat_add_proof : forall (n m : nat) (i1 i2 : inst) (vs cs : stack),
   instnat_spec n i1 -> instnat_spec m i2 ->
@@ -241,8 +239,8 @@ instnat_mult, instnatq_mult:
   乗算命令。
 *)
 Definition instnat_mult : inst := instseq
-  [ instswap ; instquote ; instpush ; instnat_add ; instcons ; instquote ;
-    instsnoc ; instpush ; instnat 0 ; instquote ; instsnoc ; instexec ].
+  [ instswap ; instquote ; instpush instnat_add ; instcons ; instquote ;
+    instsnoc ; instpush (instnat 0) ; instquote ; instsnoc ; instexec ].
 
 Lemma instnat_mult_proof : forall (n m : nat) (i1 i2 : inst) (vs cs : stack),
   instnat_spec n i1 -> instnat_spec m i2 ->
@@ -286,8 +284,8 @@ instnat_even:
   偶奇判定の命令。
 *)
 Definition instnat_even : inst := instseq
-  [ instpush ; instnot ; instquote ; instsnoc ;
-    instpush ; insttrue ; instswap ; instexec ].
+  [ instpush instnot ; instquote ; instsnoc ;
+    instpush insttrue ; instswap ; instexec ].
 
 Lemma instnat_even_proof :
   forall (n : nat) (i1 : inst) (vs cs : stack), instnat_spec n i1 -> even n ->
@@ -344,9 +342,9 @@ instnat_iszero:
   ゼロとの比較をする命令。
 *)
 Definition instnat_iszero : inst := instseq
-  [ instpush ; instpop ; instpush ; instfalse ; instquote ;
+  [ instpush instpop ; instpush instfalse ; instquote ;
     instcons ; instquote ; instsnoc ;
-    instpush ; insttrue ; instswap ; instexec ].
+    instpush insttrue ; instswap ; instexec ].
 
 Lemma instnat_iszero_proof :
   forall (n : nat) (i1 : inst) (vs cs : stack), instnat_spec n i1 ->
@@ -376,8 +374,8 @@ instnat_pred:
   自然数から1を引く命令。元の数が0であれば結果も0となる。
 *)
 Definition instnat_pred : inst := instseq
-  [ instpush ; instnat 0 ; instquote ; instdup ; instcons ;
-    instpush ; instseq [ instpop ; instdup ; instnat_succ ; instswap ] ;
+  [ instpush (instnat 0) ; instquote ; instcopy ; instcons ;
+    instpush (instseq [ instpop ; instcopy ; instnat_succ ; instswap ]) ;
     instquote ; instcons ; instsnoc ; instexec ; instswap ; instpop ].
 
 Lemma instnat_pred_proof :
@@ -414,7 +412,7 @@ instnat_sub:
   減算命令。
 *)
 Definition instnat_sub : inst := instseq
-  [ instpush ; instnat_pred ; instquote ; instsnoc ; instexec ].
+  [ instpush instnat_pred ; instquote ; instsnoc ; instexec ].
 
 Lemma instnat_sub_proof : forall (n m : nat) (i1 i2 : inst) (vs cs : stack),
   instnat_spec n i1 -> instnat_spec m i2 ->
@@ -479,25 +477,25 @@ Definition instnat_eucl_iter : inst := instseq
     instswap ; instquote ; instcons ;
     instswap ; instquote ; instcons ;
     instswap ; instquote ; instcons ; instexec ;
-    instquote ; instdup ; instcons ; instswap ;
+    instquote ; instcopy ; instcons ; instswap ;
     instquote ; instcons ; instexec ;
-    instquote ; instdup ; instcons ; instswap ;
+    instquote ; instcopy ; instcons ; instswap ;
     instquote ; instcons ; instexec ; instswap ;
     instswap ; instnat_le ;
-    instpush ; instseq
-      [ instquote ; instdup ; instcons ;
+    instpush (instseq
+      [ instquote ; instcopy ; instcons ;
         instswap ; instquote ; instcons ; instexec ;
         instswap ; instnat_sub ;
         instquote ; instswap ; instquote ; instcons ;
         instswap ; instnat_succ ; instquote ; instcons ;
         instswap ; instquote ; instcons ; instexec ;
-        instdup ; instexec ] ;
-    instpush ; instseq
+        instcopy ; instexec ]) ;
+    instpush (instseq
       [ instquote ;
         instswap ; instquote ; instsnoc ;
         instswap ; instquote ; instcons ;
         instswap ; instquote ; instcons ; instexec ;
-        instpop ; instswap ; instpop ; instswap ] ;
+        instpop ; instswap ; instpop ; instswap ]) ;
     instexecif ].
 
 Lemma instnat_eucl_iter_proof :
@@ -540,7 +538,7 @@ Qed.
 Opaque instnat_eucl_iter.
 
 Definition instnat_eucl : inst := instseq
-  [ instpush ; instnat 0 ; instpush ; instnat_eucl_iter ; instdup ; instexec ].
+  [ instpush (instnat 0) ; instpush instnat_eucl_iter ; instcopy ; instexec ].
 
 Lemma diveucl_uniqueness : forall (a b : nat) (e1 e2 : diveucl a b),
   match e1 with divex q r _ _ =>

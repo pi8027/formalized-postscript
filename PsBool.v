@@ -38,7 +38,7 @@ Qed.
 instnot:
   not 命令。
 *)
-Definition instnot := instseq [ instpush ; instswap ; instcons ].
+Definition instnot := instseq [ instpush instswap ; instcons ].
 
 Lemma instnot_proof :
   forall (b : bool) (i1 : inst) (vs cs : stack), instbool_spec b i1 ->

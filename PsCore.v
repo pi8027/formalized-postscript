@@ -6,13 +6,14 @@ inst:
   命令の定義。命令は値も兼ねる。
 *)
 Inductive inst : Set :=
-  | instpop  : inst
-  | instdup  : inst
-  | instswap : inst
-  | instcons : inst
-  | instpush : inst
-  | instexec : inst
-  | instpair : inst -> inst -> inst.
+  | instpop   : inst
+  | instcopy  : inst
+  | instswap  : inst
+  | instcons  : inst
+  | instquote : inst
+  | instexec  : inst
+  | instpush  : inst -> inst
+  | instpair  : inst -> inst -> inst.
 
 (*
 inst_countcons:
@@ -20,6 +21,7 @@ inst_countcons:
 *)
 Fixpoint inst_countcons (i : inst) : nat :=
   match i with
+    | instpush i => S (inst_countcons i)
     | instpair i1 i2 => S (inst_countcons i1 + inst_countcons i2)
     | _ => 1
   end.
@@ -41,42 +43,36 @@ eval:
   計算は環境上の二項関係(書換系)である。
   evalpop (instpop):
     値のスタックの先頭を捨てる。
-  evaldup (instdup):
+  evalcopy (instcopy):
     値のスタックの先頭を複製する。
   evalswap (instswap):
     値のスタックの先頭の2つの値を入れ替える。
   evalcons (instcons):
     値のスタックの先頭の2つの値を取り出し、そのペアを instpair で作成し、値のス
     タックの先頭に積む。
-  evalpush (instpush):
-    継続のスタックの先頭にある evalpush 命令の直後の値を取り出し、値のスタックに
-    積む。
+  evalquote (instquote):
+    値のスタックの先頭にある値を取り出し、クオートした値をスタックに積む。クオー
+    トされた値は実行すると元の値が取り出せる。
   evalexec (instexec):
     値のスタックの先頭にある値を取り出し、継続のスタックの先頭に積む。
+  evalpush (instpush):
+    instpush のパラメータの値を値のスタックに積む。
   evalpair (instpair):
     instpair のパラメータの2つの命令を継続のスタックに積む。
 *)
 Inductive eval : relation environment :=
-  | evalpop  :
-      forall (i : inst) (vs cs : stack),
-      eval (i :: vs, instpop :: cs) (vs, cs)
-  | evaldup  :
-      forall (i : inst) (vs cs : stack),
-      eval (i :: vs, instdup :: cs) (i :: i :: vs, cs)
-  | evalswap :
-      forall (i1 i2 : inst) (vs cs : stack),
-      eval (i1 :: i2 :: vs, instswap :: cs) (i2 :: i1 :: vs, cs)
-  | evalcons :
-      forall (i1 i2 : inst) (vs cs : stack),
-      eval (i1 :: i2 :: vs, instcons :: cs) (instpair i2 i1 :: vs, cs)
-  | evalpush :
-      forall (i : inst) (vs cs : stack),
-      eval (vs, instpush :: i :: cs) (i :: vs, cs)
-  | evalexec :
-      forall (i : inst) (vs cs : stack),
-      eval (i :: vs, instexec :: cs) (vs, i :: cs)
-  | evalpair  :
-      forall (i1 i2 : inst) (vs cs : stack),
+  | evalpop   : forall i vs cs, eval (i :: vs, instpop :: cs) (vs, cs)
+  | evalcopy  : forall i vs cs,
+      eval (i :: vs, instcopy :: cs) (i :: i :: vs, cs)
+  | evalswap  : forall i1 i2 vs cs,
+      eval (i2 :: i1 :: vs, instswap :: cs) (i1 :: i2 :: vs, cs)
+  | evalcons  : forall i1 i2 vs cs,
+      eval (i2 :: i1 :: vs, instcons :: cs) (instpair i1 i2 :: vs, cs)
+  | evalquote : forall i vs cs,
+      eval (i :: vs, instquote :: cs) (instpush i :: vs, cs)
+  | evalexec  : forall i vs cs, eval (i :: vs, instexec :: cs) (vs, i :: cs)
+  | evalpush  : forall i vs cs, eval (vs, instpush i :: cs) (i :: vs, cs)
+  | evalpair  : forall i1 i2 vs cs,
       eval (vs, instpair i1 i2 :: cs) (vs, i1 :: i2 :: cs).
 
 (*
@@ -116,14 +112,15 @@ Lemma decide_eval : forall (e1 : environment),
   Local Ltac decide_eval_solve :=
     (right ; intro ; do 2 inversion 0 ; fail) ||
     (left ; eexists ; constructor ; fail).
-  destruct e1 as [vs [ | [ | | | | | | ] ps]].
+  destruct e1 as [vs [ | [ | | | | | | | ] ps]].
   decide_eval_solve.
   destruct vs ; decide_eval_solve.
   destruct vs ; decide_eval_solve.
   destruct vs as [ | ? [ | ? ?]] ; decide_eval_solve.
   destruct vs as [ | ? [ | ? ?]] ; decide_eval_solve.
-  destruct ps ; decide_eval_solve.
   destruct vs ; decide_eval_solve.
+  destruct vs ; decide_eval_solve.
+  decide_eval_solve.
   decide_eval_solve.
 Defined.
 
@@ -134,7 +131,7 @@ uniqueness_of_eval:
 Lemma uniqueness_of_eval :
   forall (e1 e2 e3 : environment), e1 |=> e2 -> e1 |=> e3 -> e2 = e3.
   intros.
-  destruct e1 as [[ | v vs] [ | [ | | | | | | ] [ | p ps]]] ;
+  destruct e1 as [[ | v vs] [ | [ | | | | | | | ] [ | p ps]]] ;
     inversion H ; inversion H0 ; congruence.
 Qed.
 
@@ -178,7 +175,6 @@ evalstep:
 Lemma exists_and_right_map : forall (P Q R : inst -> Prop),
   (forall (i : inst), Q i -> R i) ->
   (exists i : inst, P i /\ Q i) -> (exists i : inst, P i /\ R i).
-  intros.
   firstorder auto.
 Qed.
 
@@ -256,7 +252,7 @@ instnop:
   何もしない(NOP)命令。
 *)
 
-Definition instnop : inst := instpair (instpair instpush instpop) instpop.
+Definition instnop : inst := instpair (instpush instpop) instpop.
 
 Lemma evalnop : forall (vs cs : stack), (vs, instnop :: cs) |=>* (vs, cs).
   intros ; evalauto.
@@ -293,7 +289,7 @@ Qed.
 
 Lemma app_instseq' : forall (is1 is2 : list inst) (i : inst),
   instseq' (is1 ++ is2) i = instseq' is2 (instseq' is1 i).
-  intros ; apply fold_left_app.
+  apply fold_left_app.
 Qed.
 
 Lemma app_instseq : forall (is1 is2 : list inst),
@@ -309,17 +305,5 @@ Definition instsnoc : inst := instseq [ instswap ; instcons ].
 
 Lemma evalsnoc : forall (i1 i2 : inst) (vs cs : stack),
   (i1 :: i2 :: vs, instsnoc :: cs) |=>* (instpair i1 i2 :: vs, cs).
-  intros ; evalauto.
-Qed.
-
-(*
-instquote:
-  スタックの先頭にある値をクオートする。クオートされた値は、クオートされる前の値
-  をスタックの先頭に積む命令である。
-*)
-Definition instquote : inst := instseq [instpush ; instpush ; instsnoc ].
-
-Lemma evalquote : forall (i : inst) (vs cs : stack),
-  (i :: vs, instquote :: cs) |=>* (instpair instpush i :: vs, cs).
   intros ; evalauto.
 Qed.
