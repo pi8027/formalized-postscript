@@ -98,6 +98,10 @@ Theorem evalrtc_refl' : forall e1 e2, e1 = e2 -> e1 |=>* e2.
   constructor.
 Qed.
 
+Theorem evalrtc_step : forall e1 e2, e1 |=> e2 -> e1 |=>* e2.
+  repeat (eauto || econstructor).
+Qed.
+
 Theorem evalrtc_cons : forall e1 e2 e3, e1 |=> e2 -> e2 |=>* e3 -> e1 |=>* e3.
   econstructor ; eauto.
 Qed.
