@@ -88,6 +88,24 @@ Definition evalrtc : relation environment := clos_refl_trans_1n _ eval.
 Infix "|=>" := eval (at level 50, no associativity).
 Infix "|=>*" := evalrtc (at level 50, no associativity).
 
+Theorem evalrtc_refl : forall e, e |=>* e.
+  constructor.
+Qed.
+
+Theorem evalrtc_refl' : forall e1 e2, e1 = e2 -> e1 |=>* e2.
+  intros.
+  rewrite H.
+  constructor.
+Qed.
+
+Theorem evalrtc_cons : forall e1 e2 e3, e1 |=> e2 -> e2 |=>* e3 -> e1 |=>* e3.
+  econstructor ; eauto.
+Qed.
+
+Theorem evalrtc_trans : forall e1 e2 e3, e1 |=>* e2 -> e2 |=>* e3 -> e1 |=>* e3.
+  eapply rt1n_trans' ; eauto.
+Qed.
+
 (*
 decide_eval:
   環境 e1 から eval によって書き換えられる環境 e2 の存在を決定する。
@@ -135,7 +153,7 @@ Theorem evalrtc_confluence : forall (e1 e2 e3 : environment),
   inversion H0.
   rewrite <- H2.
   right.
-  eapply rt1n_trans ; [ apply H | apply H1 ].
+  apply (evalrtc_cons _ _ _ H H1).
   apply IHclos_refl_trans_1n.
   rewrite (uniqueness_of_eval _ _ _ H H2) ; auto.
 Qed.
@@ -152,15 +170,15 @@ Lemma exists_and_right_map : forall (P Q R : inst -> Prop),
 Qed.
 
 Ltac evalstep' e1 e2 :=
-  try apply rt1n_refl ;
-  try (eexists ; split ; [ | apply rt1n_refl ]) ;
-  try (eexists ; split ; [ | eexists ; split ; [ | apply rt1n_refl ] ]) ;
+  try apply evalrtc_refl ;
+  try (eexists ; split ; [ | apply evalrtc_refl ]) ;
+  try (eexists ; split ; [ | eexists ; split ; [ | apply evalrtc_refl ] ]) ;
   match eval hnf in (decide_eval e1) with
     | or_introl _ (ex_intro _ ?e3 ?p) =>
-      apply (rt1n_trans _ _ _ _ _ p) ||
-      apply (exists_and_right_map _ _ _ (fun _ => rt1n_trans _ _ _ _ _ p)) ||
+      apply (evalrtc_cons _ _ _ p) ||
+      apply (exists_and_right_map _ _ _ (fun _ => evalrtc_cons _ _ _ p)) ||
       apply (exists_and_right_map _ _ _ (fun _ =>
-             exists_and_right_map _ _ _ (fun _ => rt1n_trans _ _ _ _ _ p)))
+             exists_and_right_map _ _ _ (fun _ => evalrtc_cons _ _ _ p)))
     | _ => idtac
   end.
 
@@ -191,16 +209,13 @@ Ltac evalauto := evalstep ; repeat evalstep.
 evalpartial:
   指定した関数を適用することで計算を途中まで進める。
 *)
-
 Tactic Notation "evalpartial" constr(H) "by" tactic(tac) :=
-  (eapply  rt1n_trans' ;
+  (eapply  evalrtc_trans ;
+   [ eapply H ; tac ; fail | ]) ||
+  (refine (exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ _ _ _) _) ;
    [ eapply H ; tac ; fail | ]) ||
   (refine (exists_and_right_map _ _ _ (fun _ =>
-           rt1n_trans' _ _ _ _ _ _) _) ;
-   [ eapply H ; tac ; fail | ]) ||
-  (refine (exists_and_right_map _ _ _ (fun _ =>
-           exists_and_right_map _ _ _ (fun _ =>
-           rt1n_trans' _ _ _ _ _ _)) _) ;
+           exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ _ _ _)) _) ;
    [ eapply H ; tac ; fail | ]) ||
   fail.
 
@@ -210,19 +225,12 @@ Tactic Notation "evalpartial" constr(H) := evalpartial H by idtac.
 rtcrefl:
   ゴール e1 |=>* e2 を e1 = e2 で置き換え、f_equal を繰り返し適用する。
 *)
-Ltac rtcrefl :=
-  hnf ;
-  match goal with
-    | |- clos_refl_trans_1n _ _ ?e1 ?e2 =>
-      replace e1 with e2 ; [ apply rt1n_refl | repeat f_equal ]
-    | _ => fail 2 "The goal is invalid."
-  end.
+Ltac rtcrefl := apply evalrtc_refl' ; repeat f_equal.
 
 (*
 instnop:
   何もしない(NOP)命令。
 *)
-
 Definition instnop : inst := instpair (instpush instpop) instpop.
 
 Lemma evalnop : forall (vs cs : stack), (vs, instnop :: cs) |=>* (vs, cs).

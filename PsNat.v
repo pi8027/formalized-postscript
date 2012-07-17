@@ -157,10 +157,9 @@ Lemma eval_instnatq_succ : forall (n : nat) (vs cs : stack),
   intros.
   evalauto.
   rtcrefl.
-  unfold instnat, instnatq, instseq.
-  erewrite instseq_replicate.
-  simpl ; unfold flip ; f_equal.
-  apply eq_sym, instseq_replicate.
+  unfold instnatq, instseq.
+  repeat erewrite instseq_replicate.
+  auto.
 Qed.
 
 Opaque instnatq_succ.
