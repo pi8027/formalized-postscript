@@ -1,3 +1,4 @@
+Require Import ssreflect.
 Require Import List Relations Relation_Operators Omega.
 
 Notation "[]" := nil : list_scope.
@@ -16,9 +17,7 @@ Fixpoint replicate {A : Set} (n : nat) (a : A) :=
 Lemma replicate_app : forall {A : Set} (n m : nat) (a : A),
   replicate n a ++ replicate m a = replicate (n + m) a.
   intros.
-  induction n.
-  auto.
-  simpl ; f_equal ; apply IHn.
+  by induction n ; [ | simpl ; f_equal ].
 Qed.
 
 Lemma replicate_rev_id :
@@ -27,11 +26,8 @@ Lemma replicate_rev_id :
   induction n.
   auto.
   simpl.
-  rewrite <- IHn.
-  fold (replicate 1 a).
-  rewrite (replicate_app n 1 a).
-  replace (n + 1) with (S n) by omega.
-  auto.
+  rewrite -IHn -/(replicate 1 a) (replicate_app n 1 a).
+  by replace (n + 1) with (S n) by omega.
 Qed.
 
 (*
@@ -42,8 +38,5 @@ Theorem rt1n_trans' : (forall (A : Type) (R : relation A) (x y z : A),
   clos_refl_trans_1n A R x y -> clos_refl_trans_1n A R y z ->
   clos_refl_trans_1n A R x z).
   intros.
-  induction H.
-  auto.
-  apply (rt1n_trans _ _ _ _ _ H).
-  auto.
+  induction H ; [ | apply (rt1n_trans _ _ _ _ _ H) ] ; auto.
 Qed.

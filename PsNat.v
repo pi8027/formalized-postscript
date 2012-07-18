@@ -1,3 +1,4 @@
+Require Import ssreflect.
 Require Import
   Arith.Even Arith.Wf_nat Arith.Euclid
   List Basics Relations Omega ArithRing.
@@ -101,21 +102,18 @@ instnatq_eqmap:
   然数が違えば命令も必ず同値ではないことを表している。
 *)
 Lemma instnatq_eqmap : forall (n m : nat), instnatq n = instnatq m -> n = m.
-  intro.
-  induction n ; intros ; destruct m.
-  auto.
-  unfold instnatq, instseq, replicate at 1, instseq' at 1, fold_left in H.
-  rewrite (instseq_replicate (S m) instincr instnop) in H.
-  inversion H.
-  unfold instnatq, instseq, replicate at 2, instseq' at 2, fold_left in H.
-  rewrite (instseq_replicate (S n) instincr instnop) in H.
-  inversion H.
-  f_equal.
-  apply IHn.
-  unfold instnatq, instseq in *.
-  repeat erewrite instseq_replicate in *.
-  inversion H.
-  auto.
+  induction n ; destruct m ; move => H.
+  * done.
+  * rewrite /instnatq /instseq (instseq_replicate (S m) instincr instnop) in H.
+    inversion H.
+  * rewrite /instnatq /instseq (instseq_replicate (S n) instincr instnop) in H.
+    inversion H.
+  * f_equal.
+    apply IHn.
+    move: H.
+    rewrite /instnatq /instseq.
+    repeat erewrite instseq_replicate.
+    by move=> H ; inversion H.
 Qed.
 
 (*
@@ -139,11 +137,11 @@ Lemma instnat_eqmap : forall (n m : nat) (i : inst),
     erewrite app_nil_r.
     evalauto.
   assert (replicate n instpop = replicate m instpop).
-    destruct H1 ; destruct n ; destruct m ; inversion H1 ;
-      (auto || inversion H2 || simpl ; f_equal ; auto).
+    by destruct H1 ; destruct n ; destruct m ; inversion H1 ;
+      (inversion H2 || simpl ; f_equal).
   clear H H0 H1.
   revert m H2 ; induction n ; intro ; destruct m ; simpl ; intros ;
-    (auto || congruence || f_equal ; apply IHn ; congruence).
+    (congruence || f_equal ; apply IHn ; congruence).
 Qed.
 
 (*
@@ -157,9 +155,8 @@ Lemma eval_instnatq_succ : forall (n : nat) (vs cs : stack),
   intros.
   evalauto.
   rtcrefl.
-  unfold instnatq, instseq.
-  repeat erewrite instseq_replicate.
-  auto.
+  rewrite /instnatq /instseq.
+  by repeat erewrite instseq_replicate.
 Qed.
 
 Opaque instnatq_succ.
@@ -172,7 +169,7 @@ Lemma eval_instnat_succ :
     (i :: vs, instnat_succ :: cs) |=>* (instnat (S n) :: vs, cs).
   intros.
   evalauto.
-  evalpartial eval_instnat_quote by eauto.
+  evalpartial eval_instnat_quote.
   evalpartial eval_instnatq_succ.
   eapply eval_instnat_unquote.
 Qed.
@@ -182,7 +179,7 @@ Lemma instnat_succ_proof :
     exists i2 : inst, instnat_spec (S n) i2 /\
     (i1 :: vs, instnat_succ :: cs) |=>* (i2 :: vs, cs).
   intros.
-  evalpartial eval_instnat_succ by eauto.
+  evalpartial eval_instnat_succ.
   evalauto.
   apply (eval_instnat (S n)).
 Qed.
@@ -208,8 +205,7 @@ Lemma instnat_add_proof : forall (n m : nat) (i1 i2 : inst) (vs cs : stack),
   evalauto ; apply H0.
   edestruct (instnat_succ_proof _ _ _ _ H0) as [? [? ?]].
   evalpartial H1.
-  replace (S (n + m')) with (n + S m') by omega.
-  apply (IHn (S m') x H).
+  replace (S (n + m')) with (n + S m') by omega ; auto.
 Qed.
 
 Opaque instnat_add.
@@ -272,7 +268,7 @@ Lemma eval_instnatq_mult : forall (n m : nat) (vs cs : stack),
   edestruct (instnat_mult_proof _ _ _ _ _ _
     (eval_instnat n) (eval_instnat m)) as [? [? ?]].
   evalpartial H0.
-  apply eval_instnat_quote ; auto.
+  by apply eval_instnat_quote.
 Qed.
 
 Opaque instnatq_mult.
@@ -300,12 +296,11 @@ Lemma instnat_even_proof :
       | S 0 => _
       | S (S n) => _
     end) n) ; intros.
-  evalauto.
-  apply H.
+  by evalauto.
   inversion H1 ; inversion H3.
   evalauto.
   apply IHn.
-  inversion H1 ; inversion H3 ; auto.
+  by inversion H1 ; inversion H3.
   repeat intro ; evalauto ; evalpartial H ; evalauto.
 Qed.
 
@@ -329,7 +324,7 @@ Lemma instnat_even_proof' :
   repeat intro ; evalauto ; evalpartial H ; evalauto.
   evalauto.
   apply IHn.
-  inversion H1 ; inversion H3 ; auto.
+  by inversion H1 ; inversion H3.
   repeat intro ; evalauto ; evalpartial H ; evalauto.
 Qed.
 
@@ -362,7 +357,7 @@ Lemma instnat_iszero_proof :
   induction n ; intros.
   evalauto.
   repeat intro ; evalauto.
-  evalauto ; auto.
+  by evalauto.
 Qed.
 
 Opaque instnat_iszero.
@@ -392,7 +387,7 @@ Lemma instnat_pred_proof :
     (eval_instnat (0 - 1)), (eval_instnat 0).
   generalize 0 at 1 3 4 as m.
   induction n ; intros ; simpl.
-  evalauto ; auto.
+  by evalauto.
   replace (n + m - 0) with (n + m) by omega.
   evalauto.
   edestruct (instnat_succ_proof m i2 _ _ H0) as [? [? ?]].
@@ -400,7 +395,7 @@ Lemma instnat_pred_proof :
   evalauto.
   replace (n + m) with (n + S m - 1) by omega.
   refine (IHn (S m) i2 x _ H1).
-  replace (S m - 1) with m by omega ; auto.
+  by replace (S m - 1) with m by omega.
 Qed.
 
 Opaque instnat_pred.
@@ -447,7 +442,7 @@ Lemma instnat_le_proof : forall (n m : nat) (i1 i2 : inst) (vs cs : stack),
   edestruct (instnat_iszero_proof (n - m) x _ _ H2) as [? [? ?]].
   evalpartial H5.
   evalauto.
-  replace (n - m) with 0 in * by omega ; auto.
+  by replace (n - m) with 0 in * by omega.
 Qed.
 
 Lemma instnat_le_proof' : forall (n m : nat) (i1 i2 : inst) (vs cs : stack),
@@ -461,7 +456,7 @@ Lemma instnat_le_proof' : forall (n m : nat) (i1 i2 : inst) (vs cs : stack),
   edestruct (instnat_iszero_proof (n - m) x _ _ H2) as [? [? ?]].
   evalpartial H5.
   evalauto.
-  replace (n - m) with (S (n - m - 1)) in * by omega ; auto.
+  by replace (n - m) with (S (n - m - 1)) in * by omega.
 Qed.
 
 Opaque instnat_le.
@@ -514,7 +509,7 @@ Lemma instnat_eucl_iter_proof :
   evalpartial H4 ; clear H4.
   exists x ; split ; [ exact H3 | clear H3 ].
   evalauto.
-  evalpartial (eval_instnat_succ q i3) by tauto.
+  evalpartial (eval_instnat_succ q i3).
   evalauto.
   apply (eval_instnat (S q)).
 Qed.
@@ -593,10 +588,9 @@ Lemma instnat_eucl_proof :
     destruct (diveucl_uniqueness n m
         (divex n m q r g e) (divex n m q' n0 (not_le _ _ H4) H3)).
     evalauto.
-    rewrite H5 ; auto.
-    rewrite H6 ; auto.
-  apply (H1 n 0 i1 (instnat 0) H (eval_instnat 0)).
-  auto.
+    by rewrite H5.
+    by rewrite H6.
+  by apply (H1 n 0 i1 (instnat 0) H (eval_instnat 0)).
 Qed.
 
 Opaque instnat_eucl.

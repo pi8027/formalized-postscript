@@ -1,3 +1,4 @@
+Require Import ssreflect.
 Require Import Basics Relations Relation_Operators Logic.Decidable List.
 Require Import Utils.
 
@@ -93,7 +94,7 @@ Theorem evalrtc_refl : forall e, e |=>* e.
 Qed.
 
 Theorem evalrtc_refl' : forall e1 e2, e1 = e2 -> e1 |=>* e2.
-  intros.
+  move=> e1 e2 H.
   rewrite H.
   constructor.
 Qed.
@@ -107,7 +108,7 @@ Theorem evalrtc_cons : forall e1 e2 e3, e1 |=> e2 -> e2 |=>* e3 -> e1 |=>* e3.
 Qed.
 
 Theorem evalrtc_trans : forall e1 e2 e3, e1 |=>* e2 -> e2 |=>* e3 -> e1 |=>* e3.
-  eapply rt1n_trans' ; eauto.
+  by apply rt1n_trans'.
 Qed.
 
 (*
@@ -117,19 +118,18 @@ decide_eval:
 Theorem decide_eval : forall (e1 : environment),
   decidable (exists e2 : environment, e1 |=> e2).
   intros.
-  Local Ltac decide_eval_solve :=
-    (right ; intro ; do 2 inversion 0 ; fail) ||
-    (left ; eexists ; constructor ; fail).
-  destruct e1 as [vs [ | [ | | | | | | | ] ps]].
-  decide_eval_solve.
-  destruct vs ; decide_eval_solve.
-  destruct vs ; decide_eval_solve.
-  destruct vs as [ | ? [ | ? ?]] ; decide_eval_solve.
-  destruct vs as [ | ? [ | ? ?]] ; decide_eval_solve.
-  destruct vs ; decide_eval_solve.
-  destruct vs ; decide_eval_solve.
-  decide_eval_solve.
-  decide_eval_solve.
+  destruct e1 as [vs [ | [ | | | | | | | ] ps]] ;
+    [ |
+     destruct vs |
+     destruct vs |
+     destruct vs as [ | ? [ | ? ?]] |
+     destruct vs as [ | ? [ | ? ?]] |
+     destruct vs |
+     destruct vs |
+      |
+      ] ;
+    (by right ; intro ; do 2 inversion 0) ||
+    (by left ; eexists ; constructor).
 Defined.
 
 (*
@@ -153,13 +153,13 @@ evalrtc_confluence:
 Theorem evalrtc_confluence : forall (e1 e2 e3 : environment),
   e1 |=>* e2 -> e1 |=>* e3 -> e2 |=>* e3 \/ e3 |=>* e2.
   intros.
-  induction H ; auto.
+  induction H.
+  auto.
   inversion H0.
-  rewrite <- H2.
   right.
-  apply (evalrtc_cons _ _ _ H H1).
-  apply IHclos_refl_trans_1n.
-  rewrite (uniqueness_of_eval _ _ _ H H2) ; auto.
+  rewrite <- H2.
+  econstructor ; eauto.
+  by apply IHclos_refl_trans_1n ; rewrite (uniqueness_of_eval _ _ _ H H2).
 Qed.
 
 (*
@@ -170,37 +170,35 @@ evalstep:
 Lemma exists_and_right_map : forall (P Q R : inst -> Prop),
   (forall (i : inst), Q i -> R i) ->
   (exists i : inst, P i /\ Q i) -> (exists i : inst, P i /\ R i).
-  firstorder auto.
+  by firstorder.
 Qed.
 
-Ltac evalstep' e1 e2 :=
-  try apply evalrtc_refl ;
-  try (eexists ; split ; [ | apply evalrtc_refl ]) ;
-  try (eexists ; split ; [ | eexists ; split ; [ | apply evalrtc_refl ] ]) ;
+Ltac evalstep_0 e1 e2 :=
+  apply evalrtc_refl ||
+  match eval hnf in (decide_eval e1) with
+    | or_introl _ (ex_intro _ ?e3 ?p) => apply (evalrtc_cons _ _ _ p)
+  end.
+
+Ltac evalstep_1 e1 e2 :=
+  (eexists ; split ; [ | apply evalrtc_refl ]) ||
   match eval hnf in (decide_eval e1) with
     | or_introl _ (ex_intro _ ?e3 ?p) =>
-      apply (evalrtc_cons _ _ _ p) ||
-      apply (exists_and_right_map _ _ _ (fun _ => evalrtc_cons _ _ _ p)) ||
+      apply (exists_and_right_map _ _ _ (fun _ => evalrtc_cons _ _ _ p))
+  end.
+
+Ltac evalstep_2 e1 e2 :=
+  (eexists ; split ; [ | eexists ; split ; [ | apply evalrtc_refl ] ]) ||
+  match eval hnf in (decide_eval e1) with
+    | or_introl _ (ex_intro _ ?e3 ?p) =>
       apply (exists_and_right_map _ _ _ (fun _ =>
              exists_and_right_map _ _ _ (fun _ => evalrtc_cons _ _ _ p)))
-    | _ => idtac
   end.
 
 Ltac evalstep :=
   match goal with
-    | |- ?e1 |=>* ?e2 => evalstep' e1 e2
-    | |- clos_refl_trans_1n _ eval ?e1 ?e2 => evalstep' e1 e2
-    | |- exists i1 : inst, _ /\
-         ?e1 |=>* ?e2 => evalstep' e1 e2
-    | |- exists i1 : inst, _ /\
-         clos_refl_trans_1n _ eval ?e1 ?e2 => evalstep' e1 e2
-    | |- exists i1 : inst, _ /\
-         exists i2 : inst, _ /\
-         ?e1 |=>* ?e2 => evalstep' e1 e2
-    | |- exists i1 : inst, _ /\
-         exists i2 : inst, _ /\
-         clos_refl_trans_1n _ eval ?e1 ?e2 => evalstep' e1 e2
-    | _ => fail "The goal is invalid."
+    | |- ?e1 |=>* ?e2 => evalstep_0 e1 e2
+    | |- exists i1 : inst, _ /\ ?e1 |=>* ?e2 => evalstep_1 e1 e2
+    | |- exists i1 : inst, _ /\ exists i2 : inst, _ /\ ?e1 |=>* ?e2 => evalstep_2 e1 e2
   end.
 
 (*
@@ -215,13 +213,12 @@ evalpartial:
 *)
 Tactic Notation "evalpartial" constr(H) "by" tactic(tac) :=
   (eapply  evalrtc_trans ;
-   [ eapply H ; tac ; fail | ]) ||
+   [ by eapply H ; tac | ]) ||
   (refine (exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ _ _ _) _) ;
-   [ eapply H ; tac ; fail | ]) ||
+   [ by eapply H ; tac | ]) ||
   (refine (exists_and_right_map _ _ _ (fun _ =>
            exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ _ _ _)) _) ;
-   [ eapply H ; tac ; fail | ]) ||
-  fail.
+   [ by eapply H ; tac | ]).
 
 Tactic Notation "evalpartial" constr(H) := evalpartial H by idtac.
 
@@ -235,6 +232,7 @@ Ltac rtcrefl := apply evalrtc_refl' ; repeat f_equal.
 instnop:
   何もしない(NOP)命令。
 *)
+
 Definition instnop : inst := instpair (instpush instpop) instpop.
 
 Lemma evalnop : forall (vs cs : stack), (vs, instnop :: cs) |=>* (vs, cs).
@@ -248,15 +246,15 @@ instseq:
 *)
 Definition instseq' : list inst -> inst -> inst := fold_left instpair.
 
-Lemma evalseq' : forall (is : list inst) (i : inst) (vs cs : stack),
-  (vs, instseq' is i :: cs) |=>* (vs, i :: is ++ cs).
-  induction is ; intros ; [ | evalpartial IHis ] ; evalauto.
+Lemma evalseq' : forall (il : list inst) (i : inst) (vs cs : stack),
+  (vs, instseq' il i :: cs) |=>* (vs, i :: il ++ cs).
+  induction il ; intros ; [ | evalpartial IHil ] ; evalauto.
 Qed.
 
-Definition instseq (is : list inst) : inst := instseq' is instnop.
+Definition instseq (il : list inst) : inst := instseq' il instnop.
 
-Lemma evalseq : forall (is : list inst) (vs cs : stack),
-  (vs, instseq is :: cs) |=>* (vs, is ++ cs).
+Lemma evalseq : forall (il : list inst) (vs cs : stack),
+  (vs, instseq il :: cs) |=>* (vs, il ++ cs).
   intros.
   evalpartial evalseq'.
   evalauto.
@@ -266,7 +264,7 @@ Lemma instseq_replicate : forall (n : nat) (i1 i2 : inst),
   instseq' (replicate n i1) i2 =
     fold_right (flip instpair) i2 (replicate n i1).
   intros.
-  rewrite (replicate_rev_id n i1) at 2.
+  rewrite {2} (replicate_rev_id n i1).
   apply (eq_sym (fold_left_rev_right (flip instpair) (replicate n i1) i2)).
 Qed.
 
