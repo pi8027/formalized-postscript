@@ -230,7 +230,7 @@ instnat_mult, instnatq_mult:
 *)
 Definition instnat_mult : inst := instseq
   [ instswap ; instquote ; instpush instnat_add ; instcons ; instquote ;
-    instsnoc ; instpush (instnat 0) ; instquote ; instsnoc ; instexec ].
+    instsnoc ; instpush (instpush (instnat 0)) ; instsnoc ; instexec ].
 
 Lemma instnat_mult_proof : forall n m i1 i2 vs cs,
   instnat_spec n i1 -> instnat_spec m i2 ->
@@ -274,7 +274,7 @@ instnat_even:
   偶奇判定の命令。
 *)
 Definition instnat_even : inst := instseq
-  [ instpush instnot ; instquote ; instsnoc ;
+  [ instpush (instpush instnot) ; instsnoc ;
     instpush insttrue ; instswap ; instexec ].
 
 Lemma instnat_even_proof :
@@ -331,7 +331,7 @@ instnat_iszero:
   ゼロとの比較をする命令。
 *)
 Definition instnat_iszero : inst := instseq
-  [ instpush instpop ; instpush instfalse ; instquote ;
+  [ instpush instpop ; instpush (instpush instfalse) ;
     instcons ; instquote ; instsnoc ;
     instpush insttrue ; instswap ; instexec ].
 
@@ -363,9 +363,10 @@ instnat_pred:
   自然数から1を引く命令。元の数が0であれば結果も0となる。
 *)
 Definition instnat_pred : inst := instseq
-  [ instpush (instnat 0) ; instquote ; instcopy ; instcons ;
-    instpush (instseq [ instpop ; instcopy ; instnat_succ ; instswap ]) ;
-    instquote ; instcons ; instsnoc ; instexec ; instswap ; instpop ].
+  [ instpush (instpush (instnat 0)) ; instcopy ; instcons ;
+    instpush (instpush (instseq
+      [ instpop ; instcopy ; instnat_succ ; instswap ])) ;
+    instcons ; instsnoc ; instexec ; instswap ; instpop ].
 
 Lemma instnat_pred_proof :
   forall n i1 vs cs, instnat_spec n i1 ->
@@ -401,7 +402,7 @@ instnat_sub:
   減算命令。
 *)
 Definition instnat_sub : inst := instseq
-  [ instpush instnat_pred ; instquote ; instsnoc ; instexec ].
+  [ instpush (instpush instnat_pred) ; instsnoc ; instexec ].
 
 Lemma instnat_sub_proof : forall n m i1 i2 vs cs,
   instnat_spec n i1 -> instnat_spec m i2 ->
@@ -516,9 +517,9 @@ Lemma instnat_eucl_iter_proof' : forall n m q i1 i2 i3 i4 vs cs,
   intros.
   evalauto.
   edestruct (instnat_le_proof' m n i2 i1 _ _ H1 H0 H) as [? [? ?]].
-  evalpartial H4 ; clear H4.
+  evalpartial H4.
   evalauto.
-  evalpartial H3 ; clear x H3.
+  evalpartial H3.
   evalauto.
 Qed.
 
