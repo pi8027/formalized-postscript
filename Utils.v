@@ -34,9 +34,9 @@ Qed.
 rt1n_trans:
   clos_refl_trans_1n は推移関係である。
 *)
-Theorem rt1n_trans' : (forall (A : Type) (R : relation A) (x y z : A),
+Theorem rt1n_trans' : forall (A : Type) (R : relation A) (x y z : A),
   clos_refl_trans_1n A R x y -> clos_refl_trans_1n A R y z ->
-  clos_refl_trans_1n A R x z).
+  clos_refl_trans_1n A R x z.
   intros.
   induction H ; [ | apply (rt1n_trans _ _ _ _ _ H) ] ; auto.
 Qed.

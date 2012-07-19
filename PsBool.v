@@ -9,23 +9,21 @@ instfalse_spec, insttrue_spec, instbool_spec:
   true は swap と同様の振舞いをする命令である。
 *)
 Definition instfalse_spec (i1 : inst) : Prop :=
-  forall (i2 i3 : inst) (vs cs : stack),
-    (i3 :: i2 :: vs, i1 :: cs) |=>* (i3 :: i2 :: vs, cs).
+  forall i2 i3 vs cs, (i3 :: i2 :: vs, i1 :: cs) |=>* (i3 :: i2 :: vs, cs).
 
 Definition insttrue_spec (i1 : inst) : Prop :=
-  forall (i2 i3 : inst) (vs cs : stack),
-    (i3 :: i2 :: vs, i1 :: cs) |=>* (i2 :: i3 :: vs, cs).
+  forall i2 i3 vs cs, (i3 :: i2 :: vs, i1 :: cs) |=>* (i2 :: i3 :: vs, cs).
 
-Definition instbool_spec (b : bool) (i : inst) : Prop :=
+Definition instbool_spec (b : bool) (i : inst) :=
   if b then insttrue_spec i else instfalse_spec i.
 
 (*
 instfalse, insttrue:
   ブール値の仕様を満たす命令。
 *)
-Definition instfalse := instnop.
+Definition instfalse : inst := instnop.
 
-Definition insttrue := instswap.
+Definition insttrue : inst := instswap.
 
 Lemma eval_insttrue : insttrue_spec insttrue.
   repeat intro ; evalauto.
@@ -39,12 +37,11 @@ Qed.
 instnot:
   not 命令。
 *)
-Definition instnot := instseq [ instpush instswap ; instcons ].
+Definition instnot : inst := instpair (instpush instswap) instcons.
 
-Lemma instnot_proof :
-  forall (b : bool) (i1 : inst) (vs cs : stack), instbool_spec b i1 ->
-    exists i2 : inst, instbool_spec (negb b) i2 /\
-    (i1 :: vs, instnot :: cs) |=>* (i2 :: vs, cs).
+Lemma instnot_proof : forall b i1 vs cs, instbool_spec b i1 ->
+  exists i2 : inst, instbool_spec (negb b) i2 /\
+  (i1 :: vs, instnot :: cs) |=>* (i2 :: vs, cs).
   intros ; evalauto ; destruct b ;
     repeat intro ; evalauto ; evalpartial H ; evalauto.
 Qed.
@@ -57,23 +54,23 @@ instif, instexecif:
   instif は、ブール値によってスタックの先頭にある2つの値のうちどちらを残すかを切
   り替える。後者は、instif によって選択される命令を実行する。
 *)
-Definition instif := instseq
+Definition instif : inst := instseq
   [ instquote ;
     instswap ; instquote ; instsnoc ;
     instswap ; instquote ; instcons ;
     instexec ;
     instexec ; instswap ; instpop ].
 
-Lemma eval_instif : forall (b : bool) (i1 i2 i3 : inst) (vs cs : stack),
+Lemma eval_instif : forall b i1 i2 i3 vs cs,
   instbool_spec b i1 -> (i3 :: i2 :: i1 :: vs, instif :: cs) |=>*
     ((if b then i2 else i3) :: vs, cs).
   intros.
   destruct b ; evalauto ; evalpartial H ; evalauto.
 Qed.
 
-Definition instexecif := instseq [ instif ; instexec ].
+Definition instexecif : inst := instseq [ instif ; instexec ].
 
-Lemma eval_instexecif : forall (b : bool) (i1 i2 i3 : inst) (vs cs : stack),
+Lemma eval_instexecif : forall b i1 i2 i3 vs cs,
   instbool_spec b i1 -> (i3 :: i2 :: i1 :: vs, instexecif :: cs) |=>*
     (vs, (if b then i2 else i3) :: cs).
   intros.
@@ -84,9 +81,9 @@ Qed.
 instxor:
   xor 命令。
 *)
-Definition instxor := instcons.
+Definition instxor : inst := instcons.
 
-Lemma instxor_proof : forall (b1 b2 : bool) (i1 i2 : inst) (vs cs : stack),
+Lemma instxor_proof : forall b1 b2 i1 i2 vs cs,
   instbool_spec b1 i1 -> instbool_spec b2 i2 ->
     exists i3 : inst, instbool_spec (xorb b1 b2) i3 /\
     (i2 :: i1 :: vs, instxor :: cs) |=>* (i3 :: vs, cs).

@@ -20,7 +20,7 @@ Inductive inst : Set :=
 inst_countcons:
   命令を構成するコンストラクタの数を計算する。
 *)
-Fixpoint inst_countcons (i : inst) : nat :=
+Fixpoint inst_countcons i : nat :=
   match i with
     | instpush i => S (inst_countcons i)
     | instpair i1 i2 => S (inst_countcons i1 + inst_countcons i2)
@@ -115,8 +115,7 @@ Qed.
 decide_eval:
   環境 e1 から eval によって書き換えられる環境 e2 の存在を決定する。
 *)
-Theorem decide_eval : forall (e1 : environment),
-  decidable (exists e2 : environment, e1 |=> e2).
+Theorem decide_eval : forall e1, decidable (exists e2 : environment, e1 |=> e2).
   intros.
   destruct e1 as [vs [ | [ | | | | | | | ] ps]] ;
     [ |
@@ -136,8 +135,7 @@ Defined.
 uniqueness_of_eval:
   環境 e1 から eval によって書き換えられる環境 e2, e3 は同値である。
 *)
-Theorem uniqueness_of_eval :
-  forall (e1 e2 e3 : environment), e1 |=> e2 -> e1 |=> e3 -> e2 = e3.
+Theorem uniqueness_of_eval : forall e1 e2 e3, e1 |=> e2 -> e1 |=> e3 -> e2 = e3.
   intros.
   destruct e1 as [[ | v vs] [ | [ | | | | | | | ] [ | p ps]]] ;
     inversion H ; inversion H0 ; congruence.
@@ -150,8 +148,8 @@ evalrtc_confluence:
     合流性より強い性質であるが、適切な名前を知らないので仮の名前として
     evalrtc'_confluence とした。
 *)
-Theorem evalrtc_confluence : forall (e1 e2 e3 : environment),
-  e1 |=>* e2 -> e1 |=>* e3 -> e2 |=>* e3 \/ e3 |=>* e2.
+Theorem evalrtc_confluence :
+  forall e1 e2 e3, e1 |=>* e2 -> e1 |=>* e3 -> e2 |=>* e3 \/ e3 |=>* e2.
   intros.
   induction H.
   auto.
@@ -163,12 +161,38 @@ Theorem evalrtc_confluence : forall (e1 e2 e3 : environment),
 Qed.
 
 (*
+eval_apptail, evalrtc_apptail:
+  ある計算が正しければ、その両辺の値スタックや継続スタックの末尾にリストを足した
+  としても正しい計算となる。
+*)
+Lemma eval_apptail :
+  forall vs ps vs' ps' vs'' ps'', (vs, ps) |=> (vs', ps') ->
+  (vs ++ vs'', ps ++ ps'') |=> (vs' ++ vs'', ps' ++ ps'').
+  intros.
+  inversion H ; simpl ; constructor.
+Qed.
+
+Theorem evalrtc_apptail :
+  forall vs ps vs' ps' vs'' ps'', (vs, ps) |=>* (vs', ps') ->
+  (vs ++ vs'', ps ++ ps'') |=>* (vs' ++ vs'', ps' ++ ps'').
+  intros.
+  refine (clos_refl_trans_1n_ind environment eval
+    (fun e1 e2 =>
+      (fst e1 ++ vs'', snd e1 ++ ps'') |=>* (fst e2 ++ vs'', snd e2 ++ ps''))
+    (fun e => _) (fun e1 e2 e3 => _) (vs, ps) (vs', ps') H).
+  * apply evalrtc_refl.
+  * destruct e1, e2, e3 ; simpl.
+    intros.
+    by eapply evalrtc_cons ; [ apply eval_apptail, H0 | ].
+Qed.
+
+(*
 evalstep:
   ゴールが e1 |=>* e2 の形である場合に、e1 から書き換え可能な環境 e3 を計算し、
   ゴールを e3 |=>* e2 で置き換えるタクティク。計算を自動的に1段階進める。
 *)
-Lemma exists_and_right_map : forall (P Q R : inst -> Prop),
-  (forall (i : inst), Q i -> R i) ->
+Lemma exists_and_right_map :
+  forall (P Q R : inst -> Prop), (forall i, Q i -> R i) ->
   (exists i : inst, P i /\ Q i) -> (exists i : inst, P i /\ R i).
   by firstorder.
 Qed.
@@ -235,7 +259,7 @@ instnop:
 
 Definition instnop : inst := instpair (instpush instpop) instpop.
 
-Lemma evalnop : forall (vs cs : stack), (vs, instnop :: cs) |=>* (vs, cs).
+Lemma evalnop : forall vs cs, (vs, instnop :: cs) |=>* (vs, cs).
   intros ; evalauto.
 Qed.
 
@@ -246,35 +270,33 @@ instseq:
 *)
 Definition instseq' : list inst -> inst -> inst := fold_left instpair.
 
-Lemma evalseq' : forall (il : list inst) (i : inst) (vs cs : stack),
-  (vs, instseq' il i :: cs) |=>* (vs, i :: il ++ cs).
+Lemma evalseq' :
+  forall il i vs cs, (vs, instseq' il i :: cs) |=>* (vs, i :: il ++ cs).
   induction il ; intros ; [ | evalpartial IHil ] ; evalauto.
 Qed.
 
-Definition instseq (il : list inst) : inst := instseq' il instnop.
+Definition instseq il : inst := instseq' il instnop.
 
-Lemma evalseq : forall (il : list inst) (vs cs : stack),
-  (vs, instseq il :: cs) |=>* (vs, il ++ cs).
+Lemma evalseq : forall il vs cs, (vs, instseq il :: cs) |=>* (vs, il ++ cs).
   intros.
   evalpartial evalseq'.
   evalauto.
 Qed.
 
-Lemma instseq_replicate : forall (n : nat) (i1 i2 : inst),
-  instseq' (replicate n i1) i2 =
-    fold_right (flip instpair) i2 (replicate n i1).
+Lemma instseq_replicate : forall n i1 i2,
+  instseq' (replicate n i1) i2 = fold_right (flip instpair) i2 (replicate n i1).
   intros.
   rewrite {2} (replicate_rev_id n i1).
   apply (eq_sym (fold_left_rev_right (flip instpair) (replicate n i1) i2)).
 Qed.
 
-Lemma app_instseq' : forall (is1 is2 : list inst) (i : inst),
-  instseq' (is1 ++ is2) i = instseq' is2 (instseq' is1 i).
+Lemma app_instseq' :
+  forall is1 is2 i, instseq' (is1 ++ is2) i = instseq' is2 (instseq' is1 i).
   apply fold_left_app.
 Qed.
 
-Lemma app_instseq : forall (is1 is2 : list inst),
-  instseq (is1 ++ is2) = instseq' is2 (instseq is1).
+Lemma app_instseq :
+  forall is1 is2, instseq (is1 ++ is2) = instseq' is2 (instseq is1).
   intros ; apply app_instseq'.
 Qed.
 
@@ -282,9 +304,9 @@ Qed.
 instsnoc:
   instswap, instcons を順番に実行する。パラメータの順番が反転した instcons。
 *)
-Definition instsnoc : inst := instseq [ instswap ; instcons ].
+Definition instsnoc : inst := instpair instswap instcons.
 
-Lemma evalsnoc : forall (i1 i2 : inst) (vs cs : stack),
+Lemma evalsnoc : forall i1 i2 vs cs,
   (i1 :: i2 :: vs, instsnoc :: cs) |=>* (instpair i1 i2 :: vs, cs).
   intros ; evalauto.
 Qed.
