@@ -109,8 +109,7 @@ Lemma instnatq_eqmap : forall n m, instnatq n = instnatq m -> n = m.
   * f_equal.
     apply IHn.
     move: H.
-    rewrite /instnatq /instseq.
-    repeat erewrite instseq_replicate.
+    rewrite /instnatq /instseq !instseq_replicate.
     by move=> H ; inversion H.
 Qed.
 
@@ -124,9 +123,8 @@ instnat_eqmap:
 Lemma instnat_eqmap :
   forall n m i, instnat_spec n i -> instnat_spec m i -> n = m.
   intros.
-  assert
-    (([], replicate n instpop) |=>* ([], replicate m instpop) \/
-     ([], replicate m instpop) |=>* ([], replicate n instpop)).
+  have H1: (([], replicate n instpop) |=>* ([], replicate m instpop) \/
+      ([], replicate m instpop) |=>* ([], replicate n instpop)).
     apply (evalrtc_confluence ([ instpop ], [ i ])).
     evalpartial H.
     erewrite app_nil_r.
@@ -134,11 +132,11 @@ Lemma instnat_eqmap :
     evalpartial H0.
     erewrite app_nil_r.
     evalauto.
-  assert (replicate n instpop = replicate m instpop).
+  have: (replicate n instpop = replicate m instpop).
     by destruct H1 ; destruct n ; destruct m ; inversion H1 ;
       (inversion H2 || simpl ; f_equal).
   clear H H0 H1.
-  revert m H2 ; induction n ; intro ; destruct m ; simpl ; intros ;
+  move: m ; induction n ; intro ; destruct m ; simpl ; intros ;
     (congruence || f_equal ; apply IHn ; congruence).
 Qed.
 
@@ -198,12 +196,12 @@ Lemma instnat_add_proof : forall n m i1 i2 vs cs,
   intros.
   evalauto.
   evalpartial H.
-  generalize m as m', i2 as i3, H0 ; clear H H0.
+  move: m i2 H0 ; clear H.
   induction n ; intros ; simpl.
   evalauto ; apply H0.
   edestruct (instnat_succ_proof _ _ _ _ H0) as [? [? ?]].
   evalpartial H1.
-  replace (S (n + m')) with (n + S m') by omega ; auto.
+  replace (S (n + m)) with (n + S m) by omega ; auto.
 Qed.
 
 Opaque instnat_add.
@@ -245,7 +243,7 @@ Lemma instnat_mult_proof : forall n m i1 i2 vs cs,
   replace (m * n) with (m * n + 0) by omega.
   generalize 0 as o, (instnat 0) as i3, (eval_instnat 0).
   induction m ; intros ; simpl ; evalauto.
-  apply H0.
+  done.
   edestruct (instnat_add_proof _ _ _ _ _ _ H0 H) as [? [? ?]].
   evalpartial H2.
   replace (n + m * n + o) with (m * n + (o + n)) by omega ; auto.
@@ -287,7 +285,7 @@ Lemma instnat_even_proof :
   evalauto.
   evalpartial H.
   generalize insttrue, H0, eval_insttrue.
-  clear H.
+  clear H H0.
   refine ((fix IHn n :=
     match n with
       | 0 => _
@@ -295,10 +293,10 @@ Lemma instnat_even_proof :
       | S (S n) => _
     end) n) ; intros.
   by evalauto.
-  inversion H1 ; inversion H3.
+  inversion H0 ; inversion H2.
   evalauto.
   apply IHn.
-  by inversion H1 ; inversion H3.
+  by inversion H0 ; inversion H2.
   repeat intro ; evalauto ; evalpartial H ; evalauto.
 Qed.
 
@@ -412,7 +410,7 @@ Lemma instnat_sub_proof : forall n m i1 i2 vs cs,
   intros.
   evalauto.
   evalpartial H0 ; clear H0 i2.
-  revert n i1 H.
+  move: n i1 H.
   induction m ; intros ; simpl.
   evalauto.
   replace (n - 0) with n by omega ; apply H.
@@ -536,12 +534,12 @@ Lemma diveucl_uniqueness : forall (a b : nat) (e1 e2 : diveucl a b),
   end end.
   intros.
   destruct e1, e2.
-  revert b q q0 r r0 e e0 g g0.
+  move: b q q0 r r0 e e0 g g0.
   apply (gt_wf_rec a) ; intros.
   destruct (dec_le b n).
   destruct q. simpl in * ; omega.
   destruct q0. simpl in * ; omega.
-  assert (q = q0 /\ r = r0).
+  have H1 : (q = q0 /\ r = r0).
     simpl in * ; refine (H (n - b) _ b q q0 r r0 _ _ _ _) ; omega.
   omega.
   destruct q.
@@ -561,7 +559,7 @@ Lemma instnat_eucl_proof : forall (n m : nat) (eucl : diveucl n m) i1 i2 vs cs,
   intros.
   destruct eucl.
   evalauto.
-  assert (forall r' q' i1 i3,
+  have H1 : (forall r' q' i1 i3,
     instnat_spec r' i1 -> instnat_spec q' i3 -> n = q' * m + r' ->
     exists i4 : inst, instnat_spec q i4 /\
     exists i5 : inst, instnat_spec r i5 /\
@@ -581,10 +579,8 @@ Lemma instnat_eucl_proof : forall (n m : nat) (eucl : diveucl n m) i1 i2 vs cs,
     evalpartial (instnat_eucl_iter_proof' n0 m q'
       i1 i2 i3 instnat_eucl_iter vs cs H4 H1 H0 H2).
     destruct (diveucl_uniqueness n m
-        (divex n m q r g e) (divex n m q' n0 (not_le _ _ H4) H3)).
-    evalauto.
-    by rewrite H5.
-    by rewrite H6.
+      (divex n m q r g e) (divex n m q' n0 (not_le _ _ H4) H3)).
+    by rewrite H5 H6 ; evalauto.
   by apply (H1 n 0 i1 (instnat 0) H (eval_instnat 0)).
 Qed.
 

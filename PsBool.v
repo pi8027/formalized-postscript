@@ -68,7 +68,7 @@ Lemma eval_instif : forall b i1 i2 i3 vs cs,
   destruct b ; evalauto ; evalpartial H ; evalauto.
 Qed.
 
-Definition instexecif : inst := instseq [ instif ; instexec ].
+Definition instexecif : inst := instpair instif instexec.
 
 Lemma eval_instexecif : forall b i1 i2 i3 vs cs,
   instbool_spec b i1 -> (i3 :: i2 :: i1 :: vs, instexecif :: cs) |=>*

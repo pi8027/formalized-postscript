@@ -116,19 +116,18 @@ decide_eval:
   環境 e1 から eval によって書き換えられる環境 e2 の存在を決定する。
 *)
 Theorem decide_eval : forall e1, decidable (exists e2 : environment, e1 |=> e2).
-  intros.
-  destruct e1 as [vs [ | [ | | | | | | | ] ps]] ;
-    [ |
-     destruct vs |
-     destruct vs |
-     destruct vs as [ | ? [ | ? ?]] |
-     destruct vs as [ | ? [ | ? ?]] |
-     destruct vs |
-     destruct vs |
-      |
-      ] ;
-    (by right ; intro ; do 2 inversion 0) ||
-    (by left ; eexists ; constructor).
+  elim=> [vs [ | [ | | | | | | | ] ps]] ;
+  [ |
+   destruct vs |
+   destruct vs |
+   destruct vs as [ | ? [ | ? ?]] |
+   destruct vs as [ | ? [ | ? ?]] |
+   destruct vs |
+   destruct vs |
+    |
+    ] ;
+  (by right ; intro ; do 2 inversion 0) ||
+  (by left ; eexists ; constructor).
 Defined.
 
 (*
@@ -287,7 +286,7 @@ Lemma instseq_replicate : forall n i1 i2,
   instseq' (replicate n i1) i2 = fold_right (flip instpair) i2 (replicate n i1).
   intros.
   rewrite {2} (replicate_rev_id n i1).
-  apply (eq_sym (fold_left_rev_right (flip instpair) (replicate n i1) i2)).
+  apply eq_sym, fold_left_rev_right.
 Qed.
 
 Lemma app_instseq' :
