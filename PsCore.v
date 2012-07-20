@@ -203,14 +203,14 @@ Ltac evalstep_0 e1 e2 :=
   end.
 
 Ltac evalstep_1 e1 e2 :=
-  (eexists ; split ; [ | apply evalrtc_refl ]) ||
+  (eexists ; split ; last apply evalrtc_refl) ||
   match eval hnf in (decide_eval e1) with
     | or_introl _ (ex_intro _ ?e3 ?p) =>
       apply (exists_and_right_map _ _ _ (fun _ => evalrtc_cons _ _ _ p))
   end.
 
 Ltac evalstep_2 e1 e2 :=
-  (eexists ; split ; [ | eexists ; split ; [ | apply evalrtc_refl ] ]) ||
+  (eexists ; split ; last (eexists ; split ; last apply evalrtc_refl)) ||
   match eval hnf in (decide_eval e1) with
     | or_introl _ (ex_intro _ ?e3 ?p) =>
       apply (exists_and_right_map _ _ _ (fun _ =>
@@ -221,7 +221,8 @@ Ltac evalstep :=
   match goal with
     | |- ?e1 |=>* ?e2 => evalstep_0 e1 e2
     | |- exists i1 : inst, _ /\ ?e1 |=>* ?e2 => evalstep_1 e1 e2
-    | |- exists i1 : inst, _ /\ exists i2 : inst, _ /\ ?e1 |=>* ?e2 => evalstep_2 e1 e2
+    | |- exists i1 : inst, _ /\ exists i2 : inst, _ /\ ?e1 |=>* ?e2 =>
+      evalstep_2 e1 e2
   end.
 
 (*
@@ -271,7 +272,7 @@ Definition instseq' : list inst -> inst -> inst := fold_left instpair.
 
 Lemma evalseq' :
   forall il i vs cs, (vs, instseq' il i :: cs) |=>* (vs, i :: il ++ cs).
-  induction il ; intros ; [ | evalpartial IHil ] ; evalauto.
+  induction il ; intros ; last evalpartial IHil ; evalauto.
 Qed.
 
 Definition instseq il : inst := instseq' il instnop.
