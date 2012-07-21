@@ -471,10 +471,10 @@ Qed.
 Opaque instnat_le.
 
 (*
-instnat_mod:
+instnat_eucl:
   割り算を行い、商と余りを計算する命令。
 *)
-Definition instnat_mod_iter : inst := instseq
+Definition instnat_eucl_iter : inst := instseq
   [ instquote ;
     instswap ; instquote ; instcons ;
     instswap ; instquote ; instcons ;
@@ -500,12 +500,12 @@ Definition instnat_mod_iter : inst := instseq
         instpop ; instswap ; instpop ; instswap ] ;
     instexecif ].
 
-Lemma instnat_mod_iter_proof :
+Lemma instnat_eucl_iter_proof :
   forall (n m q : nat) (i1 i2 i3 i4 : inst) (vs cs : stack),
   m <= n -> instnat_spec n i1 -> instnat_spec m i2 -> instnat_spec q i3 ->
     exists i1' : inst, instnat_spec (n - m) i1' /\
     exists i3' : inst, instnat_spec (S q) i3' /\
-    (i4 :: i3 :: i2 :: i1 :: vs, instnat_mod_iter :: cs) |=>*
+    (i4 :: i3 :: i2 :: i1 :: vs, instnat_eucl_iter :: cs) |=>*
     (i4 :: i3' :: i2 :: i1' :: vs, i4 :: cs).
   intros.
   evalauto.
@@ -523,10 +523,10 @@ Lemma instnat_mod_iter_proof :
   apply (eval_instnat (S q)).
 Qed.
 
-Lemma instnat_mod_iter_proof' :
+Lemma instnat_eucl_iter_proof' :
   forall (n m q : nat) (i1 i2 i3 i4 : inst) (vs cs : stack),
   ~ (m <= n) -> instnat_spec n i1 -> instnat_spec m i2 -> instnat_spec q i3 ->
-    (i4 :: i3 :: i2 :: i1 :: vs, instnat_mod_iter :: cs) |=>*
+    (i4 :: i3 :: i2 :: i1 :: vs, instnat_eucl_iter :: cs) |=>*
     (i1 :: i3 :: vs, cs).
   intros.
   evalauto.
@@ -537,10 +537,10 @@ Lemma instnat_mod_iter_proof' :
   evalauto.
 Qed.
 
-Opaque instnat_mod_iter.
+Opaque instnat_eucl_iter.
 
-Definition instnat_mod : inst := instseq
-  [ instpush ; instnat 0 ; instpush ; instnat_mod_iter ; instdup ; instexec ].
+Definition instnat_eucl : inst := instseq
+  [ instpush ; instnat 0 ; instpush ; instnat_eucl_iter ; instdup ; instexec ].
 
 Lemma diveucl_uniqueness : forall (a b : nat) (e1 e2 : diveucl a b),
   match e1 with divex q r _ _ =>
@@ -564,13 +564,13 @@ Lemma diveucl_uniqueness : forall (a b : nat) (e1 e2 : diveucl a b),
   simpl in *. generalize (q * b), e ; intros ; omega.
 Qed.
 
-Lemma instnat_mod_proof :
+Lemma instnat_eucl_proof :
   forall (n m : nat) (i1 i2 : inst) (vs cs : stack) (eucl : diveucl n m),
   instnat_spec n i1 -> instnat_spec m i2 ->
   match eucl with divex q r _ _ =>
     exists i3 : inst, instnat_spec q i3 /\
     exists i4 : inst, instnat_spec r i4 /\
-    (i2 :: i1 :: vs, instnat_mod :: cs) |=>* (i4 :: i3 :: vs, cs)
+    (i2 :: i1 :: vs, instnat_eucl :: cs) |=>* (i4 :: i3 :: vs, cs)
   end.
   intros.
   destruct eucl.
@@ -579,21 +579,21 @@ Lemma instnat_mod_proof :
     instnat_spec r' i1 -> instnat_spec q' i3 -> n = q' * m + r' ->
     exists i4 : inst, instnat_spec q i4 /\
     exists i5 : inst, instnat_spec r i5 /\
-    (instnat_mod_iter :: i3 :: i2 :: i1 :: vs, instnat_mod_iter :: cs)
+    (instnat_eucl_iter :: i3 :: i2 :: i1 :: vs, instnat_eucl_iter :: cs)
     |=>* (i5 :: i4 :: vs, cs)).
     clear H i1.
     intro.
     apply (gt_wf_rec r').
     intros.
     destruct (dec_le m n0).
-    edestruct (instnat_mod_iter_proof n0 m q'
-      i1 i2 i3 instnat_mod_iter _ _ H4 H1 H0 H2) as [? [? [? [? ?]]]].
+    edestruct (instnat_eucl_iter_proof n0 m q'
+      i1 i2 i3 instnat_eucl_iter _ _ H4 H1 H0 H2) as [? [? [? [? ?]]]].
     evalpartial H7 ; clear H7.
     refine (H (n0 - m) _ (S q') x x0 H5 H6 _).
     omega.
     simpl ; omega.
-    evalpartial (instnat_mod_iter_proof' n0 m q'
-      i1 i2 i3 instnat_mod_iter vs cs H4 H1 H0 H2).
+    evalpartial (instnat_eucl_iter_proof' n0 m q'
+      i1 i2 i3 instnat_eucl_iter vs cs H4 H1 H0 H2).
     destruct (diveucl_uniqueness n m
         (divex n m q r g e) (divex n m q' n0 (not_le _ _ H4) H3)).
     evalauto.
@@ -603,4 +603,4 @@ Lemma instnat_mod_proof :
   auto.
 Qed.
 
-Opaque instnat_mod.
+Opaque instnat_eucl.
