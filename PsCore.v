@@ -17,13 +17,13 @@ Inductive inst : Set :=
   | instpair  : inst -> inst -> inst.
 
 (*
-inst_countcons:
+inst_length:
   命令を構成するコンストラクタの数を計算する。
 *)
-Fixpoint inst_countcons i : nat :=
+Fixpoint inst_length i : nat :=
   match i with
-    | instpush i => S (inst_countcons i)
-    | instpair i1 i2 => S (inst_countcons i1 + inst_countcons i2)
+    | instpush i => S (inst_length i)
+    | instpair i1 i2 => S (inst_length i1 + inst_length i2)
     | _ => 1
   end.
 

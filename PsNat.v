@@ -470,8 +470,7 @@ Definition instnat_eucl_iter : inst := instseq
     instquote ; instcopy ; instcons ; instswap ;
     instquote ; instcons ; instexec ;
     instquote ; instcopy ; instcons ; instswap ;
-    instquote ; instcons ; instexec ; instswap ;
-    instswap ; instnat_le ;
+    instquote ; instcons ; instexec ; instnat_le ;
     instpush (instseq
       [ instquote ; instcopy ; instcons ;
         instswap ; instquote ; instcons ; instexec ;
