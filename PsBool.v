@@ -1,6 +1,6 @@
 Require Import ssreflect.
 Require Import Basics Relations List.
-Require Import Utils PsCore.
+Require Import Common PsCore.
 
 (*
 instfalse_spec, insttrue_spec, instbool_spec:
@@ -55,11 +55,9 @@ instif, instexecif:
   り替える。後者は、instif によって選択される命令を実行する。
 *)
 Definition instif : inst := instseq
-  [ instquote ;
-    instswap ; instquote ; instsnoc ;
-    instswap ; instquote ; instcons ;
-    instexec ;
-    instexec ; instswap ; instpop ].
+  [ instquote ; instswap ; instquote ; instcons ;
+    instswap ; instquote ; instcons ; instexec ;
+    instexec ; instpop ].
 
 Lemma eval_instif : forall b i1 i2 i3 vs cs,
   instbool_spec b i1 -> (i3 :: i2 :: i1 :: vs, instif :: cs) |=>*

@@ -1,6 +1,6 @@
 Require Import ssreflect.
-Require Import Basics Relations Relation_Operators Logic.Decidable List.
-Require Import Utils.
+Require Import Basics Relations Relation_Operators Logic.Decidable List Program.Equality.
+Require Import Common.
 
 (*
 inst:
@@ -80,34 +80,34 @@ Inductive eval : relation environment :=
 evalrtc:
   eval の反射推移閉包。
 *)
-Definition evalrtc : relation environment := clos_refl_trans_1n _ eval.
+Definition evalrtc : relation environment := clos_refl_trans_1n environment eval.
 
 (*
-|=>, |=>*, |=>*':
-  eval, evalrtc, evalrtc' の中置演算子。
+|=>, |=>*:
+  eval, evalrtc の中置演算子。
 *)
 Infix "|=>" := eval (at level 50, no associativity).
 Infix "|=>*" := evalrtc (at level 50, no associativity).
 
-Theorem evalrtc_refl : forall e, e |=>* e.
+Lemma evalrtc_refl : forall e, e |=>* e.
   constructor.
 Qed.
 
-Theorem evalrtc_refl' : forall e1 e2, e1 = e2 -> e1 |=>* e2.
+Lemma evalrtc_refl' : forall e1 e2, e1 = e2 -> e1 |=>* e2.
   move=> e1 e2 H.
   rewrite H.
   constructor.
 Qed.
 
-Theorem evalrtc_step : forall e1 e2, e1 |=> e2 -> e1 |=>* e2.
-  repeat (eauto || econstructor).
+Lemma evalrtc_step : forall e1 e2, e1 |=> e2 -> e1 |=>* e2.
+  do !econstructor ; eauto.
 Qed.
 
-Theorem evalrtc_cons : forall e1 e2 e3, e1 |=> e2 -> e2 |=>* e3 -> e1 |=>* e3.
+Lemma evalrtc_cons : forall e1 e2 e3, e1 |=> e2 -> e2 |=>* e3 -> e1 |=>* e3.
   econstructor ; eauto.
 Qed.
 
-Theorem evalrtc_trans : forall e1 e2 e3, e1 |=>* e2 -> e2 |=>* e3 -> e1 |=>* e3.
+Lemma evalrtc_trans : forall e1 e2 e3, e1 |=>* e2 -> e2 |=>* e3 -> e1 |=>* e3.
   by apply rt1n_trans'.
 Qed.
 
@@ -131,32 +131,27 @@ Theorem decide_eval : forall e1, decidable (exists e2 : environment, e1 |=> e2).
 Defined.
 
 (*
-uniqueness_of_eval:
+eval_uniqueness:
   環境 e1 から eval によって書き換えられる環境 e2, e3 は同値である。
 *)
-Theorem uniqueness_of_eval : forall e1 e2 e3, e1 |=> e2 -> e1 |=> e3 -> e2 = e3.
+Theorem eval_uniqueness : forall e1 e2 e3, e1 |=> e2 -> e1 |=> e3 -> e2 = e3.
   intros.
   destruct e1 as [[ | v vs] [ | [ | | | | | | | ] [ | p ps]]] ;
     inversion H ; inversion H0 ; congruence.
 Qed.
 
 (*
-evalrtc_confluence:
+eval_semi_uniqueness:
   e1 |=>* e2 かつ e1 |=>* e3 ならば e2 |=>* e3 もしくは e3 |=>* e2 が成り立つ。
-  NOTE:
-    合流性より強い性質であるが、適切な名前を知らないので仮の名前として
-    evalrtc'_confluence とした。
 *)
-Theorem evalrtc_confluence :
+Theorem eval_semi_uniqueness:
   forall e1 e2 e3, e1 |=>* e2 -> e1 |=>* e3 -> e2 |=>* e3 \/ e3 |=>* e2.
   intros.
   induction H.
   auto.
   inversion H0.
-  right.
-  rewrite <- H2.
-  econstructor ; eauto.
-  by apply IHclos_refl_trans_1n ; rewrite (uniqueness_of_eval _ _ _ H H2).
+  right ; rewrite <- H2 ; econstructor ; eauto.
+  by apply IHclos_refl_trans_1n ; rewrite (eval_uniqueness _ _ _ H H2).
 Qed.
 
 (*
@@ -175,14 +170,11 @@ Theorem evalrtc_apptail :
   forall vs ps vs' ps' vs'' ps'', (vs, ps) |=>* (vs', ps') ->
   (vs ++ vs'', ps ++ ps'') |=>* (vs' ++ vs'', ps' ++ ps'').
   intros.
-  refine (clos_refl_trans_1n_ind environment eval
-    (fun e1 e2 =>
-      (fst e1 ++ vs'', snd e1 ++ ps'') |=>* (fst e2 ++ vs'', snd e2 ++ ps''))
-    (fun e => _) (fun e1 e2 e3 => _) (vs, ps) (vs', ps') H).
-  * apply evalrtc_refl.
-  * destruct e1, e2, e3 ; simpl.
-    intros.
-    by eapply evalrtc_cons ; [ apply eval_apptail, H0 | ].
+  dependent induction H.
+  constructor.
+  destruct y.
+  by apply evalrtc_cons with (s ++ vs'', s0 ++ ps'') ;
+    [ apply eval_apptail | apply IHclos_refl_trans_1n].
 Qed.
 
 (*
@@ -229,14 +221,14 @@ Ltac evalstep :=
 evalauto:
   evalstep を適用できなくなるまで繰り返す。
 *)
-Ltac evalauto := evalstep ; repeat evalstep.
+Ltac evalauto := do !evalstep.
 
 (*
 evalpartial:
   指定した関数を適用することで計算を途中まで進める。
 *)
 Tactic Notation "evalpartial" constr(H) "by" tactic(tac) :=
-  (eapply  evalrtc_trans ;
+  (eapply evalrtc_trans ;
    [ by eapply H ; tac | ]) ||
   (refine (exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ _ _ _) _) ;
    [ by eapply H ; tac | ]) ||
@@ -256,10 +248,20 @@ Ltac rtcrefl := apply evalrtc_refl' ; repeat f_equal.
 instnop:
   何もしない(NOP)命令。
 *)
-
 Definition instnop : inst := instpair (instpush instpop) instpop.
 
 Lemma evalnop : forall vs cs, (vs, instnop :: cs) |=>* (vs, cs).
+  intros ; evalauto.
+Qed.
+
+(*
+instsnoc:
+  instswap, instcons を順番に実行する。パラメータの順番が反転した instcons。
+*)
+Definition instsnoc : inst := instpair instswap instcons.
+
+Lemma evalsnoc : forall i1 i2 vs cs,
+  (i1 :: i2 :: vs, instsnoc :: cs) |=>* (instpair i1 i2 :: vs, cs).
   intros ; evalauto.
 Qed.
 
@@ -272,7 +274,7 @@ Definition instseq' : list inst -> inst -> inst := fold_left instpair.
 
 Lemma evalseq' :
   forall il i vs cs, (vs, instseq' il i :: cs) |=>* (vs, i :: il ++ cs).
-  induction il ; intros ; last evalpartial IHil ; evalauto.
+  elim ; intros ; last evalpartial H ; evalauto.
 Qed.
 
 Definition instseq il : inst := instseq' il instnop.
@@ -298,15 +300,4 @@ Qed.
 Lemma app_instseq :
   forall is1 is2, instseq (is1 ++ is2) = instseq' is2 (instseq is1).
   intros ; apply app_instseq'.
-Qed.
-
-(*
-instsnoc:
-  instswap, instcons を順番に実行する。パラメータの順番が反転した instcons。
-*)
-Definition instsnoc : inst := instpair instswap instcons.
-
-Lemma evalsnoc : forall i1 i2 vs cs,
-  (i1 :: i2 :: vs, instsnoc :: cs) |=>* (instpair i1 i2 :: vs, cs).
-  intros ; evalauto.
 Qed.
