@@ -16,12 +16,14 @@ Fixpoint replicate {A : Set} (n : nat) (a : A) :=
 
 Lemma replicate_app : forall {A : Set} (n m : nat) (a : A),
   replicate n a ++ replicate m a = replicate (n + m) a.
+Proof.
   intros.
   by induction n ; last simpl ; f_equal.
 Qed.
 
 Lemma replicate_rev_id :
   forall {A : Set} (n : nat) (a : A), replicate n a = rev (replicate n a).
+Proof.
   intros.
   induction n.
   auto.
@@ -37,6 +39,7 @@ rt1n_trans:
 Lemma rt1n_trans' : forall (A : Type) (R : relation A) (x y z : A),
   clos_refl_trans_1n A R x y -> clos_refl_trans_1n A R y z ->
   clos_refl_trans_1n A R x z.
+Proof.
   intros.
   induction H ; last apply (rt1n_trans _ _ _ _ _ H) ; auto.
 Qed.

@@ -90,24 +90,27 @@ Infix "|=>" := eval (at level 50, no associativity).
 Infix "|=>*" := evalrtc (at level 50, no associativity).
 
 Lemma evalrtc_refl : forall e, e |=>* e.
+Proof.
   constructor.
 Qed.
 
 Lemma evalrtc_refl' : forall e1 e2, e1 = e2 -> e1 |=>* e2.
-  move=> e1 e2 H.
-  rewrite H.
-  constructor.
+Proof.
+  move=> e1 e2 H ; rewrite H ; constructor.
 Qed.
 
 Lemma evalrtc_step : forall e1 e2, e1 |=> e2 -> e1 |=>* e2.
+Proof.
   do !econstructor ; eauto.
 Qed.
 
 Lemma evalrtc_cons : forall e1 e2 e3, e1 |=> e2 -> e2 |=>* e3 -> e1 |=>* e3.
+Proof.
   econstructor ; eauto.
 Qed.
 
 Lemma evalrtc_trans : forall e1 e2 e3, e1 |=>* e2 -> e2 |=>* e3 -> e1 |=>* e3.
+Proof.
   by apply rt1n_trans'.
 Qed.
 
@@ -116,6 +119,7 @@ decide_eval:
   環境 e1 から eval によって書き換えられる環境 e2 の存在を決定する。
 *)
 Theorem decide_eval : forall e1, decidable (exists e2 : environment, e1 |=> e2).
+Proof.
   elim=> [vs [ | [ | | | | | | | ] ps]] ;
   [ |
    destruct vs |
@@ -135,6 +139,7 @@ eval_uniqueness:
   環境 e1 から eval によって書き換えられる環境 e2, e3 は同値である。
 *)
 Theorem eval_uniqueness : forall e1 e2 e3, e1 |=> e2 -> e1 |=> e3 -> e2 = e3.
+Proof.
   intros.
   destruct e1 as [[ | v vs] [ | [ | | | | | | | ] [ | p ps]]] ;
     inversion H ; inversion H0 ; congruence.
@@ -146,6 +151,7 @@ eval_semi_uniqueness:
 *)
 Theorem eval_semi_uniqueness:
   forall e1 e2 e3, e1 |=>* e2 -> e1 |=>* e3 -> e2 |=>* e3 \/ e3 |=>* e2.
+Proof.
   intros.
   induction H.
   auto.
@@ -162,6 +168,7 @@ eval_apptail, evalrtc_apptail:
 Lemma eval_apptail :
   forall vs ps vs' ps' vs'' ps'', (vs, ps) |=> (vs', ps') ->
   (vs ++ vs'', ps ++ ps'') |=> (vs' ++ vs'', ps' ++ ps'').
+Proof.
   intros.
   inversion H ; simpl ; constructor.
 Qed.
@@ -169,6 +176,7 @@ Qed.
 Theorem evalrtc_apptail :
   forall vs ps vs' ps' vs'' ps'', (vs, ps) |=>* (vs', ps') ->
   (vs ++ vs'', ps ++ ps'') |=>* (vs' ++ vs'', ps' ++ ps'').
+Proof.
   intros.
   dependent induction H.
   constructor.
@@ -185,6 +193,7 @@ evalstep:
 Lemma exists_and_right_map :
   forall (P Q R : inst -> Prop), (forall i, Q i -> R i) ->
   (exists i : inst, P i /\ Q i) -> (exists i : inst, P i /\ R i).
+Proof.
   by firstorder.
 Qed.
 
@@ -251,6 +260,7 @@ instnop:
 Definition instnop : inst := instpair (instpush instpop) instpop.
 
 Lemma evalnop : forall vs cs, (vs, instnop :: cs) |=>* (vs, cs).
+Proof.
   intros ; evalauto.
 Qed.
 
@@ -262,6 +272,7 @@ Definition instsnoc : inst := instpair instswap instcons.
 
 Lemma evalsnoc : forall i1 i2 vs cs,
   (i1 :: i2 :: vs, instsnoc :: cs) |=>* (instpair i1 i2 :: vs, cs).
+Proof.
   intros ; evalauto.
 Qed.
 
@@ -274,12 +285,14 @@ Definition instseq' : list inst -> inst -> inst := fold_left instpair.
 
 Lemma evalseq' :
   forall il i vs cs, (vs, instseq' il i :: cs) |=>* (vs, i :: il ++ cs).
+Proof.
   elim ; intros ; last evalpartial H ; evalauto.
 Qed.
 
 Definition instseq il : inst := instseq' il instnop.
 
 Lemma evalseq : forall il vs cs, (vs, instseq il :: cs) |=>* (vs, il ++ cs).
+Proof.
   intros.
   evalpartial evalseq'.
   evalauto.
@@ -287,6 +300,7 @@ Qed.
 
 Lemma instseq_replicate : forall n i1 i2,
   instseq' (replicate n i1) i2 = fold_right (flip instpair) i2 (replicate n i1).
+Proof.
   intros.
   rewrite {2} (replicate_rev_id n i1).
   apply eq_sym, fold_left_rev_right.
@@ -294,10 +308,12 @@ Qed.
 
 Lemma app_instseq' :
   forall is1 is2 i, instseq' (is1 ++ is2) i = instseq' is2 (instseq' is1 i).
+Proof.
   apply fold_left_app.
 Qed.
 
 Lemma app_instseq :
   forall is1 is2, instseq (is1 ++ is2) = instseq' is2 (instseq is1).
+Proof.
   intros ; apply app_instseq'.
 Qed.
