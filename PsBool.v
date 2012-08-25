@@ -1,6 +1,5 @@
-Require Import ssreflect.
-Require Import Basics Relations List.
-Require Import Common PsCore.
+Require Import
+  Program.Basics Relations.Relations Lists.List ssreflect Common PsCore.
 
 (*
 instfalse_spec, insttrue_spec, instbool_spec:

@@ -1,8 +1,7 @@
-Require Import ssreflect.
 Require Import
   Arith.Even Arith.Wf_nat Arith.Euclid
-  List Basics Relations Omega ArithRing.
-Require Import Common PsCore PsBool.
+  Lists.List Program.Basics Relations.Relations Omega ArithRing
+  ssreflect Common PsCore PsBool.
 
 (*
 instincr:

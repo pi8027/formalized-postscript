@@ -1,5 +1,5 @@
-Require Import ssreflect.
-Require Import List Relations Relation_Operators Omega.
+Require Import
+  Relations.Relations Relations.Relation_Operators Lists.List Omega ssreflect.
 
 Notation "[]" := nil : list_scope.
 Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..) : list_scope.

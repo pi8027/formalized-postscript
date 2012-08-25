@@ -1,6 +1,7 @@
-Require Import ssreflect.
-Require Import Basics Relations Relation_Operators Logic.Decidable List Program.Equality.
-Require Import Common.
+Require Import
+  Logic.Decidable Relations.Relations Relations.Relation_Operators
+  Lists.List Program.Basics Program.Equality
+  ssreflect Common.
 
 (*
 inst:
@@ -80,7 +81,8 @@ Inductive eval : relation environment :=
 evalrtc:
   eval の反射推移閉包。
 *)
-Definition evalrtc : relation environment := clos_refl_trans_1n environment eval.
+Definition evalrtc : relation environment :=
+  clos_refl_trans_1n environment eval.
 
 (*
 |=>, |=>*:
@@ -302,7 +304,7 @@ Lemma instseq_replicate : forall n i1 i2,
   instseq' (replicate n i1) i2 = fold_right (flip instpair) i2 (replicate n i1).
 Proof.
   intros.
-  rewrite {2} (replicate_rev_id n i1).
+  rewrite {2} replicate_rev_id.
   apply eq_sym, fold_left_rev_right.
 Qed.
 
