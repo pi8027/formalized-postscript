@@ -1,5 +1,5 @@
 Require Import
-  Program.Basics Relations.Relations Lists.List ssreflect Common PsCore.
+  Relations.Relations Lists.List Program.Basics ssreflect Common PsCore.
 
 (*
 instfalse_spec, insttrue_spec, instbool_spec:
@@ -17,67 +17,90 @@ Definition instbool_spec (b : bool) (i : inst) :=
   if b then insttrue_spec i else instfalse_spec i.
 
 (*
-instfalse, insttrue:
+exists_false, exists_true:
   ブール値の仕様を満たす命令。
 *)
-Definition instfalse : inst := instnop.
 
-Definition insttrue : inst := instswap.
-
-Lemma eval_insttrue : insttrue_spec insttrue.
+Lemma exists_false : { instfalse : inst | instfalse_spec instfalse }.
 Proof.
-  repeat intro ; evalauto.
-Qed.
+  eexists ; move=> i1 i2 vs cs.
+  evalpartial propnop.
+  constructor.
+Defined.
 
-Lemma eval_instfalse : instfalse_spec instfalse.
+Definition instfalse := proj1_sig exists_false.
+Definition propfalse := proj2_sig exists_false.
+
+Lemma exists_true : { insttrue : inst | insttrue_spec insttrue }.
 Proof.
-  repeat intro ; evalauto.
-Qed.
+  eexists ; move=> i1 i2 vs cs.
+  evalpartial evalswap.
+  constructor.
+Defined.
+
+Definition insttrue := proj1_sig exists_true.
+Definition proptrue := proj2_sig exists_true.
 
 (*
-instnot:
+exists_not:
   not 命令。
 *)
-Definition instnot : inst := instpair (instpush instswap) instcons.
-
-Lemma instnot_proof : forall b i1 vs cs, instbool_spec b i1 ->
+Lemma exists_not : { instnot : inst |
+  forall b i1 vs cs, instbool_spec b i1 ->
   exists i2 : inst, instbool_spec (negb b) i2 /\
-  (i1 :: vs, instnot :: cs) |=>* (i2 :: vs, cs).
+  (i1 :: vs, instnot :: cs) |=>* (i2 :: vs, cs) }.
 Proof.
-  intros ; evalauto ; destruct b ;
-    repeat intro ; evalauto ; evalpartial H ; evalauto.
-Qed.
+  eexists ; move=> b i1 vs cs H.
+  evalpartial evalpair.
+  evalpartial (evalpush instswap).
+  evalpartial evalcons.
+  evalauto.
+  destruct b ; move=> i2 i3 vs' cs' ;
+    evalauto ; evalpartial H ; evalauto.
+Defined.
 
-Opaque instnot.
+Definition instnot := proj1_sig exists_not.
+Definition propnot := proj2_sig exists_not.
 
 (*
-instif, instexecif:
+exists_if, exists_execif:
   ブール値による条件分岐の命令。
   instif は、ブール値によってスタックの先頭にある2つの値のうちどちらを残すかを切
   り替える。後者は、instif によって選択される命令を実行する。
 *)
-Definition instif : inst := instseq
-  [ instquote ; instswap ; instquote ; instcons ;
-    instswap ; instquote ; instcons ; instexec ;
-    instexec ; instpop ].
-
-Lemma eval_instif : forall b i1 i2 i3 vs cs,
-  instbool_spec b i1 -> (i3 :: i2 :: i1 :: vs, instif :: cs) |=>*
-    ((if b then i2 else i3) :: vs, cs).
+Lemma exists_if : { instif : inst |
+  forall b i1 i2 i3 vs cs, instbool_spec b i1 ->
+  (i3 :: i2 :: i1 :: vs, instif :: cs) |=>*
+  ((if b then i2 else i3) :: vs, cs) }.
 Proof.
-  intros.
-  destruct b ; evalauto ; evalpartial H ; evalauto.
+  eexists ; move=> b i1 i2 i3 vs cs H.
+  evalpartial evalpair. evalpartial evalquote.
+  evalpartial evalpair. evalpartial evalswap.
+  evalpartial evalpair. evalpartial evalquote.
+  evalpartial evalpair. evalpartial evalcons.
+  evalpartial evalpair. evalpartial propsnoc.
+  evalpartial evalpair. evalpartial evalexec.
+  evalauto.
+  destruct b ; evalpartial H ; evalpartial evalpop ; evalauto.
+Defined.
+
+Definition instif := proj1_sig exists_if.
+Definition propif := proj2_sig exists_if.
+
+Lemma exists_execif : { instexecif : inst |
+  forall b i1 i2 i3 vs cs, instbool_spec b i1 ->
+  (i3 :: i2 :: i1 :: vs, instexecif :: cs) |=>*
+  (vs, (if b then i2 else i3) :: cs) }.
+Proof.
+  eexists ; move=> b i1 i2 i3 vs cs H.
+  evalpartial evalpair.
+  evalpartial (propif b) by auto.
+  evalpartial evalexec.
+  evalauto.
 Qed.
 
-Definition instexecif : inst := instpair instif instexec.
-
-Lemma eval_instexecif : forall b i1 i2 i3 vs cs,
-  instbool_spec b i1 -> (i3 :: i2 :: i1 :: vs, instexecif :: cs) |=>*
-    (vs, (if b then i2 else i3) :: cs).
-Proof.
-  intros.
-  destruct b ; evalauto ; evalpartial H ; evalauto.
-Qed.
+Definition instexecif := proj1_sig exists_execif.
+Definition propexecif := proj2_sig exists_execif.
 
 (*
 instxor:
@@ -85,13 +108,11 @@ instxor:
 *)
 Definition instxor : inst := instcons.
 
-Lemma instxor_proof : forall b1 b2 i1 i2 vs cs,
+Lemma propxor : forall b1 b2 i1 i2 vs cs,
   instbool_spec b1 i1 -> instbool_spec b2 i2 ->
-    exists i3 : inst, instbool_spec (xorb b1 b2) i3 /\
-    (i2 :: i1 :: vs, instxor :: cs) |=>* (i3 :: vs, cs).
+  exists i3 : inst, instbool_spec (xorb b1 b2) i3 /\
+  (i2 :: i1 :: vs, instxor :: cs) |=>* (i3 :: vs, cs).
 Proof.
   intros ; evalauto ; destruct b1, b2 ; repeat intro ;
     evalauto ; evalpartial H ; evalpartial H0 ; evalauto.
 Qed.
-
-Opaque instxor.

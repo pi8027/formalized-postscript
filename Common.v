@@ -1,9 +1,6 @@
 Require Import
   Relations.Relations Relations.Relation_Operators Lists.List Omega ssreflect.
 
-Notation "[]" := nil : list_scope.
-Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..) : list_scope.
-
 (*
 replicate:
   自然数 n と値 a を取り、a だけで構成された長さ n のリストを返す。

@@ -239,9 +239,16 @@ evalpartial:
   指定した関数を適用することで計算を途中まで進める。
 *)
 Tactic Notation "evalpartial" constr(H) "by" tactic(tac) :=
+  (eapply evalrtc_cons ;
+   [ by eapply H ; tac | ]) ||
   (eapply evalrtc_trans ;
    [ by eapply H ; tac | ]) ||
+  (refine (exists_and_right_map _ _ _ (fun _ => evalrtc_cons _ _ _ _) _) ;
+   [ by eapply H ; tac | ]) ||
   (refine (exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ _ _ _) _) ;
+   [ by eapply H ; tac | ]) ||
+  (refine (exists_and_right_map _ _ _ (fun _ =>
+           exists_and_right_map _ _ _ (fun _ => evalrtc_cons _ _ _ _)) _) ;
    [ by eapply H ; tac | ]) ||
   (refine (exists_and_right_map _ _ _ (fun _ =>
            exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ _ _ _)) _) ;
@@ -256,30 +263,41 @@ rtcrefl:
 Ltac rtcrefl := apply evalrtc_refl' ; repeat f_equal.
 
 (*
-instnop:
+exists_nop:
   何もしない(NOP)命令。
 *)
-Definition instnop : inst := instpair (instpush instpop) instpop.
-
-Lemma evalnop : forall vs cs, (vs, instnop :: cs) |=>* (vs, cs).
+Lemma exists_nop :
+  { instnop : inst | forall vs cs, (vs, instnop :: cs) |=>* (vs, cs) }.
 Proof.
-  intros ; evalauto.
-Qed.
+  eexists ; intros.
+  evalpartial evalpair.
+  evalpartial (evalpush instpop).
+  evalpartial evalpop.
+  constructor.
+Defined.
+
+Definition instnop := proj1_sig exists_nop.
+Definition propnop := proj2_sig exists_nop.
 
 (*
-instsnoc:
+exists_snoc:
   instswap, instcons を順番に実行する。パラメータの順番が反転した instcons。
 *)
-Definition instsnoc : inst := instpair instswap instcons.
-
-Lemma evalsnoc : forall i1 i2 vs cs,
-  (i1 :: i2 :: vs, instsnoc :: cs) |=>* (instpair i1 i2 :: vs, cs).
+Lemma exists_snoc : { instsnoc : inst | forall i1 i2 vs cs,
+  (i1 :: i2 :: vs, instsnoc :: cs) |=>* (instpair i1 i2 :: vs, cs) }.
 Proof.
-  intros ; evalauto.
-Qed.
+  eexists ; intros.
+  evalpartial evalpair.
+  evalpartial evalswap.
+  evalpartial evalcons.
+  constructor.
+Defined.
+
+Definition instsnoc := proj1_sig exists_snoc.
+Definition propsnoc := proj2_sig exists_snoc.
 
 (*
-instseq:
+instseq', instseq:
   命令列を素直に記述するためのもの。命令のリストを instpair で畳み込むと、それが
   継続のスタックの先頭にあった場合に、元のリストの通りに展開される。
 *)
