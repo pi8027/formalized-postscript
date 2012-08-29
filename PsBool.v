@@ -24,12 +24,12 @@ exists_false, exists_true:
 Lemma exists_false : { instfalse : inst | instfalse_spec instfalse }.
 Proof.
   eexists ; move=> i1 i2 vs cs.
-  evalpartial propnop.
+  evalpartial evalnop.
   constructor.
 Defined.
 
 Definition instfalse := proj1_sig exists_false.
-Definition propfalse := proj2_sig exists_false.
+Definition evalfalse := proj2_sig exists_false.
 
 Lemma exists_true : { insttrue : inst | insttrue_spec insttrue }.
 Proof.
@@ -39,7 +39,7 @@ Proof.
 Defined.
 
 Definition insttrue := proj1_sig exists_true.
-Definition proptrue := proj2_sig exists_true.
+Definition evaltrue := proj2_sig exists_true.
 
 (*
 exists_not:
@@ -51,8 +51,7 @@ Lemma exists_not : { instnot : inst |
   (i1 :: vs, instnot :: cs) |=>* (i2 :: vs, cs) }.
 Proof.
   eexists ; move=> b i1 vs cs H.
-  evalpartial evalpair.
-  evalpartial (evalpush instswap).
+  evalpartial' (evalpush instswap).
   evalpartial evalcons.
   evalauto.
   destruct b ; move=> i2 i3 vs' cs' ;
@@ -60,13 +59,14 @@ Proof.
 Defined.
 
 Definition instnot := proj1_sig exists_not.
-Definition propnot := proj2_sig exists_not.
+Definition evalnot := proj2_sig exists_not.
 
 (*
 exists_if, exists_execif:
   ブール値による条件分岐の命令。
-  instif は、ブール値によってスタックの先頭にある2つの値のうちどちらを残すかを切
-  り替える。後者は、instif によって選択される命令を実行する。
+  exists_if は、ブール値によってスタックの先頭にある2つの値のうちどちらを残すか
+  を切り替える。後者(exists_execif)は、exists_if によって選択される命令を実行す
+  る。
 *)
 Lemma exists_if : { instif : inst |
   forall b i1 i2 i3 vs cs, instbool_spec b i1 ->
@@ -74,18 +74,18 @@ Lemma exists_if : { instif : inst |
   ((if b then i2 else i3) :: vs, cs) }.
 Proof.
   eexists ; move=> b i1 i2 i3 vs cs H.
-  evalpartial evalpair. evalpartial evalquote.
-  evalpartial evalpair. evalpartial evalswap.
-  evalpartial evalpair. evalpartial evalquote.
-  evalpartial evalpair. evalpartial evalcons.
-  evalpartial evalpair. evalpartial propsnoc.
-  evalpartial evalpair. evalpartial evalexec.
+  evalpartial' evalquote.
+  evalpartial' evalswap.
+  evalpartial' evalquote.
+  evalpartial' evalcons.
+  evalpartial' evalsnoc.
+  evalpartial' evalexec.
   evalauto.
   destruct b ; evalpartial H ; evalpartial evalpop ; evalauto.
 Defined.
 
 Definition instif := proj1_sig exists_if.
-Definition propif := proj2_sig exists_if.
+Definition evalif := proj2_sig exists_if.
 
 Lemma exists_execif : { instexecif : inst |
   forall b i1 i2 i3 vs cs, instbool_spec b i1 ->
@@ -93,14 +93,13 @@ Lemma exists_execif : { instexecif : inst |
   (vs, (if b then i2 else i3) :: cs) }.
 Proof.
   eexists ; move=> b i1 i2 i3 vs cs H.
-  evalpartial evalpair.
-  evalpartial (propif b) by auto.
+  evalpartial' (evalif b).
   evalpartial evalexec.
   evalauto.
-Qed.
+Defined.
 
 Definition instexecif := proj1_sig exists_execif.
-Definition propexecif := proj2_sig exists_execif.
+Definition evalexecif := proj2_sig exists_execif.
 
 (*
 instxor:
@@ -108,7 +107,7 @@ instxor:
 *)
 Definition instxor : inst := instcons.
 
-Lemma propxor : forall b1 b2 i1 i2 vs cs,
+Lemma evalxor : forall b1 b2 i1 i2 vs cs,
   instbool_spec b1 i1 -> instbool_spec b2 i2 ->
   exists i3 : inst, instbool_spec (xorb b1 b2) i3 /\
   (i2 :: i1 :: vs, instxor :: cs) |=>* (i3 :: vs, cs).
@@ -116,3 +115,53 @@ Proof.
   intros ; evalauto ; destruct b1, b2 ; repeat intro ;
     evalauto ; evalpartial H ; evalpartial H0 ; evalauto.
 Qed.
+
+(*
+exists_and:
+  and 命令。
+*)
+Lemma exists_and : { instand : inst |
+  forall b1 b2 i1 i2 vs cs, instbool_spec b1 i1 -> instbool_spec b2 i2 ->
+  exists i3 : inst, instbool_spec (andb b1 b2) i3 /\
+  (i2 :: i1 :: vs, instand :: cs) |=>* (i3 :: vs, cs) }.
+Proof.
+  eexists ; move=> b1 b2 i1 i2 vs cs H H0.
+  evalpartial' evalswap.
+  do 2 evalpartial' evalpush.
+  evalpartial (evalexecif b1).
+  elim b1 ; simpl.
+  - evalpartial evalnop.
+    by evalauto.
+  - evalpartial' evalpop.
+    evalpartial evalpush.
+    evalauto.
+    apply evalfalse.
+Defined.
+
+Definition instand := proj1_sig exists_and.
+Definition evaland := proj2_sig exists_and.
+
+(*
+exists_or:
+  or 命令。
+*)
+Lemma exists_or : { instand : inst |
+  forall b1 b2 i1 i2 vs cs, instbool_spec b1 i1 -> instbool_spec b2 i2 ->
+  exists i3 : inst, instbool_spec (orb b1 b2) i3 /\
+  (i2 :: i1 :: vs, instand :: cs) |=>* (i3 :: vs, cs) }.
+Proof.
+  eexists ; move=> b1 b2 i1 i2 vs cs H H0.
+  evalpartial' evalswap.
+  do 2 evalpartial' evalpush.
+  evalpartial (evalexecif b1).
+  elim b1 ; simpl.
+  - evalpartial' evalpop.
+    evalpartial evalpush.
+    evalauto.
+    apply evaltrue.
+  - evalpartial evalnop.
+    by evalauto.
+Defined.
+
+Definition instor := proj1_sig exists_or.
+Definition evalor := proj2_sig exists_or.

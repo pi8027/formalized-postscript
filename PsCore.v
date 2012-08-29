@@ -256,6 +256,12 @@ Tactic Notation "evalpartial" constr(H) "by" tactic(tac) :=
 
 Tactic Notation "evalpartial" constr(H) := evalpartial H by idtac.
 
+Tactic Notation "evalpartial'" constr(H) "by" tactic(tac) :=
+  evalpartial evalpair ; evalpartial H by tac.
+
+Tactic Notation "evalpartial'" constr(H) :=
+  evalpartial evalpair ; evalpartial H.
+
 (*
 rtcrefl:
   ゴール e1 |=>* e2 を e1 = e2 で置き換え、f_equal を繰り返し適用する。
@@ -269,15 +275,14 @@ exists_nop:
 Lemma exists_nop :
   { instnop : inst | forall vs cs, (vs, instnop :: cs) |=>* (vs, cs) }.
 Proof.
-  eexists ; intros.
-  evalpartial evalpair.
-  evalpartial (evalpush instpop).
+  eexists ; move=> vs cs.
+  evalpartial' (evalpush instpop).
   evalpartial evalpop.
-  constructor.
+  evalauto.
 Defined.
 
 Definition instnop := proj1_sig exists_nop.
-Definition propnop := proj2_sig exists_nop.
+Definition evalnop := proj2_sig exists_nop.
 
 (*
 exists_snoc:
@@ -286,15 +291,14 @@ exists_snoc:
 Lemma exists_snoc : { instsnoc : inst | forall i1 i2 vs cs,
   (i1 :: i2 :: vs, instsnoc :: cs) |=>* (instpair i1 i2 :: vs, cs) }.
 Proof.
-  eexists ; intros.
-  evalpartial evalpair.
-  evalpartial evalswap.
+  eexists ; move=> i1 i2 vs cs.
+  evalpartial' evalswap.
   evalpartial evalcons.
-  constructor.
+  evalauto.
 Defined.
 
 Definition instsnoc := proj1_sig exists_snoc.
-Definition propsnoc := proj2_sig exists_snoc.
+Definition evalsnoc := proj2_sig exists_snoc.
 
 (*
 instseq', instseq:
@@ -313,7 +317,7 @@ Definition instseq il : inst := instseq' il instnop.
 
 Lemma evalseq : forall il vs cs, (vs, instseq il :: cs) |=>* (vs, il ++ cs).
 Proof.
-  intros.
+  move=> il vs cs.
   evalpartial evalseq'.
   evalauto.
 Qed.
@@ -321,7 +325,7 @@ Qed.
 Lemma instseq_replicate : forall n i1 i2,
   instseq' (replicate n i1) i2 = fold_right (flip instpair) i2 (replicate n i1).
 Proof.
-  intros.
+  move=> n i1 i2.
   rewrite {2} replicate_rev_id.
   apply eq_sym, fold_left_rev_right.
 Qed.
