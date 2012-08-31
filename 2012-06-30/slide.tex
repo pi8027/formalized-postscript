@@ -1,0 +1,85 @@
+\documentclass[cjk, 14pt]{beamer}
+
+\usepackage{listings}
+
+\usetheme{Copenhagen}
+\usecolortheme{seahorse}
+\useinnertheme{rounded}
+\useoutertheme{shadow}
+
+\setbeamercovered{transparent}
+
+\title{Coqでスタック指向言語を作る}
+\subtitle{Formalized PostScript}
+\author{坂口和彦 (@pi8027)}
+\institute{筑波大学 情報学群 情報科学類 B2}
+\date{2012/06/30}
+
+\begin{document}
+
+\begin{frame}[plain]
+
+ \maketitle
+
+\end{frame}
+
+\begin{frame}{自己紹介}
+
+  \begin{description}
+    \item [名前] 坂口和彦, pi8027
+    \item [好きな言語] Coq, Agda2, PostScript, Haskell
+    \item [GitHub] http://github.com/pi8027
+  \end{description}
+
+\end{frame}
+
+\begin{frame}{Coqとは}
+
+  \begin{itemize}
+    \item 正しいプログラムしか記述できない静的型付きの関数型プログラミング言語。
+    \item 論理学や数学等で扱う事実、推論を計算機上で扱い、推論の正しさを検査するツール。
+    \item プログラムに証明を付け、満たすべき良い性質を満たすことを保証するツール。
+    \item \textbf{プログラムからバグを確実に排除するためのツール。}
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{目的}
+
+  \begin{itemize}
+    \item PostScriptプログラミングにはパズル的な楽しさがあるのに、解いたパズルの正しさは検証しづらい。
+    \item 証明を付けられる形で似た意味論を持つ言語を実装すれば、より楽しさが増すに違いない。
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{方針}
+
+  \begin{itemize}
+    \item 最低限の命令しか用意しない。命令型を帰納的に定義し、それを値としても使うようにする。
+    \item 計算における環境は、値のスタックと継続のスタックの組で表現する。
+    \item 計算は、環境上の二項関係として表現する。
+    \item 自動実行を、自動証明の記述の枠組みLtac(Tactic Language)を用いて実装する。
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{ブール値を作る}
+
+  \begin{itemize}
+    \item 真は、命令として実行すると何もしない。
+    \item 偽は、命令として実行すると値のスタックの先頭にある2つの値を入れ替える。(swap)
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{自然数を作る}
+
+  \begin{itemize}
+    \item 自然数は、命令として実行すると値のスタックの先頭に積まれた命令を表現対象の自然数の分だけ継続スタックに積む。
+    \item この定義の上で、加算、乗算を定義し、証明した。
+  \end{itemize}
+
+\end{frame}
+
+\end{document}
