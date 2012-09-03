@@ -1,0 +1,3 @@
+#!/bin/zsh
+coq_makefile *.v > Makefile
+make
