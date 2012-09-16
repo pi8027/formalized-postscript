@@ -1,7 +1,6 @@
-
 open build/OCaml
 open build/LaTeX
 
 DefineCommandVars()
 
-.SUBDIRS: . 2012-06-30 2012-09-02
+.SUBDIRS: . 2012-06-30 2012-09-02 2012-09-16

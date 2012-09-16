@@ -1,0 +1,274 @@
+\documentclass[cjk, 14pt]{beamer}
+
+\usepackage{listings}
+\usepackage{stmaryrd}
+
+\usetheme{Copenhagen}
+\usecolortheme{seahorse}
+\useinnertheme{rounded}
+\useoutertheme{shadow}
+
+\setbeamercovered{transparent}
+
+\title{定理証明器\Coq{}で\\スタック指向プログラミング}
+\author{坂口和彦 (@pi8027)}
+\institute{筑波大学 情報学群 情報科学類 B2}
+\date{2012/09/16}
+
+\newcommand{\Coq}{{\scshape{}Coq}}
+\newcommand{\Ltac}{\mbox{\emph{$\cal L$}tac}}
+\newlength{\lengthwithlength}
+\newcommand{\bnfvert}{\settowidth{\lengthwithlength}{::=}\mathrel{\makebox[\lengthwithlength][c]{$|$}}}
+\newcommand{\bnfcce}{\mathrel{::=}}
+
+\begin{document}
+
+\begin{frame}[plain]
+
+ \maketitle
+
+\end{frame}
+
+\begin{frame}{概要}
+
+  \begin{itemize}
+    \item 定理証明器\Coq{}で簡単なスタック指向言語を実装し、対象言語上の証明付きプログラムを書こうとしてみた。
+    \item ソースコード: http://github.com/pi8027/formalized-postscript
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{What is \Coq?}
+
+  \begin{itemize}
+    \item http://coq.inria.fr/
+    \item 実行可能なアルゴリズム、数学的な定義などを記述し、定理証明をするためのソフトウェア。
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{目的}
+
+  \begin{itemize}
+    \item PostScriptプログラミングにはパズルのような楽しさがある。
+    \item でも、PostScriptのプログラムは検証しづらい。
+    \item $\rightarrow$ \, 証明を付けられる形で似た意味論を持つ言語を実装したい。
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{目的}
+
+  \begin{itemize}
+    \item PostScriptのプログラムを見ても、前提となっているスタックの状態が見えない。
+    \item $\rightarrow$ \, スタックの状態を見ながらプログラムを書きたい。
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]{例 - 複雑で検証しづらいプログラム}
+
+  代入を一切使わずに\texttt{repeat}を実装すると:
+
+{ \small
+\begin{verbatim}
+{
+  {
+    2 index 0 eq {
+      pop pop pop
+    } {
+      [ 2 index /exec cvx 6 5 roll
+        1 sub 6 4 roll dup /exec cvx ]
+      cvx exec
+    } ifelse
+  } dup exec
+}
+\end{verbatim} }
+
+\end{frame}
+
+\begin{frame}{実現できたこと}
+
+  \begin{itemize}
+    \item 8命令から成るPostScriptのサブセットを\Coq{}で定義した。
+    \item 定義した言語が持つ良い性質を証明した。
+    \item 自動実行器を\Ltac{}で実装した。
+    \begin{itemize}
+      \item \Ltac{}は\Coq{}のタクティク記述言語。
+      \item 自動実行器は正しいルールを適用して変形するという作業をしているので、自動証明器でもある。
+            (プログラミング言語の基礎概念(CoPL)の演習問題をいくつか解いてみるとイメージが掴みやすい)
+    \end{itemize}
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{実現できたこと}
+
+  \begin{itemize}
+    \item ブール値や自然数の仕様とその上での演算を定義し、それらの正しさを証明した。
+    \begin{itemize}
+      \item 最も複雑なものは剰余付き除法。
+    \end{itemize}
+    \item プログラムをPostScriptに変換し、GhostScriptで実行できた。
+    \item 目的の計算が存在することを自然に証明し、証明から具体的な計算を取り出せた。
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{方針}
+
+  \begin{itemize}
+    \item 最低限の命令しか用意しない。
+    \item 計算の状態を2本の命令を要素とするスタックの組で表す。
+    \begin{itemize}
+      \item それぞれ、値のスタックと継続スタックを表す。
+    \end{itemize}
+    \item 計算は、環境上の二項関係として表す。
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{言語の定義}
+
+  \begin{align*}
+    i &\bnfcce  \mathit{pop}                & \text{値を捨てる} \\
+      &\bnfvert \mathit{copy}               & \text{値を複製する} \\
+      &\bnfvert \mathit{swap}               & \text{2つの値を入れ替える} \\
+      &\bnfvert \mathit{cons}               & \text{2つの値を\textit{pair}で組にする} \\
+      &\bnfvert \mathit{quote}              & \text{値を\textit{push}で包む} \\
+      &\bnfvert \mathit{exec}               & \text{値を実行する} \\
+      &\bnfvert \mathit{push} \, i          & \text{$i$をスタックに積む} \\
+      &\bnfvert \mathit{pair} \, i_1 \, i_2 & \text{$i_1$と$i_2$を順番に実行する} \\
+  \end{align*}
+
+\end{frame}
+
+\begin{frame}{言語の定義}
+
+  \footnotesize
+  \begin{tabular}{cccccccccccccc}
+                             & $i_1$                    & \it{vs} & , & \it{pop}                        & \it{cs} & $\Mapsto$ &
+                             &                          & \it{vs} & , &                &                & \it{cs} \\
+                             & $i_1$                    & \it{vs} & , & \it{copy}                       & \it{cs} & $\Mapsto$ &
+    $i_1$                    & $i_1$                    & \it{vs} & , &                &                & \it{cs} \\
+    $i_2$                    & $i_1$                    & \it{vs} & , & \it{swap}                       & \it{cs} & $\Mapsto$ &
+    $i_1$                    & $i_2$                    & \it{vs} & , &                &                & \it{cs} \\
+    $i_2$                    & $i_1$                    & \it{vs} & , & \it{cons}                       & \it{cs} & $\Mapsto$ &
+    \multicolumn{2}{c}{$(\mathit{pair} \, i_1 \, i_2)$} & \it{vs} & , &                &                & \it{cs} \\
+                             & $i_1$                    & \it{vs} & , & \it{quote}                      & \it{cs} & $\Mapsto$ &
+    \multicolumn{2}{c}{$(\mathit{push} \, i_1)$}        & \it{vs} & , &                &                & \it{cs} \\
+                             & $i_1$                    & \it{vs} & , & \it{exec}                       & \it{cs} & $\Mapsto$ &
+                             &                          & \it{vs} & , &                & $i_1$          & \it{cs} \\
+                             &                          & \it{vs} & , & $(\mathit{push} \, i_1)$        & \it{cs} & $\Mapsto$ &
+                             & $i_1$                    & \it{vs} & , &                &                & \it{cs} \\
+                             &                          & \it{vs} & , & $(\mathit{pair} \, i_1 \, i_2)$ & \it{cs} & $\Mapsto$ &
+                             &                          & \it{vs} & , & $i_1$          & $i_2$          & \it{cs} \\
+  \end{tabular}
+
+\end{frame}
+
+\begin{frame}{言語の定義 in \Coq}
+
+\end{frame}
+
+\begin{frame}{自動実行による証明}
+
+  \begin{itemize}
+    \item プログラムを書いてから証明を付けようとすると、
+    \begin{itemize}
+      \item 継続を見れば明らかなことを書かなければいけない。
+      \item プログラムと証明がほとんど同じような構造を持っているので無駄が多い。
+    \end{itemize}
+    \item 任意の環境$e_1$に対する次の状態は一意に定まり、かつ存在するかしないかは決定可能。
+    \item 自動実行によって証明を進めてしまっても問題は無い。
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{自動実行による証明 - 例}
+
+\end{frame}
+
+\begin{frame}{ブール値を作る}
+
+  \begin{itemize}
+    \item nopと同じ振舞いをするのがfalse。
+    \item swapと同じ振舞いをするのがtrue。
+    \item xorを取るにはconsすれば良い。ifも問題無く書ける。
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{自然数を作る}
+
+  \begin{itemize}
+    \item 任意の自然数$n$を表す命令$i_n$は、値のスタックの先頭の命令を継続スタックの先頭に$n$個複製する。
+    \item 0は自然数。
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{型を作る上で注意すべきこと}
+
+  \begin{itemize}
+    \item ブール値や自然数の定義のように、命令の振舞いによって値としての意味を与えるのは良い方法だが……
+    \item もし仮にその型を持つ任意の値を表す命令が存在してしまうと、妥当な型の定義になっているとは言えない。
+    \item 命令として同じなら表している値も同じであることを証明しなければいけない。
+    \begin{itemize}
+      \item (証明できるけどあまり綺麗にできていない)
+    \end{itemize}
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{作れた計算}
+
+  \begin{itemize}
+    \item ブール型
+    \begin{itemize}
+      \item 否定
+      \item if
+      \item xor
+    \end{itemize}
+    \item 自然数
+    \begin{itemize}
+      \item 後者関数
+      \item 加算
+      \item 乗算
+      \item 偶奇判定
+      \item 前者関数
+      \item 減算
+      \item 剰余付き除算
+    \end{itemize}
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{PostScriptへの変換}
+
+  \begin{itemize}
+    \item \Coq{}上で記述した(スタック指向の)プログラムを単純な置き換えによってPostScriptに変換できる。
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{PostScriptへの変換 - 例}
+
+\end{frame}
+
+\begin{frame}{証明からプログラムを作る}
+
+  \begin{itemize}
+    \item プログラムを書いてから証明を書くには、まずプログラムを書かなければいけない。
+    \item プログラムだけ書いていても計算の状態が全く見えない。
+    \item 証明書いてるとスタックの状態が見えるので、証明書くのとプログラム書くのを行き来することに……。
+    \item $\rightarrow$ \, 目的のプログラムが存在することを自然に証明できて、そこからプログラムを取り出せれば解決。
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{証明からプログラムを作る - 例}
+
+\end{frame}
+
+\end{document}
