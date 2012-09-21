@@ -1,5 +1,5 @@
 Require Import
-  Arith.Even Arith.Wf_nat Arith.Euclid
+  Arith.Even Arith.Wf_nat Arith.Euclid Bool.BoolEq
   Lists.List Program.Basics Relations.Relations Omega ArithRing
   ssreflect Common PsCore PsBool.
 
@@ -266,9 +266,8 @@ Proof.
   simpl.
   edestruct (instnot_proof b i _ _ H) as [? [? ?]].
   evalpartial H1.
-  destruct (even_odd_dec n) ; simpl in *.
-  apply (IHn _ _ H0).
-  destruct b ; apply (IHn _ _ H0).
+  destruct (even_odd_dec n) ;
+    last rewrite (negb_involutive_reverse b) ; apply (IHn _ _ H0).
 Qed.
 
 Opaque instnat_even.
