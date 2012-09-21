@@ -259,26 +259,16 @@ Proof.
   evalauto.
   evalpartial H.
   generalize insttrue, eval_insttrue.
-  move=> i ; rewrite -/(instbool_spec true i) ; move: i.
-  clear H.
-  refine ((fix IHn n :=
-    match n with
-      | 0 => _
-      | S 0 => _
-      | S (S n) => _
-    end) n) ; intros.
+  move=> i ; rewrite -/(instbool_spec true i) -/(negb true).
+  clear H ; move: i true.
+  induction n ; intros.
   by evalauto.
   simpl.
-  evalauto.
-  by repeat intro ; evalauto ; evalpartial H ; evalauto.
-  evalauto.
-  replace  (if even_odd_dec (S (S n2)) then true else false)%GEN_IF
-    with (if even_odd_dec n2 then true else false)%GEN_IF.
-  apply IHn.
-  by repeat intro ; evalauto ; evalpartial H ; evalauto.
-  clear ; destruct (even_odd_dec n2), (even_odd_dec (S (S n2))) ; auto.
-  inversion o ; inversion H0 ; destruct (not_even_and_odd n2 e H2).
-  inversion e ; inversion H0 ; destruct (not_even_and_odd n2 H2 o).
+  edestruct (instnot_proof b i _ _ H) as [? [? ?]].
+  evalpartial H1.
+  destruct (even_odd_dec n) ; simpl in *.
+  apply (IHn _ _ H0).
+  destruct b ; apply (IHn _ _ H0).
 Qed.
 
 Opaque instnat_even.
