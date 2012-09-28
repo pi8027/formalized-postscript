@@ -305,7 +305,7 @@ instseq', instseq:
   命令列を素直に記述するためのもの。命令のリストを instpair で畳み込むと、それが
   継続のスタックの先頭にあった場合に、元のリストの通りに展開される。
 *)
-Definition instseq' : list inst -> inst -> inst := fold_left instpair.
+Notation instseq' := (fold_left instpair).
 
 Lemma evalseq' :
   forall il i vs cs, (vs, instseq' il i :: cs) |=>* (vs, i :: il ++ cs).
@@ -313,21 +313,13 @@ Proof.
   elim ; intros ; last evalpartial H ; evalauto.
 Qed.
 
-Definition instseq il : inst := instseq' il instnop.
+Notation instseq := (fun il => instseq' il instnop).
 
 Lemma evalseq : forall il vs cs, (vs, instseq il :: cs) |=>* (vs, il ++ cs).
 Proof.
   move=> il vs cs.
   evalpartial evalseq'.
   evalauto.
-Qed.
-
-Lemma instseq_replicate : forall n i1 i2,
-  instseq' (replicate n i1) i2 = fold_right (flip instpair) i2 (replicate n i1).
-Proof.
-  move=> n i1 i2.
-  rewrite {2} replicate_rev_id.
-  apply eq_sym, fold_left_rev_right.
 Qed.
 
 Lemma app_instseq' :
@@ -340,4 +332,27 @@ Lemma app_instseq :
   forall is1 is2, instseq (is1 ++ is2) = instseq' is2 (instseq is1).
 Proof.
   intros ; apply app_instseq'.
+Qed.
+
+Notation instseq_replicate' :=
+  (fun n i1 i2 => fold_right (flip instpair) i2 (replicate n i1)).
+
+Notation instseq_replicate := (fun n i => instseq_replicate' n i instnop).
+
+Lemma instseq_replicate_eq : forall n i1 i2,
+  instseq' (replicate n i1) i2 = instseq_replicate' n i1 i2.
+Proof.
+  move=> n i1 i2.
+  simpl.
+  rewrite {2}replicate_rev_id.
+  apply eq_sym, fold_left_rev_right.
+Qed.
+
+Lemma evalseq_replicate :
+  forall n i1 i2 vs cs,
+  (vs, instseq_replicate' n i1 i2 :: cs) |=>* (vs, i2 :: replicate n i1 ++ cs).
+Proof.
+  move=> n i1 i2 vs cs.
+  simpl ; rewrite -instseq_replicate_eq.
+  apply evalseq'.
 Qed.
