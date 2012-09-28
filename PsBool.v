@@ -28,8 +28,8 @@ Proof.
   constructor.
 Defined.
 
-Definition instfalse := proj1_sig exists_false.
-Definition evalfalse := proj2_sig exists_false.
+Notation instfalse := (proj1_sig exists_false).
+Notation evalfalse := (proj2_sig exists_false).
 
 Lemma exists_true : { insttrue : inst | insttrue_spec insttrue }.
 Proof.
@@ -38,8 +38,8 @@ Proof.
   constructor.
 Defined.
 
-Definition insttrue := proj1_sig exists_true.
-Definition evaltrue := proj2_sig exists_true.
+Notation insttrue := (proj1_sig exists_true).
+Notation evaltrue := (proj2_sig exists_true).
 
 (*
 exists_not:
@@ -59,8 +59,8 @@ Proof.
     evalauto ; evalpartial H ; evalauto.
 Defined.
 
-Definition instnot := proj1_sig exists_not.
-Definition evalnot := proj2_sig exists_not.
+Notation instnot := (proj1_sig exists_not).
+Notation evalnot := (proj2_sig exists_not).
 
 (*
 exists_if, exists_execif:
@@ -86,8 +86,8 @@ Proof.
   destruct b ; evalpartial H ; evalpartial evalpop ; evalauto.
 Defined.
 
-Definition instif := proj1_sig exists_if.
-Definition evalif := proj2_sig exists_if.
+Notation instif := (proj1_sig exists_if).
+Notation evalif := (proj2_sig exists_if).
 
 Lemma exists_execif :
   { instexecif : inst |
@@ -101,8 +101,8 @@ Proof.
   evalauto.
 Defined.
 
-Definition instexecif := proj1_sig exists_execif.
-Definition evalexecif := proj2_sig exists_execif.
+Notation instexecif := (proj1_sig exists_execif).
+Notation evalexecif := (proj2_sig exists_execif).
 
 (*
 instxor:
@@ -143,8 +143,8 @@ Proof.
     apply evalfalse.
 Defined.
 
-Definition instand := proj1_sig exists_and.
-Definition evaland := proj2_sig exists_and.
+Notation instand := (proj1_sig exists_and).
+Notation evaland := (proj2_sig exists_and).
 
 (*
 exists_or:
@@ -169,5 +169,5 @@ Proof.
     by evalauto.
 Defined.
 
-Definition instor := proj1_sig exists_or.
-Definition evalor := proj2_sig exists_or.
+Notation instor := (proj1_sig exists_or).
+Notation evalor := (proj2_sig exists_or).

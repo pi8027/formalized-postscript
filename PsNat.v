@@ -26,10 +26,10 @@ Proof.
     evalpartial' evalcopy.
     evalpartial' H.
     apply evalsnoc.
-Qed.
+Defined.
 
-Definition instnat (n : nat) := proj1_sig (exists_instnat n).
-Definition eval_instnat (n : nat) := proj2_sig (exists_instnat n).
+Notation instnat := (fun n => proj1_sig (exists_instnat n)).
+Notation eval_instnat := (fun n => proj2_sig (exists_instnat n)).
 
 (*
 instnat_eqmap:
@@ -47,13 +47,11 @@ Proof.
     - evalpartial H0.
       evalauto.
       evalpartial evalseq_replicate.
-      evalauto.
       rtcrefl.
       apply app_nil_r.
     - evalpartial H1.
       evalauto.
       evalpartial evalseq_replicate.
-      evalauto.
       rtcrefl.
       apply app_nil_r.
   have: (replicate n instpop = replicate m instpop).
@@ -84,10 +82,10 @@ Proof.
     evalpartial' evalcons.
     evalpartial' evalpush.
     apply evalsnoc.
-Qed.
+Defined.
 
-Definition instnat_succ := proj1_sig exists_instnat_succ.
-Definition instnat_succ_proof := proj2_sig exists_instnat_succ.
+Notation instnat_succ := (proj1_sig exists_instnat_succ).
+Notation instnat_succ_proof := (proj2_sig exists_instnat_succ).
 
 (*
 instnat_add:
@@ -107,7 +105,6 @@ Proof.
   evalpartial H.
   evalpartial evalexec.
   evalpartial evalseq_replicate.
-  evalauto.
   clear H i1 ; move: n m i2 H0 vs cs ;
     elim => [ m i1 H vs cs | n H m i1 H0 vs cs ] ; simpl.
   - by evalauto.
@@ -115,7 +112,57 @@ Proof.
     evalpartial H2.
     replace (S (n + m)) with (n + S m) by omega.
     apply (H (S m) i2 H1).
-Qed.
+Defined.
 
-Definition instnat_add := proj1_sig exists_instnat_add.
-Definition instnat_add_proof := proj2_sig exists_instnat_add.
+Notation instnat_add := (proj1_sig exists_instnat_add).
+Notation instnat_add_proof := (proj2_sig exists_instnat_add).
+
+(*
+instnat_mult:
+  乗算命令。
+*)
+Lemma exists_instnat_mult' :
+  { instnat_mult : inst |
+    forall n m i1 i2, instnat_spec n i1 -> instnat_spec m i2 -> forall vs cs,
+    exists i3 : inst, instnat_spec (n * m + 0) i3 /\
+    (i2 :: i1 :: vs, instnat_mult :: cs) |=>* (i3 :: vs, cs) }.
+Proof.
+  move: (0) (instnat 0) (eval_instnat 0).
+  move=> o i1 H ; eexists ; move=> n m i2 i3 H0 H1 vs cs.
+  evalpartial' evalquote.
+  evalpartial' evalpush.
+  evalpartial' evalcons.
+  evalpartial' evalquote.
+  evalpartial' evalsnoc.
+  evalpartial' evalpush.
+  evalpartial' evalswap.
+  evalpartial' evalexec.
+  evalauto.
+  evalpartial H0.
+  evalpartial evalexec.
+  evalpartial evalseq_replicate.
+  clear i2 H0.
+  move: o i1 i3 H H1 vs cs ;
+    elim: n => [ o i1 i2 H H0 vs cs | n H o i1 i2 H0 H1 vs cs ] ; simpl.
+  - evalauto.
+    eauto.
+  - replace (m + n * m + o) with (n * m + (o + m)) by omega.
+    evalauto.
+    edestruct (instnat_add_proof o m i1 i2 H0 H1) as [i3 [H2 H3]].
+    evalpartial H3.
+    auto.
+Defined.
+
+Lemma exists_instnat_mult :
+  { instnat_mult : inst |
+    forall n m i1 i2, instnat_spec n i1 -> instnat_spec m i2 -> forall vs cs,
+    exists i3 : inst, instnat_spec (n * m) i3 /\
+    (i2 :: i1 :: vs, instnat_mult :: cs) |=>* (i3 :: vs, cs) }.
+Proof.
+  destruct exists_instnat_mult' as [i H].
+  exists i.
+  move=> n m ; replace (n * m) with (n * m + 0) by omega ; auto.
+Defined.
+
+Notation instnat_mult := (proj1_sig exists_instnat_add).
+Notation instnat_mult_proof := (proj2_sig exists_instnat_add).

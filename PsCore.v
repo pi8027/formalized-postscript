@@ -32,13 +32,13 @@ Fixpoint inst_length i : nat :=
 stack:
   スタックは命令のリスト。
 *)
-Definition stack : Set := list inst.
+Notation stack := (list inst).
 
 (*
 environment:
   環境は2本のスタックの組。前者は値のスタック、後者は継続のスタックである。
 *)
-Definition environment : Set := (stack * stack)%type.
+Notation environment := (stack * stack)%type.
 
 (*
 eval:
@@ -81,8 +81,7 @@ Inductive eval : relation environment :=
 evalrtc:
   eval の反射推移閉包。
 *)
-Definition evalrtc : relation environment :=
-  clos_refl_trans_1n environment eval.
+Notation evalrtc := (clos_refl_trans_1n environment eval).
 
 (*
 |=>, |=>*:
@@ -183,7 +182,7 @@ Proof.
   dependent induction H.
   constructor.
   destruct y.
-  by apply evalrtc_cons with (s ++ vs'', s0 ++ ps'') ;
+  by apply evalrtc_cons with (l ++ vs'', l0 ++ ps'') ;
     [ apply eval_apptail | apply IHclos_refl_trans_1n].
 Qed.
 
@@ -281,8 +280,8 @@ Proof.
   evalauto.
 Defined.
 
-Definition instnop := proj1_sig exists_nop.
-Definition evalnop := proj2_sig exists_nop.
+Notation instnop := (proj1_sig exists_nop).
+Notation evalnop := (proj2_sig exists_nop).
 
 (*
 exists_snoc:
@@ -297,8 +296,8 @@ Proof.
   evalauto.
 Defined.
 
-Definition instsnoc := proj1_sig exists_snoc.
-Definition evalsnoc := proj2_sig exists_snoc.
+Notation instsnoc := (proj1_sig exists_snoc).
+Notation evalsnoc := (proj2_sig exists_snoc).
 
 (*
 instseq', instseq:
@@ -348,11 +347,20 @@ Proof.
   apply eq_sym, fold_left_rev_right.
 Qed.
 
-Lemma evalseq_replicate :
+Lemma evalseq_replicate' :
   forall n i1 i2 vs cs,
   (vs, instseq_replicate' n i1 i2 :: cs) |=>* (vs, i2 :: replicate n i1 ++ cs).
 Proof.
   move=> n i1 i2 vs cs.
   simpl ; rewrite -instseq_replicate_eq.
   apply evalseq'.
+Qed.
+
+Lemma evalseq_replicate :
+  forall n i vs cs,
+  (vs, instseq_replicate n i :: cs) |=>* (vs, replicate n i ++ cs).
+Proof.
+  move=> n i vs cs.
+  evalpartial evalseq_replicate'.
+  evalauto.
 Qed.
