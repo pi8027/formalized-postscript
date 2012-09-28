@@ -25,7 +25,7 @@ Proof.
   induction n.
   auto.
   simpl.
-  rewrite -IHn -/(replicate 1 a) (replicate_app n 1 a).
+  rewrite -IHn (replicate_app n 1 a).
   by replace (n + 1) with (S n) by omega.
 Qed.
 
