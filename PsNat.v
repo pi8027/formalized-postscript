@@ -14,7 +14,7 @@ Definition instnat_spec (n : nat) (i1 : inst) : Prop :=
 exists_instnat:
   自然数の仕様を満たす命令。
 *)
-Lemma exists_instnat : forall n,  { i : inst | instnat_spec n i }.
+Lemma exists_instnat : forall n, { i : inst | instnat_spec n i }.
 Proof.
   induction n.
   - eexists ; move=> i2 vs cs ; simpl.
@@ -91,10 +91,10 @@ Notation instnat_succ_proof := (proj2_sig exists_instnat_succ).
 instnat_add:
   加算命令。
 *)
-Lemma exists_instnat_add :
+Lemma exists_instnat_add_tail :
   { instnat_add : inst |
     forall n m i1 i2, instnat_spec n i1 -> instnat_spec m i2 -> forall vs cs,
-    exists i3 : inst, instnat_spec (n + m) i3 /\
+    exists i3 : inst, instnat_spec (Plus.tail_plus n m) i3 /\
     (i2 :: i1 :: vs, instnat_add :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
   eexists ; move=> n m i1 i2 H H0 vs cs.
@@ -110,23 +110,37 @@ Proof.
   - by evalauto.
   - edestruct (instnat_succ_proof m i1 H0) as [i2 [H1 H2]].
     evalpartial H2.
-    replace (S (n + m)) with (n + S m) by omega.
     apply (H (S m) i2 H1).
 Defined.
 
-Notation instnat_add := (proj1_sig exists_instnat_add).
+Notation instnat_add := (proj1_sig exists_instnat_add_tail).
+Notation instnat_add_proof_tail := (proj2_sig exists_instnat_add_tail).
+
+Lemma exists_instnat_add :
+  { instnat_add : inst |
+    forall n m i1 i2, instnat_spec n i1 -> instnat_spec m i2 -> forall vs cs,
+    exists i3 : inst, instnat_spec (n + m) i3 /\
+    (i2 :: i1 :: vs, instnat_add :: cs) |=>* (i3 :: vs, cs) }.
+Proof.
+  exists instnat_add.
+  move=> n m.
+  rewrite Plus.plus_tail_plus.
+  apply instnat_add_proof_tail.
+Defined.
+
 Notation instnat_add_proof := (proj2_sig exists_instnat_add).
 
 (*
 instnat_mult:
   乗算命令。
 *)
-Lemma exists_instnat_mult' :
+Lemma exists_instnat_mult_tail :
   { instnat_mult : inst |
     forall n m i1 i2, instnat_spec n i1 -> instnat_spec m i2 -> forall vs cs,
-    exists i3 : inst, instnat_spec (n * m + 0) i3 /\
+    exists i3 : inst, instnat_spec (Mult.tail_mult n m) i3 /\
     (i2 :: i1 :: vs, instnat_mult :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
+  rewrite /Mult.tail_mult.
   move: (0) (instnat 0) (eval_instnat 0).
   move=> o i1 H ; eexists ; move=> n m i2 i3 H0 H1 vs cs.
   evalpartial' evalquote.
@@ -146,12 +160,15 @@ Proof.
     elim: n => [ o i1 i2 H H0 vs cs | n H o i1 i2 H0 H1 vs cs ] ; simpl.
   - evalauto.
     eauto.
-  - replace (m + n * m + o) with (n * m + (o + m)) by omega.
-    evalauto.
-    edestruct (instnat_add_proof o m i1 i2 H0 H1) as [i3 [H2 H3]].
+  - evalauto.
+    evalpartial' evalswap.
+    edestruct (instnat_add_proof_tail m o i2 i1 H1 H0) as [i3 [H2 H3]].
     evalpartial H3.
     auto.
 Defined.
+
+Notation instnat_mult := (proj1_sig exists_instnat_mult_tail).
+Notation instnat_mult_proof_tail := (proj2_sig exists_instnat_mult_tail).
 
 Lemma exists_instnat_mult :
   { instnat_mult : inst |
@@ -159,10 +176,10 @@ Lemma exists_instnat_mult :
     exists i3 : inst, instnat_spec (n * m) i3 /\
     (i2 :: i1 :: vs, instnat_mult :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
-  destruct exists_instnat_mult' as [i H].
-  exists i.
-  move=> n m ; replace (n * m) with (n * m + 0) by omega ; auto.
+  exists instnat_mult.
+  move=> n m.
+  rewrite Mult.mult_tail_mult.
+  apply instnat_mult_proof_tail.
 Defined.
 
-Notation instnat_mult := (proj1_sig exists_instnat_add).
-Notation instnat_mult_proof := (proj2_sig exists_instnat_add).
+Notation instnat_mult_proof := (proj2_sig exists_instnat_mult).
