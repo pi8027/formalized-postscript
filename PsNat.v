@@ -93,10 +93,10 @@ instnat_add:
   加算命令。
 *)
 Lemma exists_instnat_add_tail :
-  { instnat_add : inst |
+  { instnat_add_tail : inst |
     forall n m i1 i2, instnat_spec n i1 -> instnat_spec m i2 -> forall vs cs,
     exists i3 : inst, instnat_spec (Plus.tail_plus n m) i3 /\
-    (i2 :: i1 :: vs, instnat_add :: cs) |=>* (i3 :: vs, cs) }.
+    (i2 :: i1 :: vs, instnat_add_tail :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
   eexists ; move=> n m i1 i2 H H0 vs cs.
   evalpartial' evalswap.
@@ -136,10 +136,10 @@ instnat_mult:
   乗算命令。
 *)
 Lemma exists_instnat_mult_tail :
-  { instnat_mult : inst |
+  { instnat_mult_tail : inst |
     forall n m i1 i2, instnat_spec n i1 -> instnat_spec m i2 -> forall vs cs,
     exists i3 : inst, instnat_spec (Mult.tail_mult n m) i3 /\
-    (i2 :: i1 :: vs, instnat_mult :: cs) |=>* (i3 :: vs, cs) }.
+    (i2 :: i1 :: vs, instnat_mult_tail :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
   rewrite /Mult.tail_mult.
   move: (0) (instnat 0) (eval_instnat 0).
@@ -190,27 +190,26 @@ instnat_even:
   偶奇判定の命令。
 *)
 Lemma exists_instnat_even_tail :
-  { instnat_even : inst |
+  { instnat_even_tail : inst |
     forall b n i1 i2, instbool_spec b i1 -> instnat_spec n i2 -> forall vs cs,
     exists i3 : inst,
     instbool_spec (if even_odd_dec n then b else negb b)%GEN_IF i3 /\
-    (i2 :: i1 :: vs, instnat_even :: cs) |=>* (i3 :: vs, cs) }.
+    (i2 :: i1 :: vs, instnat_even_tail :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
   eexists ; move=> b n i1 i2 H H0 vs cs.
   evalpartial' evalpush.
   evalpartial' evalswap.
   evalpartial' evalexec.
-  evalpartial H0.
-  clear H0 i2.
+  evalpartial H0 ; clear H0 i2.
   evalpartial evalexec.
   evalpartial evalseq_replicate.
   move: n b i1 H.
   elim=> [ b i1 H | n H b i1 H0 ].
   - by evalauto.
   - edestruct evalnot as [i2 [H1 H2]] ; first apply H0.
-    evalpartial H2 ; clear H2.
-    edestruct H as [i3 [H2 H3]] ; first apply H1.
-    evalpartial H3.
+    evalpartial H2 ; clear i1 H0 H2.
+    edestruct H as [i1 [H2 H3]] ; first apply H1.
+    evalpartial H3 ; clear H i2 H1 H3.
     evalauto.
     rewrite -Bool.negb_involutive_reverse in H2.
     destruct (even_odd_dec n), (even_odd_dec (S n)) ; auto.
@@ -246,10 +245,10 @@ instnat_iszero:
   ゼロとの比較をする命令。
 *)
 Lemma exists_instnat_iszero_tail :
-  { instnat_iszero : inst |
+  { instnat_iszero_tail : inst |
     forall n i1 i2, instnat_spec n i2 -> forall vs cs,
     exists i3 : inst, instfalse_spec i3 /\
-    (i2 :: i1 :: vs, instnat_iszero :: cs) |=>*
+    (i2 :: i1 :: vs, instnat_iszero_tail :: cs) |=>*
     ((if eq_nat_dec 0 n then i1 else i3)%GEN_IF :: vs, cs) }.
 Proof.
   eexists ; move=> n i1 i2 H vs cs.
@@ -258,7 +257,7 @@ Proof.
   - evalpartial' evalpush.
     evalpartial' evalswap.
     evalpartial' evalexec.
-    evalpartial H ; first clear i2 H.
+    evalpartial H ; clear i2 H.
     evalpartial evalexec.
     evalpartial evalseq_replicate.
     move: n i1 vs cs ; elim=> [ i1 vs cs | n H i1 vs cs ].
@@ -292,3 +291,62 @@ Defined.
 
 Notation instnat_iszero := (proj1_sig exists_instnat_iszero).
 Notation instnat_iszero_proof := (proj2_sig exists_instnat_iszero).
+
+(*
+instnat_pred:
+  前者関数。ただし元の数が0である場合の結果は0である。
+*)
+Lemma exists_instnat_pred_tail :
+  { instnat_pred_tail : inst |
+    forall n m i1 i2 i3,
+    instnat_spec n i1 -> instnat_spec (n - 1) i2 -> instnat_spec m i3 ->
+    forall vs cs,
+    exists i4 : inst, instnat_spec (n + m - 1) i4 /\
+    (i3 :: i2 :: i1 :: vs, instnat_pred_tail :: cs) |=>* (i4 :: vs, cs) }.
+Proof.
+  eexists ; move=> n m i1 i2 i3 H H0 H1 vs cs.
+  evalpartial' evalpush.
+  evalpartial' evalswap.
+  evalpartial' evalexec.
+  evalpartial H1 ; clear H1 i3.
+  evalpartial' evalexec.
+  evalpartial evalseq_replicate.
+  move: m n i1 i2 H H0 vs cs ;
+    elim => [n i1 i2 H H0 vs cs | m H n i1 i2 H0 H1 vs cs].
+  - evalpartial' evalswap.
+    evalpartial evalpop.
+    evalauto.
+    by replace (n + 0 - 1) with (n - 1) by omega.
+  - simpl.
+    evalpartial' evalpop ; clear i2 H1.
+    evalpartial' evalcopy.
+    edestruct instnat_succ_proof as [i2 [H1 H2]] ; first apply H0.
+    evalpartial' H2 ; clear H2.
+    evalpartial evalswap.
+    replace (n + S m - 1) with (S n + m - 1) by omega.
+    apply H.
+    - auto.
+    - by replace (S n - 1) with n by omega.
+Defined.
+
+Notation instnat_pred_tail := (proj1_sig exists_instnat_pred_tail).
+Notation instnat_pred_proof_tail := (proj2_sig exists_instnat_pred_tail).
+
+Lemma exists_instnat_pred :
+  { instnat_pred : inst |
+    forall n i1, instnat_spec n i1 -> forall vs cs,
+    exists i2 : inst, instnat_spec (n - 1) i2 /\
+    (i1 :: vs, instnat_pred :: cs) |=>* (i2 :: vs, cs) }.
+Proof.
+  eexists ; move=> n i1 H vs cs.
+  do 2 (evalpartial' evalpush ; evalpartial' evalswap).
+  edestruct (instnat_pred_proof_tail 0 n) as [i2 [H0 H1]].
+  apply eval_instnat.
+  apply eval_instnat.
+  apply H.
+  evalpartial H1.
+  by evalauto.
+Defined.
+
+Notation instnat_pred := (proj1_sig exists_instnat_pred).
+Notation instnat_pred_proof := (proj2_sig exists_instnat_pred).
