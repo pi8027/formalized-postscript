@@ -1,5 +1,6 @@
 Require Import
-  Arith.Even Relations.Relations Lists.List Program.Basics Program.Syntax
+  Arith.Even Arith.Peano_dec Relations.Relations Lists.List
+  Program.Basics Program.Syntax
   ssreflect Common PsCore PsBool.
 
 (*
@@ -236,3 +237,58 @@ Proof.
   evalpartial H1.
   by evalauto.
 Defined.
+
+Notation instnat_even := (proj1_sig exists_instnat_even).
+Notation instnat_even_proof := (proj2_sig exists_instnat_even).
+
+(*
+instnat_iszero:
+  ゼロとの比較をする命令。
+*)
+Lemma exists_instnat_iszero_tail :
+  { instnat_iszero : inst |
+    forall n i1 i2, instnat_spec n i2 -> forall vs cs,
+    exists i3 : inst, instfalse_spec i3 /\
+    (i2 :: i1 :: vs, instnat_iszero :: cs) |=>*
+    ((if eq_nat_dec 0 n then i1 else i3)%GEN_IF :: vs, cs) }.
+Proof.
+  eexists ; move=> n i1 i2 H vs cs.
+  exists instfalse ; split.
+  - apply evalfalse.
+  - evalpartial' evalpush.
+    evalpartial' evalswap.
+    evalpartial' evalexec.
+    evalpartial H ; first clear i2 H.
+    evalpartial evalexec.
+    evalpartial evalseq_replicate.
+    move: n i1 vs cs ; elim=> [ i1 vs cs | n H i1 vs cs ].
+    - evalauto.
+    - simpl.
+      evalpartial' evalpop.
+      evalpartial evalpush.
+      move: H ; elim (eq_nat_dec 0 n) ; auto.
+Defined.
+
+Notation instnat_iszero_tail := (proj1_sig exists_instnat_iszero_tail).
+Notation instnat_iszero_proof_tail := (proj2_sig exists_instnat_iszero_tail).
+
+Lemma exists_instnat_iszero :
+  { instnat_iszero : inst |
+    forall n i1, instnat_spec n i1 -> forall vs cs,
+    exists i2 : inst,
+    instbool_spec (if eq_nat_dec 0 n then true else false)%GEN_IF i2 /\
+    (i1 :: vs, instnat_iszero :: cs) |=>* (i2 :: vs, cs) }.
+Proof.
+  eexists ; move=> n i1 H vs cs.
+  evalpartial' evalpush.
+  evalpartial' evalswap.
+  edestruct instnat_iszero_proof_tail as [i2 [H0 H1]] ; first apply H.
+  evalpartial H1.
+  elim (eq_nat_dec 0 n) => H2.
+  - evalauto.
+    apply evaltrue.
+  - by evalauto.
+Defined.
+
+Notation instnat_iszero := (proj1_sig exists_instnat_iszero).
+Notation instnat_iszero_proof := (proj2_sig exists_instnat_iszero).
