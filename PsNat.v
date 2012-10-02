@@ -1,6 +1,6 @@
 Require Import
-  Relations.Relations Lists.List Program.Basics Program.Syntax ssreflect
-  Common PsCore PsBool.
+  Arith.Even Relations.Relations Lists.List Program.Basics Program.Syntax
+  ssreflect Common PsCore PsBool.
 
 (*
 instnat_spec:
@@ -183,3 +183,56 @@ Proof.
 Defined.
 
 Notation instnat_mult_proof := (proj2_sig exists_instnat_mult).
+
+(*
+instnat_even:
+  偶奇判定の命令。
+*)
+Lemma exists_instnat_even_tail :
+  { instnat_even : inst |
+    forall b n i1 i2, instbool_spec b i1 -> instnat_spec n i2 -> forall vs cs,
+    exists i3 : inst,
+    instbool_spec (if even_odd_dec n then b else negb b)%GEN_IF i3 /\
+    (i2 :: i1 :: vs, instnat_even :: cs) |=>* (i3 :: vs, cs) }.
+Proof.
+  eexists ; move=> b n i1 i2 H H0 vs cs.
+  evalpartial' evalpush.
+  evalpartial' evalswap.
+  evalpartial' evalexec.
+  evalpartial H0.
+  clear H0 i2.
+  evalpartial evalexec.
+  evalpartial evalseq_replicate.
+  move: n b i1 H.
+  elim=> [ b i1 H | n H b i1 H0 ].
+  - by evalauto.
+  - edestruct evalnot as [i2 [H1 H2]] ; first apply H0.
+    evalpartial H2 ; clear H2.
+    edestruct H as [i3 [H2 H3]] ; first apply H1.
+    evalpartial H3.
+    evalauto.
+    rewrite -Bool.negb_involutive_reverse in H2.
+    destruct (even_odd_dec n), (even_odd_dec (S n)) ; auto.
+    by inversion e0 ; apply False_ind, (not_even_and_odd n).
+    by inversion o0 ; apply False_ind, (not_even_and_odd n).
+Defined.
+
+Notation instnat_even_tail := (proj1_sig exists_instnat_even_tail).
+Notation instnat_even_proof_tail := (proj2_sig exists_instnat_even_tail).
+
+Lemma exists_instnat_even :
+  { instnat_even : inst |
+    forall n i1, instnat_spec n i1 -> forall vs cs,
+    exists i2 : inst,
+    instbool_spec (if even_odd_dec n then true else false)%GEN_IF i2 /\
+    (i1 :: vs, instnat_even :: cs) |=>* (i2 :: vs, cs) }.
+Proof.
+  eexists ; move=> n i1 H vs cs.
+  evalpartial' evalpush.
+  evalpartial' evalswap.
+  edestruct (instnat_even_proof_tail true n) as [i2 [H0 H1]].
+  apply evaltrue.
+  apply H.
+  evalpartial H1.
+  by evalauto.
+Defined.
