@@ -13,8 +13,9 @@ Definition instfalse_spec (i1 : inst) : Prop :=
 Definition insttrue_spec (i1 : inst) : Prop :=
   forall i2 i3 vs cs, (i3 :: i2 :: vs, i1 :: cs) |=>* (i2 :: i3 :: vs, cs).
 
-Definition instbool_spec (b : bool) (i : inst) :=
-  if b then insttrue_spec i else instfalse_spec i.
+Notation instbool_spec :=
+  (fun (b : bool) (i : inst) =>
+    if b then insttrue_spec i else instfalse_spec i).
 
 (*
 exists_false, exists_true:
@@ -40,6 +41,9 @@ Defined.
 
 Notation insttrue := (proj1_sig exists_true).
 Notation evaltrue := (proj2_sig exists_true).
+
+Hint Resolve (evalfalse : instfalse_spec instfalse).
+Hint Resolve (evaltrue : insttrue_spec insttrue).
 
 (*
 exists_not:
