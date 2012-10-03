@@ -17,12 +17,12 @@ exists_instnat:
 *)
 Lemma exists_instnat : forall n, { i : inst | instnat_spec n i }.
 Proof.
-  induction n.
+  elim=> [| n H].
   - eexists ; move=> i2 vs cs ; simpl.
     evalpartial' evalpop.
     evalpartial evalpush.
     evalauto.
-  - move: IHn => [i H].
+  - move: H => [i H].
     eexists ; move=> i2 vs cs.
     evalpartial' evalcopy.
     evalpartial' H.
@@ -32,7 +32,7 @@ Defined.
 Notation instnat := (fun n => proj1_sig (exists_instnat n)).
 Notation eval_instnat := (fun n => proj2_sig (exists_instnat n)).
 
-Hint Resolve eval_instnat.
+Hint Resolve (eval_instnat : forall n, instnat_spec n (instnat n)).
 
 (*
 instnat_eqmap:
@@ -64,6 +64,25 @@ Proof.
   move: m ; induction n ; intro ; destruct m ; simpl ; intros ;
     (congruence || f_equal ; apply IHn ; congruence).
 Qed.
+
+(*
+instnat_repeat:
+  繰り返しの命令。
+*)
+Lemma exists_instnat_repeat :
+  { instnat_repeat : inst |
+    forall n i1 i2 vs cs, instnat_spec n i2 ->
+    (i1 :: vs, i2 :: instnat_repeat :: cs) |=>*
+    (vs, replicate n i1 ++ cs) }.
+Proof.
+  eexists ; move=> n i1 i2 vs cs H.
+  evalpartial H.
+  evalpartial evalexec.
+  apply evalseq_replicate.
+Defined.
+
+Notation instnat_repeat := (proj1_sig exists_instnat_repeat).
+Notation eval_instnat_repeat := (proj2_sig exists_instnat_repeat).
 
 (*
 instnat_succ:
@@ -105,9 +124,7 @@ Proof.
   evalpartial' evalpush.
   evalpartial' evalswap.
   evalpartial' evalexec.
-  evalpartial H.
-  evalpartial evalexec.
-  evalpartial evalseq_replicate.
+  evalpartial (eval_instnat_repeat n).
   clear H i1 ; move: n m i2 H0 ; elim=> [m i1 H | n H m i1 H0] ; simpl.
   - by evalauto.
   - edestruct (instnat_succ_proof m i1) as [i2 [H1 H2]] ; auto.
@@ -154,9 +171,7 @@ Proof.
   evalpartial' evalswap.
   evalpartial' evalexec.
   evalauto.
-  evalpartial H0.
-  evalpartial evalexec.
-  evalpartial evalseq_replicate.
+  evalpartial (eval_instnat_repeat n).
   clear i2 H0.
   move: n o i1 i3 H H1 ; elim=> [o i1 i2 H H0 | n H o i1 i2 H0 H1 ] ; simpl.
   - evalauto.
@@ -200,9 +215,8 @@ Proof.
   evalpartial' evalpush.
   evalpartial' evalswap.
   evalpartial' evalexec.
-  evalpartial H0 ; clear H0 i2.
-  evalpartial evalexec.
-  evalpartial evalseq_replicate.
+  evalpartial (eval_instnat_repeat n).
+  clear H0 i2.
   move: n b i1 H ; elim=> [b i1 H | n H b i1 H0].
   - by evalauto.
   - edestruct (evalnot b i1) as [i2 [H1 H2]] ; auto.
@@ -252,9 +266,8 @@ Proof.
   - evalpartial' evalpush.
     evalpartial' evalswap.
     evalpartial' evalexec.
-    evalpartial H ; clear i2 H.
-    evalpartial evalexec.
-    evalpartial evalseq_replicate.
+    evalpartial (eval_instnat_repeat n).
+    clear i2 H.
     move: n i1 ; elim=> [i1 | n H i1].
     - evalauto.
     - simpl.
@@ -298,10 +311,10 @@ Proof.
   eexists ; move=> n m i1 i2 i3 vs cs H H0 H1.
   evalpartial' evalpush.
   evalpartial' evalswap.
+  evalpartial evalpair.
   evalpartial' evalexec.
-  evalpartial H1 ; clear H1 i3.
-  evalpartial' evalexec.
-  evalpartial evalseq_replicate.
+  evalpartial (eval_instnat_repeat m).
+  clear H1 i3.
   move: m n i1 i2 H H0 ; elim=> [n i1 i2 H H0 | m H n i1 i2 H0 H1].
   - evalpartial' evalswap.
     evalpartial evalpop.
