@@ -342,3 +342,34 @@ Defined.
 
 Notation instnat_pred := (proj1_sig exists_instnat_pred).
 Notation instnat_pred_proof := (proj2_sig exists_instnat_pred).
+
+(*
+instnat_sub:
+  減算命令。
+*)
+Lemma exists_instnat_sub :
+  { instnat_sub : inst |
+    forall n m i1 i2 vs cs,  instnat_spec n i1 -> instnat_spec m i2 ->
+    exists i3 : inst, instnat_spec (n - m) i3 /\
+    (i2 :: i1 :: vs, instnat_sub :: cs) |=>* (i3 :: vs, cs) }.
+Proof.
+  eexists ; move=> n m i1 i2 vs cs H H0.
+  evalpartial' evalpush.
+  evalpartial' evalswap.
+  evalpartial' evalexec.
+  evalpartial (eval_instnat_repeat m).
+  clear i2 H0.
+  move: m n i1 H ; elim=> [n i1 H | m H0 n i1 H1].
+  - evalauto.
+    by replace (n - 0) with n by omega.
+  - simpl.
+    edestruct (instnat_pred_proof n i1) as [i2 [H2 H3]] ; auto.
+    evalpartial H3 ; clear H3.
+    edestruct (H0 (n - 1) i2) as [i3 [H3 H4]] ; auto.
+    evalpartial H4.
+    evalauto.
+    by replace (n - S m) with (n - 1 - m) by omega.
+Defined.
+
+Notation instnat_sub := (proj1_sig exists_instnat_sub).
+Notation instnat_sub_proof := (proj2_sig exists_instnat_sub).
