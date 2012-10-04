@@ -1,6 +1,6 @@
 Require Import
   Logic.Decidable Relations.Relations Relations.Relation_Operators
-  Lists.List Program.Basics Program.Equality
+  Lists.List Strings.String Program.Basics Program.Equality
   ssreflect Common.
 
 (*
@@ -16,6 +16,22 @@ Inductive inst : Set :=
   | instexec  : inst
   | instpush  : inst -> inst
   | instpair  : inst -> inst -> inst.
+
+(*
+inst_to_pscode:
+  inst 型の命令を PostScript のプログラムに変換する。
+*)
+Fixpoint inst_to_pscode (i : inst) : string :=
+  match i with
+    | instpop        => "pop"
+    | instcopy       => "dup"
+    | instswap       => "exch"
+    | instcons       => "cons"
+    | instquote      => "quote"
+    | instexec       => "exec"
+    | instpush i     => "{" ++ inst_to_pscode i ++ "}"
+    | instpair i1 i2 => inst_to_pscode i1 ++ " " ++ inst_to_pscode i2
+  end%string.
 
 (*
 inst_length:
