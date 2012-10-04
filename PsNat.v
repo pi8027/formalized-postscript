@@ -63,7 +63,7 @@ Lemma instnat_eqmap :
   forall n m i, instnat_spec n i -> instnat_spec m i -> n = m.
 Proof.
   move=> n m i1 H0 H1.
-  have H2: (([], replicate n instpop) |=>* ([], replicate m instpop) \/
+  have: (([], replicate n instpop) |=>* ([], replicate m instpop) \/
       ([], replicate m instpop) |=>* ([], replicate n instpop)).
     apply (eval_semi_uniqueness ([instpop], [i1 ; instexec])).
     - evalpartial (eval_instnat_repeat n).
@@ -72,12 +72,11 @@ Proof.
     - evalpartial (eval_instnat_repeat m).
       rtcrefl.
       apply app_nil_r.
+  clear ; move=> H.
   have: (replicate n instpop = replicate m instpop).
-    by destruct H2 ; destruct n ; destruct m ; inversion H ;
-      (inversion H2 || simpl ; f_equal).
-  clear.
-  move: m ; induction n ; intro ; destruct m ; simpl ; intros ;
-    (congruence || f_equal ; apply IHn ; congruence).
+    by destruct H, n, m ; inversion H ; (inversion H0 || simpl ; f_equal).
+  clear ; move: n m ; elim=> [m H | n IHn m H] ;
+    destruct m ; inversion H ; auto.
 Qed.
 
 (*
