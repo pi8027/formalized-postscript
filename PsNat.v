@@ -1,6 +1,6 @@
 Require Import
-  Arith.Even Arith.Peano_dec Relations.Relations Lists.List
-  Program.Basics Program.Syntax
+  Arith.Compare_dec Arith.Even Arith.Peano_dec
+  Relations.Relations Lists.List Program.Basics Program.Syntax
   ssreflect Common PsCore PsBool.
 
 (*
@@ -348,7 +348,7 @@ instnat_sub:
 *)
 Lemma exists_instnat_sub :
   { instnat_sub : inst |
-    forall n m i1 i2 vs cs,  instnat_spec n i1 -> instnat_spec m i2 ->
+    forall n m i1 i2 vs cs, instnat_spec n i1 -> instnat_spec m i2 ->
     exists i3 : inst, instnat_spec (n - m) i3 /\
     (i2 :: i1 :: vs, instnat_sub :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
@@ -372,3 +372,29 @@ Defined.
 
 Notation instnat_sub := (proj1_sig exists_instnat_sub).
 Notation instnat_sub_proof := (proj2_sig exists_instnat_sub).
+
+(*
+instnat_le:
+  大小比較。
+*)
+Lemma exists_instnat_le :
+  { instnat_le : inst |
+    forall n m i1 i2 vs cs, instnat_spec n i1 -> instnat_spec m i2 ->
+    exists i3 : inst,
+    instbool_spec (if le_dec n m then true else false)%GEN_IF i3 /\
+    (i2 :: i1 :: vs, instnat_le :: cs) |=>* (i3 :: vs, cs) }.
+Proof.
+  eexists ; move=> n m i1 i2 vs cs H H0.
+  edestruct (instnat_sub_proof n m i1 i2) as [i3 [H1 H2]] ; auto.
+  evalpartial' H2 ; clear i1 i2 H H0 H2.
+  edestruct (instnat_iszero_proof (n - m) i3) as [i1 [H H0]] ; auto.
+  evalpartial H0 ; clear i3 H0 H1.
+  evalauto.
+  move: H.
+  elim (le_dec n m) => H.
+  by replace (n - m) with 0 by omega.
+  by replace (n - m) with (S (n - m - 1)) by omega.
+Defined.
+
+Notation instnat_le := (proj1_sig exists_instnat_le).
+Notation instnat_le_proof := (proj2_sig exists_instnat_le).
