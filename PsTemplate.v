@@ -188,9 +188,8 @@ Lemma proof_inst_listindex' :
   (instseqv ys :: xs ++ vs, inst_listindex :: cs) |=>*
   (x :: ys ++ xs ++ vs, cs) }.
 Proof.
-  elim=> [ | n [i IH]] ; eexists=> xs x ys vs cs H.
-  - inversion H.
-    simpl.
+  elim=> [ | n [i IH]] ; eexists=> xs x ys vs cs H ; inversion H.
+  - simpl.
     evalpartial' evalquote.
     evalpartial' evalswap.
     evalpartial' evalquote.
@@ -206,14 +205,13 @@ Proof.
     evalauto.
     evalpartial evalseqv.
     evalauto.
-  - inversion H.
-    clear xs H n0 x0 H1 H0 H3.
+  - clear xs H n0 x0 H1 H0 H3.
     simpl.
     evalpartial' evalswap.
     evalpartial' evalquote.
     evalpartial' evalsnoc.
     rewrite -/(instseqv' [x'] (instseqv ys))
-      -(app_instseqv ys [x']) -/([x'] ++ xs0 ++ vs) (app_assoc ys [x']).
+      -(app_instseqv ys [x']) -/([x'] ++ xs0 ++ vs) app_assoc.
     apply (IH xs0 x (ys ++ [x']) vs cs H2).
 Defined.
 
@@ -226,4 +224,61 @@ Proof.
   evalpartial' evalpush.
   evalpartial (proj2_sig (proof_inst_listindex' n) xs x [] vs cs H).
   evalauto.
+Defined.
+
+Lemma proof_inst_listindices' :
+  forall len ns, { inst_listindices |
+  forall xs ys zs vs cs, length xs = len -> listindices inst xs ns ys ->
+  (instseqv zs :: xs ++ vs, inst_listindices :: cs) |=>*
+  (instseqv (zs ++ ys) :: xs ++ vs, cs) }.
+Proof.
+  move=> len ; elim=> [ | n ns [i IH] ] ;
+    eexists=> xs ys zs vs cs H H0 ; inversion H0.
+  - evalpartial evalnop.
+    by rtcrefl ; rewrite app_nil_r.
+  - clear ys x l H0 H1 H2 H4.
+    evalpartial evalpair.
+    eapply evalrtc_trans.
+    eapply (proj2_sig (proof_inst_listindex (S n))
+      (instseqv zs :: xs) y vs (_ :: cs) (lisucc _ _ _ _ _ H3)).
+    simpl.
+    evalpartial' evalquote.
+    evalpartial' evalsnoc.    
+    rewrite -/(instseqv' [y] (instseqv zs))
+      -(app_instseqv zs [y]) -/([y] ++ l') app_assoc.
+    apply (IH xs l' (zs ++ [y]) vs cs H H5).
+Defined.
+
+Theorem proof_clear_used :
+  forall len, { inst_clear_used |
+  forall i vs1 vs2 cs, length vs1 = len ->
+  (i :: vs1 ++ vs2, inst_clear_used :: cs) |=>* (i :: vs2, cs) }.
+Proof.
+  elim=> [ | n [i1 IH] ] ; eexists=> i2 vs1 vs2 cs.
+  - case: vs1 => [ | v vs1] H.
+    - evalpartial evalnop.
+      evalauto.
+    - inversion H.
+  - case: vs1 => [ | v vs1] H ; inversion H.
+    simpl.
+    evalpartial' evalswap.
+    evalpartial' evalpop.
+    apply (IH i2 vs1 vs2 cs H1).
+Defined.
+
+Theorem proof_inst_listindices :
+  forall len ns, { inst_listindices |
+  forall xs ys vs cs, length xs = len -> listindices inst xs ns ys ->
+  (xs ++ vs, inst_listindices :: cs) |=>* (ys ++ vs, cs) }.
+Proof.
+  move=> len ns ; eexists=> xs ys vs cs H H0.
+  evalpartial' evalpush.
+  evalpartial evalpair.
+  eapply evalrtc_trans.
+  eapply (proj2_sig (proof_inst_listindices' len ns) xs ys [] vs _ H H0).
+  evalpartial evalpair.
+  eapply evalrtc_trans.
+  eapply (proj2_sig (proof_clear_used len) (instseqv ys) xs vs _ H).
+  evalpartial evalexec.
+  apply evalseqv.
 Defined.
