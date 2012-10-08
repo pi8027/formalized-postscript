@@ -157,8 +157,7 @@ eval_uniqueness:
 *)
 Theorem eval_uniqueness : forall e1 e2 e3, e1 |=> e2 -> e1 |=> e3 -> e2 = e3.
 Proof.
-  intros.
-  destruct e1 as [[ | v vs] [ | [ | | | | | | | ] [ | p ps]]] ;
+  destruct e1 as [[ | v vs] [ | [ | | | | | | | ] [ | p ps]]]=> e2 e3 H H0 ;
     inversion H ; inversion H0 ; congruence.
 Qed.
 
@@ -169,12 +168,12 @@ eval_semi_uniqueness:
 Theorem eval_semi_uniqueness:
   forall e1 e2 e3, e1 |=>* e2 -> e1 |=>* e3 -> e2 |=>* e3 \/ e3 |=>* e2.
 Proof.
-  intros.
-  induction H.
-  auto.
-  inversion H0.
-  right ; rewrite <- H2 ; econstructor ; eauto.
-  by apply IHclos_refl_trans_1n ; rewrite (eval_uniqueness _ _ _ H H2).
+  move=> e1 e2 e3 ; elim.
+  - auto.
+  - move=> x y z H H0 IH H1.
+    inversion H1.
+    right ; rewrite -H2 ; econstructor ; eauto.
+    move: IH ; rewrite (eval_uniqueness _ _ _ H H2) ; auto.
 Qed.
 
 (*
@@ -186,15 +185,15 @@ Lemma eval_apptail :
   forall vs ps vs' ps' vs'' ps'', (vs, ps) |=> (vs', ps') ->
   (vs ++ vs'', ps ++ ps'') |=> (vs' ++ vs'', ps' ++ ps'').
 Proof.
-  intros.
-  inversion H ; simpl ; constructor.
+  move=> vs ps vs' ps' vs'' ps'' H.
+  inversion H ; constructor.
 Qed.
 
 Theorem evalrtc_apptail :
   forall vs ps vs' ps' vs'' ps'', (vs, ps) |=>* (vs', ps') ->
   (vs ++ vs'', ps ++ ps'') |=>* (vs' ++ vs'', ps' ++ ps'').
 Proof.
-  intros.
+  move=> vs ps vs' ps' vs'' ps'' H.
   dependent induction H.
   constructor.
   destruct y.
@@ -281,7 +280,7 @@ Tactic Notation "evalpartial'" constr(H) :=
 rtcrefl:
   ゴール e1 |=>* e2 を e1 = e2 で置き換え、f_equal を繰り返し適用する。
 *)
-Ltac rtcrefl := apply evalrtc_refl' ; repeat f_equal.
+Ltac rtcrefl := apply evalrtc_refl' ; do ?f_equal.
 
 (*
 exists_nop:
@@ -290,7 +289,7 @@ exists_nop:
 Lemma exists_nop :
   { instnop : inst | forall vs cs, (vs, instnop :: cs) |=>* (vs, cs) }.
 Proof.
-  eexists ; move=> vs cs.
+  eexists=> vs cs.
   evalpartial' (evalpush instpop).
   evalpartial evalpop.
   evalauto.
@@ -303,10 +302,11 @@ Notation evalnop := (proj2_sig exists_nop).
 exists_snoc:
   instswap, instcons を順番に実行する。パラメータの順番が反転した instcons。
 *)
-Lemma exists_snoc : { instsnoc : inst | forall i1 i2 vs cs,
-  (i1 :: i2 :: vs, instsnoc :: cs) |=>* (instpair i1 i2 :: vs, cs) }.
+Lemma exists_snoc :
+  { instsnoc : inst | forall i1 i2 vs cs,
+    (i1 :: i2 :: vs, instsnoc :: cs) |=>* (instpair i1 i2 :: vs, cs) }.
 Proof.
-  eexists ; move=> i1 i2 vs cs.
+  eexists=> i1 i2 vs cs.
   evalpartial' evalswap.
   evalpartial evalcons.
   evalauto.
@@ -325,10 +325,12 @@ Notation instseq' := (fold_left instpair).
 Lemma evalseq' :
   forall il i vs cs, (vs, instseq' il i :: cs) |=>* (vs, i :: il ++ cs).
 Proof.
-  elim ; intros ; last evalpartial H ; evalauto.
+  elim => [ | i il IH] i' vs cs.
+  evalauto.
+  evalpartial IH ; evalauto.
 Qed.
 
-Notation instseq := (fun il => instseq' il instnop).
+Notation instseq il := (instseq' il instnop).
 
 Lemma evalseq : forall il vs cs, (vs, instseq il :: cs) |=>* (vs, il ++ cs).
 Proof.
@@ -346,19 +348,18 @@ Qed.
 Lemma app_instseq :
   forall is1 is2, instseq (is1 ++ is2) = instseq' is2 (instseq is1).
 Proof.
-  intros ; apply app_instseq'.
+  move=> is1 is2 ; apply app_instseq'.
 Qed.
 
-Notation instseq_replicate' :=
-  (fun n i1 i2 => fold_right (flip instpair) i2 (replicate n i1)).
+Notation instseq_replicate' n i1 i2 :=
+  (fold_right (flip instpair) i2 (replicate n i1)).
 
-Notation instseq_replicate := (fun n i => instseq_replicate' n i instnop).
+Notation instseq_replicate n i := (instseq_replicate' n i instnop).
 
-Lemma instseq_replicate_eq : forall n i1 i2,
-  instseq' (replicate n i1) i2 = instseq_replicate' n i1 i2.
+Lemma instseq_replicate_eq :
+  forall n i1 i2, instseq' (replicate n i1) i2 = instseq_replicate' n i1 i2.
 Proof.
   move=> n i1 i2.
-  simpl.
   rewrite {2}replicate_rev_id.
   apply eq_sym, fold_left_rev_right.
 Qed.
@@ -367,9 +368,8 @@ Lemma evalseq_replicate' :
   forall n i1 i2 vs cs,
   (vs, instseq_replicate' n i1 i2 :: cs) |=>* (vs, i2 :: replicate n i1 ++ cs).
 Proof.
-  move=> n i1 i2 vs cs.
-  simpl ; rewrite -instseq_replicate_eq.
-  apply evalseq'.
+  move=> n i1 i2.
+  rewrite -instseq_replicate_eq ; apply evalseq'.
 Qed.
 
 Lemma evalseq_replicate :

@@ -14,18 +14,18 @@ Fixpoint replicate {A : Set} (n : nat) (a : A) :=
 Lemma replicate_app : forall {A : Set} (n m : nat) (a : A),
   replicate n a ++ replicate m a = replicate (n + m) a.
 Proof.
-  intros.
-  by induction n ; last simpl ; f_equal.
+  move=> A ; elim=> [ | n IH m a].
+  done.
+  by simpl ; f_equal.
 Qed.
 
 Lemma replicate_rev_id :
   forall {A : Set} (n : nat) (a : A), replicate n a = rev (replicate n a).
 Proof.
-  intros.
-  induction n.
+  move=> A ; elim=> [ | n IH a].
   auto.
   simpl.
-  rewrite -IHn (replicate_app n 1 a).
+  rewrite -IH (replicate_app n 1 a).
   by replace (n + 1) with (S n) by omega.
 Qed.
 
@@ -37,8 +37,9 @@ Lemma rt1n_trans' : forall (A : Type) (R : relation A) (x y z : A),
   clos_refl_trans_1n A R x y -> clos_refl_trans_1n A R y z ->
   clos_refl_trans_1n A R x z.
 Proof.
-  intros.
-  induction H ; last apply (rt1n_trans _ _ _ _ _ H) ; auto.
+  move=> A R x y z ; elim.
+  auto.
+  clear=> x y z' H H0 IH H2 ; apply rt1n_trans with y ; auto.
 Qed.
 
 (*
@@ -51,5 +52,5 @@ iff_decidable:
 *)
 Theorem iff_decidable : forall A B, iff A B -> sb_decidable A -> sb_decidable B.
 Proof.
-  by move=> A B eq ; elim=> H ; [left | right] ; rewrite -eq.
+  by move=> A B eq ; case=> H ; [left | right] ; rewrite -eq.
 Defined.

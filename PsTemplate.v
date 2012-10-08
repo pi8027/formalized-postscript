@@ -12,22 +12,22 @@ Inductive listindex : list A -> nat -> A -> Prop :=
 Lemma listindex_cond :
   forall xs n, length xs > n <-> exists a, listindex xs n a.
 Proof.
-  elim=> [ | x xs IH] ; [move=> n | elim=> [ | n _ ]] ; split=> H.
+  elim=> [n | x xs IH [ | n]] ; split=> H.
   - inversion H.
-  - elim: H => x H.
+  - case: H => x H.
     inversion H.
   - exists x.
     apply lizero.
   - simpl ; omega.
-  - simpl in H ; have H0: length xs > n by omega.
-    elim (proj1 (IH n) H0) => x' H1.
-    exists x'.
-    by apply lisucc.
+  - have: (exists a, listindex xs n a).
+      apply (proj1 (IH n)).
+      simpl in H ; omega.
+    by case=> x' H1 ; exists x' ; constructor.
   - have: length xs > n.
-      elim: H => x' H.
+      case: H => x' H.
       inversion H.
       apply: (proj2 (IH n) (ex_intro _ x' H4)).
-    simpl ; move=> H1 ; omega.
+    simpl=> H1 ; omega.
 Qed.
 
 Theorem dec_listindex :
@@ -40,29 +40,29 @@ Defined.
 Theorem unique_listindex :
   forall xs n x y, listindex xs n x -> listindex xs n y -> x = y.
 Proof.
-  elim=> [n x y H H0 | a xs H [ | n] x y H0 H1].
+  elim=> [n | a xs IH [ | n]] x y H H0.
   - inversion H.
-  - inversion H0.
-    inversion H1.
+  - inversion H.
+    inversion H0.
     congruence.
-  - apply (H n x y).
+  - apply (IH n x y).
+    by inversion H.
     by inversion H0.
-    by inversion H1.
 Qed.
 
-Notation listindices xs ns ys := (Forall2 (listindex xs) ns ys).
+Notation listindices xs := (Forall2 (listindex xs)).
 
 Lemma listindices_cond :
   forall xs ns, Forall (gt (length xs)) ns <-> exists ys, listindices xs ns ys.
 Proof.
   move=> xs ; elim => [ | n ns IH] ; split=> H.
-  - apply: (ex_intro _ []) ; constructor.
+  - eexists [] ; constructor.
   - constructor.
   - inversion H.
-    elim (proj1 (listindex_cond xs n) H2) => y H4.
-    elim (proj1 IH H3) => ys H5.
+    case (proj1 (listindex_cond xs n) H2) => y H4.
+    case (proj1 IH H3) => ys H5.
     exists (y :: ys) ; constructor ; auto.
-  - elim: H ; elim => [H | y ys _ H].
+  - case: H ; case => [ | y ys ] H.
     - inversion H.
     - inversion H.
       constructor.
@@ -77,23 +77,19 @@ Theorem dec_listindices :
 Proof.
   move=> xs ns.
   apply (iff_decidable _ _ (listindices_cond xs ns)).
-  elim: ns => [ | n ns IH].
+  elim: ns => [ | n ns [IH | IH]].
   - left ; constructor.
-  - elim: IH.
-    - elim (gt_dec (length xs) n).
-      - by left ; constructor.
-      - move=> H _ ; right => H1 ; apply: H.
-        by inversion H1.
-    - move=> H ; right => H0 ; apply: H.
-      by inversion H0.
+  - case (gt_dec (length xs) n) => H.
+    - by left ; constructor.
+    - by right=> H1 ; apply: H ; inversion H1.
+  - by right=> H0 ; apply: IH ; inversion H0.
 Defined.
 
 Theorem unique_listindices :
   forall xs ns ys zs, listindices xs ns ys -> listindices xs ns zs -> ys = zs.
 Proof.
-  move=> xs ; elim=> [ys zs | n ns IH ys zs ] ;
-    elim: ys => [ | y ys _] ; elim: zs => [ | z zs _] ;
-    move=> H H0 ; inversion H ; inversion H0.
+  move=> xs ; elim=> [ | n ns IH ] ; case=> [ | y ys] ; case => [ | z zs] H H0 ;
+    inversion H ; inversion H0.
   - auto.
   - f_equal.
     - apply: unique_listindex ; eauto.
@@ -102,7 +98,7 @@ Qed.
 
 End ListIndex.
 
-Notation listindices A xs ns ys := (Forall2 (listindex A xs) ns ys).
+Notation listindices A xs := (Forall2 (listindex A xs)).
 
 Inductive instt : Set :=
   | insttpop   : instt
@@ -144,28 +140,27 @@ Lemma fill_template_cond :
   (exists ys, listindices inst l (holes_of_template t) ys) <->
   (exists i, fill_template l t i).
 Proof.
-  move=> l t ; split.
+  split.
   - elim: t ; try by eexists ; constructor.
     - move=> t IH H.
-      elim (IH H) => i H0.
+      case (IH H) => i H0.
       exists (instpush i).
       by constructor.
     - move=> t1 H t2 H0 [ys H1].
-      elim (Forall2_app_inv_l (holes_of_template t1) (holes_of_template t2) H1)
-        => ysl [ysr [H2 [H3 H4]]].
-      clear ys H1 H4.
-      elim (H (ex_intro _ ysl H2)) => il H4.
-      elim (H0 (ex_intro _ ysr H3)) => ir H5.
+      case (Forall2_app_inv_l (holes_of_template t1) (holes_of_template t2) H1)
+        => ysl [ysr [H2 [H3 _]]].
+      clear ys H1.
+      case (H (ex_intro _ ysl H2)) => il H4.
+      case (H0 (ex_intro _ ysr H3)) => ir H5.
       exists (instpair il ir).
       by constructor.
     - move=> n [ys H].
       inversion H.
       exists y.
       by constructor.
-  - elim: t ; try by move=> H ; apply (ex_intro _ []) ; constructor.
-    - move=> t IH H.
+  - elim: t ; try by move=> H ; eexists [] ; constructor.
+    - move=> t IH [i H].
       apply IH.
-      elim: H => i H.
       inversion H.
       by exists i0.
     - move=> t1 H t2 H0 [i H1].
@@ -184,6 +179,5 @@ Theorem dec_fill_template :
   forall l t, sb_decidable (exists i, fill_template l t i).
 Proof.
   move=> l t.
-  apply (iff_decidable _ _ (fill_template_cond l t)).
-  apply dec_listindices.
+  apply (iff_decidable _ _ (fill_template_cond l t)), dec_listindices.
 Defined.
