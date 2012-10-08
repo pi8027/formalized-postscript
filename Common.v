@@ -30,7 +30,7 @@ Proof.
 Qed.
 
 (*
-rt1n_trans:
+rt1n_trans':
   clos_refl_trans_1n は推移関係である。
 *)
 Lemma rt1n_trans' : forall (A : Type) (R : relation A) (x y z : A),
@@ -40,3 +40,16 @@ Proof.
   intros.
   induction H ; last apply (rt1n_trans _ _ _ _ _ H) ; auto.
 Qed.
+
+(*
+sb_decidable:
+*)
+Notation sb_decidable a := ({a}+{~a}).
+
+(*
+iff_decidable:
+*)
+Theorem iff_decidable : forall A B, iff A B -> sb_decidable A -> sb_decidable B.
+Proof.
+  by move=> A B eq ; elim=> H ; [left | right] ; rewrite -eq.
+Defined.
