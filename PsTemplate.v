@@ -243,7 +243,7 @@ Proof.
       (instseqv zs :: xs) y vs (_ :: cs) (lisucc _ _ _ _ _ H3)).
     simpl.
     evalpartial' evalquote.
-    evalpartial' evalsnoc.    
+    evalpartial' evalsnoc.
     rewrite -/(instseqv' [y] (instseqv zs))
       -(app_instseqv zs [y]) -/([y] ++ l') app_assoc.
     apply (IH xs l' (zs ++ [y]) vs cs H H5).
