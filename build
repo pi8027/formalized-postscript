@@ -1,3 +1,10 @@
 #!/bin/zsh
+
+for f in *.v ; do
+  tail -c 1 $f | grep . > /dev/null && echo "$f: no newline at end of file" && exit -1
+  tail -n 1 $f | grep -v . > /dev/null && echo "$f: trailing empty line" && exit -1
+  grep " $" $f && echo "$f: trailing whitespace" && exit -1
+done
+
 coq_makefile *.v > Makefile
 make
