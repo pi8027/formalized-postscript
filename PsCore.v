@@ -316,67 +316,103 @@ Notation instsnoc := (proj1_sig exists_snoc).
 Notation evalsnoc := (proj2_sig exists_snoc).
 
 (*
-instseq', instseq:
+instseqc', instseqc:
   命令列を素直に記述するためのもの。命令のリストを instpair で畳み込むと、それが
   継続のスタックの先頭にあった場合に、元のリストの通りに展開される。
 *)
-Notation instseq' := (fold_left instpair).
+Notation instseqc' := (fold_left instpair).
 
-Lemma evalseq' :
-  forall il i vs cs, (vs, instseq' il i :: cs) |=>* (vs, i :: il ++ cs).
+Lemma evalseqc' :
+  forall il i vs cs, (vs, instseqc' il i :: cs) |=>* (vs, i :: il ++ cs).
 Proof.
-  elim => [ | i il IH] i' vs cs.
+  elim=> [ | i il IH] i' vs cs.
   evalauto.
   evalpartial IH ; evalauto.
 Qed.
 
-Notation instseq il := (instseq' il instnop).
+Notation instseqc il := (instseqc' il instnop).
 
-Lemma evalseq : forall il vs cs, (vs, instseq il :: cs) |=>* (vs, il ++ cs).
+Lemma evalseqc : forall il vs cs, (vs, instseqc il :: cs) |=>* (vs, il ++ cs).
 Proof.
   move=> il vs cs.
-  evalpartial evalseq'.
+  evalpartial evalseqc'.
   evalauto.
 Qed.
 
-Lemma app_instseq' :
-  forall is1 is2 i, instseq' (is1 ++ is2) i = instseq' is2 (instseq' is1 i).
+Lemma app_instseqc' :
+  forall is1 is2 i, instseqc' (is1 ++ is2) i = instseqc' is2 (instseqc' is1 i).
 Proof.
   apply fold_left_app.
 Qed.
 
-Lemma app_instseq :
-  forall is1 is2, instseq (is1 ++ is2) = instseq' is2 (instseq is1).
+Lemma app_instseqc :
+  forall is1 is2, instseqc (is1 ++ is2) = instseqc' is2 (instseqc is1).
 Proof.
-  move=> is1 is2 ; apply app_instseq'.
+  move=> is1 is2 ; apply app_instseqc'.
 Qed.
 
-Notation instseq_replicate' n i1 i2 :=
+Notation instseqc_replicate' n i1 i2 :=
   (fold_right (flip instpair) i2 (replicate n i1)).
 
-Notation instseq_replicate n i := (instseq_replicate' n i instnop).
+Notation instseqc_replicate n i := (instseqc_replicate' n i instnop).
 
-Lemma instseq_replicate_eq :
-  forall n i1 i2, instseq' (replicate n i1) i2 = instseq_replicate' n i1 i2.
+Lemma instseqc_replicate_eq :
+  forall n i1 i2, instseqc' (replicate n i1) i2 = instseqc_replicate' n i1 i2.
 Proof.
   move=> n i1 i2.
   rewrite {2}replicate_rev_id.
   apply eq_sym, fold_left_rev_right.
 Qed.
 
-Lemma evalseq_replicate' :
+Lemma evalseqc_replicate' :
   forall n i1 i2 vs cs,
-  (vs, instseq_replicate' n i1 i2 :: cs) |=>* (vs, i2 :: replicate n i1 ++ cs).
+  (vs, instseqc_replicate' n i1 i2 :: cs) |=>* (vs, i2 :: replicate n i1 ++ cs).
 Proof.
   move=> n i1 i2.
-  rewrite -instseq_replicate_eq ; apply evalseq'.
+  rewrite -instseqc_replicate_eq ; apply evalseqc'.
 Qed.
 
-Lemma evalseq_replicate :
+Lemma evalseqc_replicate :
   forall n i vs cs,
-  (vs, instseq_replicate n i :: cs) |=>* (vs, replicate n i ++ cs).
+  (vs, instseqc_replicate n i :: cs) |=>* (vs, replicate n i ++ cs).
 Proof.
   move=> n i vs cs.
-  evalpartial evalseq_replicate'.
+  evalpartial evalseqc_replicate'.
   evalauto.
+Qed.
+
+(*
+instseqv', instseqv:
+  スタックに展開される命令の並びを記述するためのもの。
+*)
+Notation instseqv' := (fold_left (fun a b => instpair (instpush b) a)).
+
+Lemma evalseqv' :
+  forall il i vs cs, (vs, instseqv' il i :: cs) |=>* (il ++ vs, i :: cs).
+Proof.
+  elim=> [ | i' il IH ] i vs cs.
+  evalauto.
+  evalpartial IH.
+  evalauto.
+Qed.
+
+Notation instseqv il := (instseqv' il instnop).
+
+Lemma evalseqv : forall il vs cs, (vs, instseqv il :: cs) |=>* (il ++ vs, cs).
+Proof.
+  move=> il vs cs.
+  evalpartial evalseqv'.
+  evalauto.
+Qed.
+
+Lemma app_instseqv' :
+  forall is1 is2 i, instseqv' (is1 ++ is2) i = instseqv' is2 (instseqv' is1 i).
+Proof.
+  apply fold_left_app.
+Qed.
+
+Lemma app_instseqv :
+  forall is1 is2, instseqv (is1 ++ is2) = instseqv' is2 (instseqv is1).
+Proof.
+  move=> is1 is2 ; apply app_instseqv'.
 Qed.

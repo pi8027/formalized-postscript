@@ -9,7 +9,7 @@ instnat_spec:
 *)
 Definition instnat_spec (n : nat) (i1 : inst) : Prop :=
   forall i2 vs cs,
-  (i2 :: vs, i1 :: cs) |=>* (instseq_replicate n i2 :: vs, cs).
+  (i2 :: vs, i1 :: cs) |=>* (instseqc_replicate n i2 :: vs, cs).
 
 (*
 exists_instnat:
@@ -44,7 +44,7 @@ Proof.
   eexists=> n i1 i2 vs cs H.
   evalpartial H.
   evalpartial evalexec.
-  apply evalseq_replicate.
+  apply evalseqc_replicate.
 Defined.
 
 Notation instnat_repeat := (proj1_sig exists_instnat_repeat).

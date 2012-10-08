@@ -181,3 +181,38 @@ Proof.
   move=> l t.
   apply (iff_decidable _ _ (fill_template_cond l t)), dec_listindices.
 Defined.
+
+Lemma proof_inst_listindex :
+  forall n, { inst_listindex |
+  forall xs x ys vs cs, listindex inst xs n x ->
+  (instseqv ys :: xs ++ vs, inst_listindex :: cs) |=>*
+  (x :: ys ++ xs ++ vs, cs) }.
+Proof.
+  elim=> [ | n [i IH]] ; eexists=> xs x ys vs cs H.
+  - inversion H.
+    simpl.
+    evalpartial' evalquote.
+    evalpartial' evalswap.
+    evalpartial' evalquote.
+    evalpartial' evalcopy.
+    evalpartial' evalcons.
+    evalpartial' evalsnoc.
+    evalpartial' evalexec.
+    evalauto.
+    evalpartial' evalswap.
+    evalpartial' evalquote.
+    evalpartial' evalcons.
+    evalpartial evalexec.
+    evalauto.
+    evalpartial evalseqv.
+    evalauto.
+  - inversion H.
+    clear xs H n0 x0 H1 H0 H3.
+    simpl.
+    evalpartial' evalswap.
+    evalpartial' evalquote.
+    evalpartial' evalsnoc.
+    rewrite -/(instseqv' [x'] (instseqv ys))
+      -(app_instseqv ys [x']) -/([x'] ++ xs0 ++ vs) (app_assoc ys [x']).
+    apply (IH xs0 x (ys ++ [x']) vs cs H2).
+Defined.
