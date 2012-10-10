@@ -111,6 +111,14 @@ Inductive instt : Set :=
   | insttpair  : instt -> instt -> instt
   | instthole  : nat -> instt.
 
+Fixpoint holes_of_template (t : instt) : list nat :=
+  match t with
+    | insttpush i => holes_of_template i
+    | insttpair i1 i2 => holes_of_template i1 ++ holes_of_template i2
+    | instthole n => [n]
+    | _ => []
+  end.
+
 Inductive fill_template : list inst -> instt -> inst -> Prop :=
   | fillpop   : forall l, fill_template l insttpop instpop
   | fillcopy  : forall l, fill_template l insttcopy instcopy
@@ -126,14 +134,6 @@ Inductive fill_template : list inst -> instt -> inst -> Prop :=
     fill_template l (insttpair t1 t2) (instpair i1 i2)
   | fillhole  :
     forall l n i, listindex inst l n i -> fill_template l (instthole n) i.
-
-Fixpoint holes_of_template (t : instt) : list nat :=
-  match t with
-    | insttpush i => holes_of_template i
-    | insttpair i1 i2 => holes_of_template i1 ++ holes_of_template i2
-    | instthole n => [n]
-    | _ => []
-  end.
 
 Lemma fill_template_cond :
   forall l t,
@@ -181,6 +181,59 @@ Proof.
   move=> l t.
   apply (iff_decidable _ _ (fill_template_cond l t)), dec_listindices.
 Defined.
+
+Inductive fill_template' : list inst -> instt -> inst -> Prop :=
+  | fillpop'   : fill_template' [] insttpop instpop
+  | fillcopy'  : fill_template' [] insttcopy instcopy
+  | fillswap'  : fill_template' [] insttswap instswap
+  | fillcons'  : fill_template' [] insttcons instcons
+  | fillquote' : fill_template' [] insttquote instquote
+  | fillexec'  : fill_template' [] insttexec instexec
+  | fillpush'  :
+    forall l t i, fill_template' l t i ->
+    fill_template' l (insttpush t) (instpush i)
+  | fillpair'  :
+    forall l1 l2 t1 t2 i1 i2,
+    fill_template' l1 t1 i1 -> fill_template' l2 t2 i2 ->
+    fill_template' (l1 ++ l2) (insttpair t1 t2) (instpair i1 i2)
+  | fillhole'  : forall n i, fill_template' [i] (instthole n) i.
+
+Lemma fill_template'_cond :
+  forall l t,
+  (exists i, fill_template' l t i) <-> length l = length (holes_of_template t).
+Proof.
+  split.
+  - move: t l ; elim ; try by move=> l [i H] ; inversion H.
+    - move=> t IH l [i H].
+      inversion H.
+      by apply IH, (ex_intro _ i0).
+    - move=> t1 H1 t2 H2 l [i H].
+      inversion H.
+      clear i H H0 H3 H4 H6.
+      simpl ; rewrite !app_length ; f_equal.
+      by apply H1, (ex_intro _ i1).
+      by apply H2, (ex_intro _ i2).
+    - move=> n l [i H].
+      by inversion H.
+  - move: t l ; elim ;
+      try by simpl ; case=> [ | i l] H ;
+        [apply: ex_intro ; constructor | inversion H].
+    - move=> t IH l H.
+      case (IH l H)=> i H0.
+      by apply (ex_intro _ (instpush i)) ; constructor.
+    - simpl=> t1 H1 t2 H2 l.
+      rewrite app_length=> H.
+      case (split_list_length _ l _ _ H)=> [l1 [l2 [H0 [H3 H4]]]].
+      rewrite H0.
+      clear l H H0.
+      case (H1 l1 H3)=> i1 H5.
+      case (H2 l2 H4)=> i2 H6.
+      apply (ex_intro _ (instpair i1 i2)).
+      by constructor.
+    - simpl.
+      move=> n [ | i1 [ | i2 l]] H ; inversion H.
+      apply (ex_intro _ i1) ; constructor.
+Qed.
 
 Lemma proof_inst_listindex' :
   forall n, { inst_listindex |

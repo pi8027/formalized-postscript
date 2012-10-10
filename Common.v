@@ -1,5 +1,6 @@
 Require Import
-  Relations.Relations Relations.Relation_Operators Lists.List Omega ssreflect.
+  Relations.Relations Relations.Relation_Operators Lists.List Program.Syntax
+  Omega ssreflect.
 
 (*
 replicate:
@@ -54,3 +55,25 @@ Theorem iff_decidable : forall A B, iff A B -> sb_decidable A -> sb_decidable B.
 Proof.
   by move=> A B eq ; case=> H ; [left | right] ; rewrite -eq.
 Defined.
+
+(*
+split_list_length:
+*)
+Theorem split_list_length :
+  forall A (xs : list A) n m, length xs = n + m ->
+  exists ys zs, xs = ys ++ zs /\ length ys = n /\ length zs = m.
+Proof.
+  move=> A l n ; move: n l ; elim=> [ | n IH].
+  - simpl=> l m H.
+    apply: (ex_intro _ []).
+    apply: (ex_intro _ l).
+    auto.
+  - simpl=> l ; move: l n IH ; case=> [ | h l] n IH m H ; inversion H.
+    elim (IH l m H1)=> [ys [zs [H2 [H3 H4]]]].
+    apply (ex_intro _ (h :: ys)), (ex_intro _ zs).
+    split.
+    by simpl ; f_equal.
+    split.
+    by simpl ; f_equal.
+    done.
+Qed.
