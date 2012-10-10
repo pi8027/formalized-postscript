@@ -200,21 +200,9 @@ Inductive fill_template' : list inst -> instt -> inst -> Prop :=
 
 Lemma fill_template'_cond :
   forall l t,
-  (exists i, fill_template' l t i) <-> length l = length (holes_of_template t).
+  length l = length (holes_of_template t) <-> exists i, fill_template' l t i.
 Proof.
   split.
-  - move: t l ; elim ; try by move=> l [i H] ; inversion H.
-    - move=> t IH l [i H].
-      inversion H.
-      by apply IH, (ex_intro _ i0).
-    - move=> t1 H1 t2 H2 l [i H].
-      inversion H.
-      clear i H H0 H3 H4 H6.
-      simpl ; rewrite !app_length ; f_equal.
-      by apply H1, (ex_intro _ i1).
-      by apply H2, (ex_intro _ i2).
-    - move=> n l [i H].
-      by inversion H.
   - move: t l ; elim ;
       try by simpl ; case=> [ | i l] H ;
         [apply: ex_intro ; constructor | inversion H].
@@ -233,14 +221,25 @@ Proof.
     - simpl.
       move=> n [ | i1 [ | i2 l]] H ; inversion H.
       apply (ex_intro _ i1) ; constructor.
+  - move: t l ; elim ; try by move=> l [i H] ; inversion H.
+    - move=> t IH l [i H].
+      inversion H.
+      by apply IH, (ex_intro _ i0).
+    - move=> t1 H1 t2 H2 l [i H].
+      inversion H.
+      clear i H H0 H3 H4 H6.
+      simpl ; rewrite !app_length ; f_equal.
+      by apply H1, (ex_intro _ i1).
+      by apply H2, (ex_intro _ i2).
+    - move=> n l [i H].
+      by inversion H.
 Qed.
 
 Lemma fill_template'_dec :
   forall l t, sb_decidable (exists i, fill_template' l t i).
 Proof.
   move=> l t.
-  by elim (eq_nat_dec (length l) (length (holes_of_template t))) ;
-    [left | right] ; rewrite (fill_template'_cond l t).
+  apply (iff_decidable _ _ (fill_template'_cond l t)), eq_nat_dec.
 Defined.
 
 Lemma proof_inst_listindex' :
