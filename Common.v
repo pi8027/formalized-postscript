@@ -81,7 +81,8 @@ Qed.
 Forall2_eq_length:
 *)
 Theorem Forall2_eq_length :
-  forall A B (R : A -> B -> Prop) xs ys, Forall2 R xs ys -> length xs = length ys.
+  forall A B (R : A -> B -> Prop) xs ys,
+  Forall2 R xs ys -> length xs = length ys.
 Proof.
   move=> A B R ; elim=> [ | x xs IH] => ys H ; inversion H.
   done.

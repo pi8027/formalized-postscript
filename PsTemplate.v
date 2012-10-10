@@ -9,7 +9,7 @@ Inductive listindex : list A -> nat -> A -> Prop :=
   | lizero : forall x xs, listindex (x :: xs) 0 x
   | lisucc : forall x' xs n x, listindex xs n x -> listindex (x' :: xs) (S n) x.
 
-Lemma listindex_cond :
+Lemma listindex_eqprop :
   forall xs n, length xs > n <-> exists a, listindex xs n a.
 Proof.
   elim=> [n | x xs IH [ | n]] ; split=> H.
@@ -34,7 +34,7 @@ Theorem dec_listindex :
   forall xs n, sb_decidable (exists a, listindex xs n a).
 Proof.
   move=> xs n.
-  apply (iff_decidable _ _ (listindex_cond xs n) (gt_dec (length xs) n)).
+  apply (iff_decidable _ _ (listindex_eqprop xs n) (gt_dec (length xs) n)).
 Defined.
 
 Theorem unique_listindex :
@@ -52,21 +52,21 @@ Qed.
 
 Notation listindices xs := (Forall2 (listindex xs)).
 
-Lemma listindices_cond :
+Lemma listindices_eqprop :
   forall xs ns, Forall (gt (length xs)) ns <-> exists ys, listindices xs ns ys.
 Proof.
   move=> xs ; elim => [ | n ns IH] ; split=> H.
   - eexists [] ; constructor.
   - constructor.
   - inversion H.
-    case (proj1 (listindex_cond xs n) H2) => y H4.
+    case (proj1 (listindex_eqprop xs n) H2) => y H4.
     case (proj1 IH H3) => ys H5.
     exists (y :: ys) ; constructor ; auto.
   - case: H ; case => [ | y ys ] H.
     - inversion H.
     - inversion H.
       constructor.
-      - rewrite (listindex_cond xs n).
+      - rewrite (listindex_eqprop xs n).
         by exists y.
       - apply (proj2 IH).
         by exists ys.
@@ -76,7 +76,7 @@ Theorem dec_listindices :
   forall xs ns, sb_decidable (exists ys, listindices xs ns ys).
 Proof.
   move=> xs ns.
-  apply (iff_decidable _ _ (listindices_cond xs ns)).
+  apply (iff_decidable _ _ (listindices_eqprop xs ns)).
   elim: ns => [ | n ns [IH | IH]].
   - left ; constructor.
   - case (gt_dec (length xs) n) => H.
@@ -135,7 +135,7 @@ Inductive fill_template : list inst -> instt -> inst -> Prop :=
   | fillhole  :
     forall l n i, listindex inst l n i -> fill_template l (instthole n) i.
 
-Lemma fill_template_cond :
+Lemma fill_template_eqprop :
   forall l t,
   (exists ys, listindices inst l (holes_of_template t) ys) <->
   (exists i, fill_template l t i).
@@ -179,7 +179,7 @@ Theorem dec_fill_template :
   forall l t, sb_decidable (exists i, fill_template l t i).
 Proof.
   move=> l t.
-  apply (iff_decidable _ _ (fill_template_cond l t)), dec_listindices.
+  apply (iff_decidable _ _ (fill_template_eqprop l t)), dec_listindices.
 Defined.
 
 Inductive fill_template' : list inst -> instt -> inst -> Prop :=
@@ -198,7 +198,7 @@ Inductive fill_template' : list inst -> instt -> inst -> Prop :=
     fill_template' (l1 ++ l2) (insttpair t1 t2) (instpair i1 i2)
   | fillhole'  : forall n i, fill_template' [i] (instthole n) i.
 
-Lemma fill_template'_cond :
+Lemma fill_template'_eqprop :
   forall l t,
   length l = length (holes_of_template t) <-> exists i, fill_template' l t i.
 Proof.
@@ -243,10 +243,11 @@ Qed.
 Lemma fill_template'_dec :
   forall l t, sb_decidable (exists i, fill_template' l t i).
 Proof.
-  move=> l t ; apply (iff_decidable _ _ (fill_template'_cond l t)), eq_nat_dec.
+  move=> l t.
+  apply (iff_decidable _ _ (fill_template'_eqprop l t)), eq_nat_dec.
 Defined.
 
-Lemma fill_template_cond2 :
+Lemma fill_template_eqprop2 :
   forall l t i,
     (exists l', listindices _ l (holes_of_template t) l' /\
       fill_template' l' t i) <->
@@ -270,7 +271,7 @@ Proof.
         by apply H0, (ex_intro _ l2).
       - apply (app_inv_head _ _ _ H4).
       - apply eq_trans with (firstn (length (holes_of_template t1)) (l1 ++ l2)).
-        - rewrite -(proj2 (fill_template'_cond l1 t1)
+        - rewrite -(proj2 (fill_template'_eqprop l1 t1)
             (ex_intro (fill_template' l1 t1) i1 H5)).
           apply app_length_firstn.
         - rewrite H4.
