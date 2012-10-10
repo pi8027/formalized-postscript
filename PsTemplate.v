@@ -235,6 +235,14 @@ Proof.
       apply (ex_intro _ i1) ; constructor.
 Qed.
 
+Lemma fill_template'_dec :
+  forall l t, sb_decidable (exists i, fill_template' l t i).
+Proof.
+  move=> l t.
+  by elim (eq_nat_dec (length l) (length (holes_of_template t))) ;
+    [left | right] ; rewrite (fill_template'_cond l t).
+Defined.
+
 Lemma proof_inst_listindex' :
   forall n, { inst_listindex |
   forall xs x ys vs cs, listindex inst xs n x ->
