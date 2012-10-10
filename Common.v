@@ -57,23 +57,33 @@ Proof.
 Defined.
 
 (*
-split_list_length:
+skipn_length:
 *)
-Theorem split_list_length :
-  forall A (xs : list A) n m, length xs = n + m ->
-  exists ys zs, xs = ys ++ zs /\ length ys = n /\ length zs = m.
+Theorem skipn_length :
+  forall A (xs : list A) n, length (skipn n xs) = length xs - n.
 Proof.
-  move=> A l n ; move: n l ; elim=> [ | n IH].
-  - simpl=> l m H.
-    apply: (ex_intro _ []).
-    apply: (ex_intro _ l).
-    auto.
-  - simpl=> l ; move: l n IH ; case=> [ | h l] n IH m H ; inversion H.
-    elim (IH l m H1)=> [ys [zs [H2 [H3 H4]]]].
-    apply (ex_intro _ (h :: ys)), (ex_intro _ zs).
-    split.
-    by simpl ; f_equal.
-    split.
-    by simpl ; f_equal.
-    done.
+  move=> A ; elim=> [ | x xs IH] [ | n] ; auto.
+  apply IH.
+Qed.
+
+(*
+app_length_firstn:
+*)
+Theorem app_length_firstn :
+  forall A (xs ys : list A), xs = firstn (length xs) (xs ++ ys).
+Proof.
+  move=> A ; elim => [ | x xs IH].
+  auto.
+  simpl=> ys ; f_equal ; auto.
+Qed.
+
+(*
+Forall2_eq_length:
+*)
+Theorem Forall2_eq_length :
+  forall A B (R : A -> B -> Prop) xs ys, Forall2 R xs ys -> length xs = length ys.
+Proof.
+  move=> A B R ; elim=> [ | x xs IH] => ys H ; inversion H.
+  done.
+  simpl ; f_equal ; auto.
 Qed.

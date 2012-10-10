@@ -1,5 +1,5 @@
 Require Import
-  Arith Lists.List Program.Syntax ssreflect Common PsCore.
+  Arith Arith.Min Lists.List Program.Syntax Omega ssreflect Common PsCore.
 
 Section ListIndex.
 
@@ -211,13 +211,18 @@ Proof.
       by apply (ex_intro _ (instpush i)) ; constructor.
     - simpl=> t1 H1 t2 H2 l.
       rewrite app_length=> H.
-      case (split_list_length _ l _ _ H)=> [l1 [l2 [H0 [H3 H4]]]].
-      rewrite H0.
-      clear l H H0.
-      case (H1 l1 H3)=> i1 H5.
-      case (H2 l2 H4)=> i2 H6.
+      case (H2 (skipn (length (holes_of_template t1)) l)).
+        rewrite skipn_length ; omega.
+      case (H1 (firstn (length (holes_of_template t1)) l)).
+        rewrite firstn_length.
+        case (dec_le (length (holes_of_template t1)) (length l)) => H0.
+        - by rewrite min_l.
+        - omega.
+      clear H H1 H2.
+      move=> i1 H i2 H0.
+      rewrite -(firstn_skipn (length (holes_of_template t1)) l).
       apply (ex_intro _ (instpair i1 i2)).
-      by constructor.
+      by econstructor.
     - simpl.
       move=> n [ | i1 [ | i2 l]] H ; inversion H.
       apply (ex_intro _ i1) ; constructor.
@@ -238,9 +243,67 @@ Qed.
 Lemma fill_template'_dec :
   forall l t, sb_decidable (exists i, fill_template' l t i).
 Proof.
-  move=> l t.
-  apply (iff_decidable _ _ (fill_template'_cond l t)), eq_nat_dec.
+  move=> l t ; apply (iff_decidable _ _ (fill_template'_cond l t)), eq_nat_dec.
 Defined.
+
+Lemma fill_template_cond2 :
+  forall l t i,
+    (exists l', listindices _ l (holes_of_template t) l' /\
+      fill_template' l' t i) <->
+    fill_template l t i.
+Proof.
+  split.
+  - move: t i ; elim ;
+      try by move=> i [l' [H H0]] ; inversion H0 ; constructor.
+    - move=> t IH i [l' [H H0]].
+      inversion H0.
+      by apply fillpush, IH, (ex_intro _ l').
+    - move=> t1 H t2 H0 i [l' []] ; simpl=> H2 H1 ; move: H2.
+      inversion H1.
+      clear i l' H1 H2 H3 H4 H6 => H1.
+      case (Forall2_app_inv_l (holes_of_template t1) (holes_of_template t2) H1)
+        => [l1' [l2' [H2 [H3 H4]]]].
+      replace l1' with l1 in H2, H4.
+      replace l2' with l2 in H3.
+      - constructor.
+        by apply H, (ex_intro _ l1).
+        by apply H0, (ex_intro _ l2).
+      - apply (app_inv_head _ _ _ H4).
+      - apply eq_trans with (firstn (length (holes_of_template t1)) (l1 ++ l2)).
+        - rewrite -(proj2 (fill_template'_cond l1 t1)
+            (ex_intro (fill_template' l1 t1) i1 H5)).
+          apply app_length_firstn.
+        - rewrite H4.
+          rewrite (Forall2_eq_length _ _ _ _ _ H2).
+          apply eq_sym, app_length_firstn.
+    - move=> n i [l' [H H0]].
+      constructor.
+      inversion H.
+      inversion H0.
+      replace i with y ; congruence.
+  - move: t i ; elim ; try by move=> i H ; inversion H ; do !econstructor.
+    - move=> t IH i H.
+      inversion H.
+      clear i H H0 H1 H3.
+      case (IH i0 H2) => l' [H H0].
+      exists l' ; split.
+      - auto.
+      - by constructor.
+    - simpl.
+      move=> t1 H t2 H0 i H1.
+      inversion H1.
+      clear i H1 H2 H3 H4 H6.
+      case (H i1 H5) => ll [H1 H2].
+      case (H0 i2 H7) => lr [H3 H4].
+      clear l0 t0 t3 H H0 H5 H7.
+      exists (ll ++ lr) ; split.
+      by apply Forall2_app.
+      by constructor.
+    - simpl.
+      move=> n i H.
+      inversion H.
+      exists [i] ; split ; by constructor.
+Qed.
 
 Lemma proof_inst_listindex' :
   forall n, { inst_listindex |
