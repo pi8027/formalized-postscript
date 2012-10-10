@@ -1,5 +1,5 @@
 Require Import
-  Arith.Even Arith.Wf_nat Arith.Euclid Bool.BoolEq
+  Arith.Even Arith.Wf_nat Arith.Euclid
   Lists.List Program.Basics Relations.Relations Omega ArithRing
   ssreflect Common PsCore PsBool.
 
@@ -73,8 +73,7 @@ Definition instnat_quote : inst := instseq
       [ instpush instnop ; instpush instincr ; instpush instincr ]) ;
     instswap ; instquote ; instcons ; instexec ; instexec ; instpop ].
 
-Lemma eval_instnat_quote :
-  forall n i, instnat_spec n i -> forall vs cs,
+Lemma eval_instnat_quote : forall n i vs cs, instnat_spec n i ->
   (i :: vs, instnat_quote :: cs) |=>* (instnatq n :: vs, cs).
 Proof.
   repeat intro.
@@ -167,8 +166,8 @@ Definition instnat_succ : inst :=
   instseq [ instnat_quote ; instnatq_succ ; instnat_unquote ].
 
 Lemma eval_instnat_succ :
-  forall n i, instnat_spec n i -> forall vs cs,
-  (i :: vs, instnat_succ :: cs) |=>* (instnat (S n) :: vs, cs).
+  forall n i vs cs, instnat_spec n i ->
+    (i :: vs, instnat_succ :: cs) |=>* (instnat (S n) :: vs, cs).
 Proof.
   intros.
   evalauto.
@@ -180,7 +179,7 @@ Qed.
 Opaque instnat_succ.
 
 Lemma instnat_succ_proof :
-  forall n i1, instnat_spec n i1 -> forall vs cs,
+  forall n i1 vs cs, instnat_spec n i1 ->
     exists i2 : inst, instnat_spec (S n) i2 /\
     (i1 :: vs, instnat_succ :: cs) |=>* (i2 :: vs, cs).
 Proof.
@@ -197,9 +196,8 @@ instnat_add:
 Definition instnat_add : inst := instseq
   [ instswap ; instpush instnat_succ ; instswap ; instexec ].
 
-Lemma instnat_add_proof :
-  forall n m i1 i2, instnat_spec n i1 -> instnat_spec m i2 ->
-  forall vs cs,
+Lemma instnat_add_proof : forall n m i1 i2 vs cs,
+  instnat_spec n i1 -> instnat_spec m i2 ->
     exists i3 : inst, instnat_spec (n + m) i3 /\
     (i2 :: i1 :: vs, instnat_add :: cs) |=>* (i3 :: vs, cs).
 Proof.
@@ -209,7 +207,7 @@ Proof.
   move: m i2 H0 ; clear H.
   induction n ; intros ; simpl.
   evalauto ; apply H0.
-  edestruct (instnat_succ_proof _ _ H0) as [? [? ?]].
+  edestruct (instnat_succ_proof _ _ _ _ H0) as [? [? ?]].
   evalpartial H1.
   replace (S (n + m)) with (n + S m) by omega ; auto.
 Qed.
@@ -224,9 +222,8 @@ Definition instnat_mult : inst := instseq
   [ instquote ; instpush instnat_add ; instcons ; instquote ;
     instsnoc ; instpush (instpush (instnat 0)) ; instsnoc ; instexec ].
 
-Lemma instnat_mult_proof :
-  forall n m i1 i2, instnat_spec n i1 -> instnat_spec m i2 ->
-  forall vs cs,
+Lemma instnat_mult_proof : forall n m i1 i2 vs cs,
+  instnat_spec n i1 -> instnat_spec m i2 ->
     exists i3 : inst, instnat_spec (n * m) i3 /\
     (i2 :: i1 :: vs, instnat_mult :: cs) |=>* (i3 :: vs, cs).
 Proof.
@@ -238,7 +235,7 @@ Proof.
   generalize 0 as o, (instnat 0) as i3, (eval_instnat 0).
   induction n ; intros ; simpl ; evalauto.
   done.
-  edestruct (instnat_add_proof _ _ _ _ H H0) as [? [? ?]].
+  edestruct (instnat_add_proof _ _ _ _ _ _ H H0) as [? [? ?]].
   evalpartial H2.
   replace (m + n * m + o) with (n * m + (o + m)) by omega ; auto.
 Qed.
@@ -253,7 +250,7 @@ Definition instnat_even : inst := instseq
   [ instpush insttrue ; instswap ; instpush instnot ; instswap ; instexec ].
 
 Lemma instnat_even_proof :
-  forall n i1, instnat_spec n i1 -> forall vs cs,
+  forall n i1 vs cs, instnat_spec n i1 ->
     exists i2 : inst,
     instbool_spec (if even_odd_dec n then true else false)%GEN_IF i2 /\
     (i1 :: vs, instnat_even :: cs) |=>* (i2 :: vs, cs).
@@ -262,15 +259,26 @@ Proof.
   evalauto.
   evalpartial H.
   generalize insttrue, eval_insttrue.
-  move=> i ; rewrite -/(instbool_spec true i) -/(negb true).
-  clear H ; move: i true.
-  induction n ; intros.
+  move=> i ; rewrite -/(instbool_spec true i) ; move: i.
+  clear H.
+  refine ((fix IHn n :=
+    match n with
+      | 0 => _
+      | S 0 => _
+      | S (S n) => _
+    end) n) ; intros.
   by evalauto.
   simpl.
-  edestruct (instnot_proof b i H) as [? [? ?]].
-  evalpartial H1.
-  destruct (even_odd_dec n) ;
-    last rewrite (negb_involutive_reverse b) ; apply (IHn _ _ H0).
+  evalauto.
+  by repeat intro ; evalauto ; evalpartial H ; evalauto.
+  evalauto.
+  replace  (if even_odd_dec (S (S n2)) then true else false)%GEN_IF
+    with (if even_odd_dec n2 then true else false)%GEN_IF.
+  apply IHn.
+  by repeat intro ; evalauto ; evalpartial H ; evalauto.
+  clear ; destruct (even_odd_dec n2), (even_odd_dec (S (S n2))) ; auto.
+  inversion o ; inversion H0 ; destruct (not_even_and_odd n2 e H2).
+  inversion e ; inversion H0 ; destruct (not_even_and_odd n2 H2 o).
 Qed.
 
 Opaque instnat_even.
@@ -284,9 +292,9 @@ Definition instnat_iszero : inst := instseq
     instpush (instpair instpop (instpush instfalse)) ; instswap ; instexec ].
 
 Lemma instnat_iszero_proof :
-  forall n i1, instnat_spec n i1 -> forall vs cs,
+  forall n i1 vs cs, instnat_spec n i1 ->
     exists i2 : inst,
-      instbool_spec (if eq_nat_dec 0 n then true else false)%GEN_IF i2 /\
+      instbool_spec (match n with 0 => true | S _ => false end) i2 /\
       (i1 :: vs, instnat_iszero :: cs) |=>* (i2 :: vs, cs).
 Proof.
   intros.
@@ -317,7 +325,7 @@ Definition instnat_pred : inst := instseq
     instsnoc ; instexec ; instswap ; instpop].
 
 Lemma instnat_pred_proof :
-  forall n i1, instnat_spec n i1 -> forall vs cs,
+  forall n i1 vs cs, instnat_spec n i1 ->
     exists i2 : inst, instnat_spec (n - 1) i2 /\
     (i1 :: vs, instnat_pred :: cs) |=>* (i2 :: vs, cs).
 Proof.
@@ -336,7 +344,7 @@ Proof.
   by evalauto.
   replace (n + m - 0) with (n + m) by omega.
   evalauto.
-  edestruct (instnat_succ_proof m i2 H0) as [? [? ?]].
+  edestruct (instnat_succ_proof m i2 _ _ H0) as [? [? ?]].
   evalpartial H2 ; clear H2.
   evalauto.
   replace (n + m) with (n + S m - 1) by omega.
@@ -353,9 +361,8 @@ instnat_sub:
 Definition instnat_sub : inst := instseq
   [ instpush instnat_pred ; instswap ; instexec ].
 
-Lemma instnat_sub_proof :
-  forall n m i1 i2, instnat_spec n i1 -> instnat_spec m i2 ->
-  forall vs cs,
+Lemma instnat_sub_proof : forall n m i1 i2 vs cs,
+  instnat_spec n i1 -> instnat_spec m i2 ->
     exists i3 : inst, instnat_spec (n - m) i3 /\
     (i2 :: i1 :: vs, instnat_sub :: cs) |=>* (i3 :: vs, cs).
 Proof.
@@ -367,7 +374,7 @@ Proof.
   evalauto.
   replace (n - 0) with n by omega ; apply H.
   replace (n - S m) with (n - 1 - m) by omega.
-  edestruct (instnat_pred_proof n i1 H) as [? [? ?]].
+  edestruct (instnat_pred_proof n i1 _ _ H) as [? [? ?]].
   evalpartial H1 ; auto.
 Qed.
 
@@ -379,23 +386,25 @@ instnat_le:
 *)
 Definition instnat_le : inst := instpair instnat_sub instnat_iszero.
 
-Lemma instnat_le_proof :
-  forall n m i1 i2, instnat_spec n i1 -> instnat_spec m i2 ->
-  forall vs cs,
+Lemma instnat_le_proof : forall n m i1 i2 vs cs,
+  instnat_spec n i1 -> instnat_spec m i2 ->
     exists i3 : inst,
     instbool_spec (if le_dec n m then true else false)%GEN_IF i3 /\
     (i2 :: i1 :: vs, instnat_le :: cs) |=>* (i3 :: vs, cs).
 Proof.
   intros.
   evalauto.
-  edestruct (instnat_sub_proof n m i1 i2 H H0) as [? [? ?]].
+  edestruct (instnat_sub_proof n m i1 i2 _ _ H H0) as [? [? ?]].
   evalpartial H2.
-  edestruct (instnat_iszero_proof (n - m) x H1) as [? [? ?]].
+  edestruct (instnat_iszero_proof (n - m) x _ _ H1) as [? [? ?]].
   evalpartial H4.
   evalauto.
+  replace (match n - m with | 0 => true | S _ => false end)
+    with (if le_dec n m then true else false)%GEN_IF in H3.
+  auto.
   destruct (le_dec n m).
-  by replace (n - m) with 0 in H3 by omega.
-  by replace (n - m) with (S (n - m - 1)) in H3 by omega.
+  by replace (n - m) with 0 by omega.
+  by replace (n - m) with (S (n - m - 1)) by omega.
 Qed.
 
 Opaque instnat_le.
@@ -429,10 +438,8 @@ Definition instnat_eucl_iter : inst := instseq
         instpop ; instswap ; instpop ; instswap ]) ;
     instexecif ].
 
-Lemma instnat_eucl_iter_proof :
-  forall n m q i1 i2 i3, m <= n ->
-  instnat_spec n i1 -> instnat_spec m i2 -> instnat_spec q i3 ->
-  forall i4 vs cs,
+Lemma instnat_eucl_iter_proof : forall n m q i1 i2 i3 i4 vs cs,
+  m <= n -> instnat_spec n i1 -> instnat_spec m i2 -> instnat_spec q i3 ->
     exists i1' : inst, instnat_spec (n - m) i1' /\
     exists i3' : inst, instnat_spec (S q) i3' /\
     (i4 :: i3 :: i2 :: i1 :: vs, instnat_eucl_iter :: cs) |=>*
@@ -440,13 +447,13 @@ Lemma instnat_eucl_iter_proof :
 Proof.
   intros.
   evalauto.
-  edestruct (instnat_le_proof m n i2 i1 H1 H0) as [? [? ?]].
+  edestruct (instnat_le_proof m n i2 i1 _ _ H1 H0) as [? [? ?]].
   destruct (le_dec m n).
   evalpartial H4 ; clear H4.
   evalauto.
   evalpartial H3 ; clear x H3.
   evalauto.
-  edestruct (instnat_sub_proof n m i1 i2 H0 H1) as [? [? ?]].
+  edestruct (instnat_sub_proof n m i1 i2 _ _ H0 H1) as [? [? ?]].
   evalpartial H4 ; clear H4.
   exists x ; split ; [ exact H3 | clear H3 ].
   evalauto.
@@ -457,15 +464,14 @@ Proof.
 Qed.
 
 Lemma instnat_eucl_iter_proof' :
-  forall n m q i1 i2 i3, ~ (m <= n) ->
+  forall n m q i1 i2 i3 i4 vs cs, ~ (m <= n) ->
   instnat_spec n i1 -> instnat_spec m i2 -> instnat_spec q i3 ->
-  forall i4 vs cs,
     (i4 :: i3 :: i2 :: i1 :: vs, instnat_eucl_iter :: cs) |=>*
     (i1 :: i3 :: vs, cs).
 Proof.
   intros.
   evalauto.
-  edestruct (instnat_le_proof m n i2 i1 H1 H0) as [? [? ?]].
+  edestruct (instnat_le_proof m n i2 i1 _ _ H1 H0) as [? [? ?]].
   destruct (le_dec m n).
   apply False_ind ; omega.
   evalpartial H4.
@@ -502,10 +508,8 @@ Proof.
   simpl in *. generalize (q * b), e ; intros ; omega.
 Qed.
 
-Lemma instnat_eucl_proof :
-  forall (n m : nat) (eucl : diveucl n m) i1 i2,
+Lemma instnat_eucl_proof : forall (n m : nat) (eucl : diveucl n m) i1 i2 vs cs,
   instnat_spec n i1 -> instnat_spec m i2 ->
-  forall vs cs,
   match eucl with divex q r _ _ =>
     exists i3 : inst, instnat_spec q i3 /\
     exists i4 : inst, instnat_spec r i4 /\
@@ -527,13 +531,13 @@ Proof.
     intros.
     destruct (dec_le m n0).
     edestruct (instnat_eucl_iter_proof n0 m q'
-      i1 i2 i3 H4 H1 H0 H2 instnat_eucl_iter) as [? [? [? [? ?]]]].
+      i1 i2 i3 instnat_eucl_iter _ _ H4 H1 H0 H2) as [? [? [? [? ?]]]].
     evalpartial H7 ; clear H7.
     refine (H (n0 - m) _ (S q') x x0 H5 H6 _).
     omega.
     simpl ; omega.
     evalpartial (instnat_eucl_iter_proof' n0 m q'
-      i1 i2 i3 H4 H1 H0 H2 instnat_eucl_iter).
+      i1 i2 i3 instnat_eucl_iter vs cs H4 H1 H0 H2).
     destruct (diveucl_uniqueness n m
       (divex n m q r g e) (divex n m q' n0 (not_le _ _ H4) H3)).
     by rewrite H5 H6 ; evalauto.
