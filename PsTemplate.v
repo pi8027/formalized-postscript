@@ -290,7 +290,7 @@ Proof.
   evalauto.
 Defined.
 
-Theorem exists_inst_fill_template :
+Lemma exists_inst_fill_template_iter :
   forall len t, { inst_fill_template |
   forall l i, length l = len -> fill_template l t i -> forall vs cs,
   (l ++ vs, inst_fill_template :: cs) |=>* (i :: l ++ vs, cs) }.
@@ -320,4 +320,31 @@ Proof.
     inversion H0.
     evalpartial (proj2_sig (exists_inst_listindex n) l i H3).
     evalauto.
+Defined.
+
+Theorem exists_clear_used :
+  forall len, { inst_clear_used |
+  forall i vs1, length vs1 = len -> forall vs2 cs,
+  (i :: vs1 ++ vs2, inst_clear_used :: cs) |=>* (i :: vs2, cs) }.
+Proof.
+  elim=> [ | n [i1 IH] ] ; eexists=> i2.
+  - case=> [ | v vs1] H vs2 cs.
+    - evalpartial evalnop.
+      evalauto.
+    - inversion H.
+  - case=> [ | v vs1] H vs2 cs ; inversion H.
+    simpl.
+    evalpartial' evalswap.
+    evalpartial' evalpop.
+    apply (IH i2 vs1 H1).
+Defined.
+
+Theorem exists_inst_fill_template :
+  forall len t, { inst_fill_template |
+  forall l i, length l = len -> fill_template l t i -> forall vs cs,
+  (l ++ vs, inst_fill_template :: cs) |=>* (i :: vs, cs) }.
+Proof.
+  move=> len t ; eexists=> l i H H0 vs cs.
+  evalpartial' (proj2_sig (exists_inst_fill_template_iter len t) l i H H0).
+  apply (proj2_sig (exists_clear_used len) i l H).
 Defined.
