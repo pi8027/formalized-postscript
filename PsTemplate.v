@@ -1,6 +1,5 @@
 Require Import
-  Arith.Min Arith.Wf_nat Numbers.Natural.Peano.NPeano
-  Lists.List Program.Syntax Omega
+  Numbers.Natural.Peano.NPeano Lists.List Program.Syntax Omega
   ssreflect Common PsCore.
 
 Section ListIndex.
@@ -297,7 +296,7 @@ Theorem exists_inst_fill_template :
   (l ++ vs, inst_fill_template :: cs) |=>* (i :: l ++ vs, cs) }.
 Proof.
   move=> len t ; move: t len.
-  refine (well_founded_induction (well_founded_gtof _ instt_length) _ _).
+  refine (induction_gtof2 _ instt_length _ _).
   rewrite /gtof ; case ; try by move=> H len ;
     eexists=> l i H0 H1 vs cs ; inversion H1 ; evalpartial evalpush ; evalauto.
   - simpl=> t IH len ; eexists=> l i H H0 vs cs.
