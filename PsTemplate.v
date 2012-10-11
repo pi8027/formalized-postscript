@@ -247,15 +247,14 @@ Proof.
   apply (iff_decidable _ _ (fill_template'_eqprop l t)), eq_nat_dec.
 Defined.
 
-Lemma fill_template_eqprop2 :
+Theorem fill_template_eqprop2 :
   forall l t i,
     (exists l', listindices _ l (holes_of_template t) l' /\
       fill_template' l' t i) <->
     fill_template l t i.
 Proof.
-  split.
-  - move: t i ; elim ;
-      try by move=> i [l' [H H0]] ; inversion H0 ; constructor.
+  split ; move:t i.
+  - elim ; try by move=> i [l' [H H0]] ; inversion H0 ; constructor.
     - move=> t IH i [l' [H H0]].
       inversion H0.
       by apply fillpush, IH, (ex_intro _ l').
@@ -282,7 +281,7 @@ Proof.
       inversion H.
       inversion H0.
       replace i with y ; congruence.
-  - move: t i ; elim ; try by move=> i H ; inversion H ; do !econstructor.
+  - elim ; try by move=> i H ; inversion H ; do !econstructor.
     - move=> t IH i H.
       inversion H.
       clear i H H0 H1 H3.
@@ -306,13 +305,13 @@ Proof.
       exists [i] ; split ; by constructor.
 Qed.
 
-Lemma proof_inst_listindex' :
+Lemma exists_inst_listindex_iter :
   forall n, { inst_listindex |
-  forall xs x ys vs cs, listindex inst xs n x ->
+  forall xs x ys, listindex inst xs n x -> forall vs cs,
   (instseqv ys :: xs ++ vs, inst_listindex :: cs) |=>*
   (x :: ys ++ xs ++ vs, cs) }.
 Proof.
-  elim=> [ | n [i IH]] ; eexists=> xs x ys vs cs H ; inversion H.
+  elim=> [ | n [i IH]] ; eexists=> xs x ys H vs cs ; inversion H.
   - simpl.
     evalpartial' evalquote.
     evalpartial' evalswap.
@@ -336,73 +335,67 @@ Proof.
     evalpartial' evalsnoc.
     rewrite -/(instseqv' [x'] (instseqv ys))
       -(app_instseqv ys [x']) -/([x'] ++ xs0 ++ vs) app_assoc.
-    apply (IH xs0 x (ys ++ [x']) vs cs H2).
+    apply (IH xs0 x (ys ++ [x']) H2).
 Defined.
 
-Theorem proof_inst_listindex :
+Theorem exists_inst_listindex :
   forall n, { inst_listindex |
-  forall xs x vs cs, listindex inst xs n x ->
+  forall xs x, listindex inst xs n x -> forall vs cs,
   (xs ++ vs, inst_listindex :: cs) |=>* (x :: xs ++ vs, cs) }.
 Proof.
-  move=> n ; eexists=> xs x vs cs H.
+  move=> n ; eexists=> xs x H vs cs.
   evalpartial' evalpush.
-  evalpartial (proj2_sig (proof_inst_listindex' n) xs x [] vs cs H).
+  evalpartial (proj2_sig (exists_inst_listindex_iter n) xs x [] H).
   evalauto.
 Defined.
 
-Lemma proof_inst_listindices' :
+Lemma exists_inst_listindices_iter :
   forall len ns, { inst_listindices |
-  forall xs ys zs vs cs, length xs = len -> listindices inst xs ns ys ->
+  forall xs ys zs, length xs = len -> listindices inst xs ns ys -> forall vs cs,
   (instseqv zs :: xs ++ vs, inst_listindices :: cs) |=>*
   (instseqv (zs ++ ys) :: xs ++ vs, cs) }.
 Proof.
   move=> len ; elim=> [ | n ns [i IH] ] ;
-    eexists=> xs ys zs vs cs H H0 ; inversion H0.
+    eexists=> xs ys zs H H0 vs cs ; inversion H0.
   - evalpartial evalnop.
     by rtcrefl ; rewrite app_nil_r.
   - clear ys x l H0 H1 H2 H4.
-    evalpartial evalpair.
-    eapply evalrtc_trans.
-    eapply (proj2_sig (proof_inst_listindex (S n))
-      (instseqv zs :: xs) y vs (_ :: cs) (lisucc _ _ _ _ _ H3)).
+    evalpartial' (proj2_sig (exists_inst_listindex (S n))
+      (instseqv zs :: xs) y (lisucc _ _ _ _ _ H3)).
     simpl.
     evalpartial' evalquote.
     evalpartial' evalsnoc.
     rewrite -/(instseqv' [y] (instseqv zs))
       -(app_instseqv zs [y]) -/([y] ++ l') app_assoc.
-    apply (IH xs l' (zs ++ [y]) vs cs H H5).
+    apply (IH xs l' (zs ++ [y]) H H5).
 Defined.
 
-Theorem proof_clear_used :
+Theorem exists_clear_used :
   forall len, { inst_clear_used |
-  forall i vs1 vs2 cs, length vs1 = len ->
+  forall i vs1, length vs1 = len -> forall vs2 cs,
   (i :: vs1 ++ vs2, inst_clear_used :: cs) |=>* (i :: vs2, cs) }.
 Proof.
-  elim=> [ | n [i1 IH] ] ; eexists=> i2 vs1 vs2 cs.
-  - case: vs1 => [ | v vs1] H.
+  elim=> [ | n [i1 IH] ] ; eexists=> i2.
+  - case=> [ | v vs1] H vs2 cs.
     - evalpartial evalnop.
       evalauto.
     - inversion H.
-  - case: vs1 => [ | v vs1] H ; inversion H.
+  - case=> [ | v vs1] H vs2 cs ; inversion H.
     simpl.
     evalpartial' evalswap.
     evalpartial' evalpop.
-    apply (IH i2 vs1 vs2 cs H1).
+    apply (IH i2 vs1 H1).
 Defined.
 
-Theorem proof_inst_listindices :
+Theorem exists_inst_listindices :
   forall len ns, { inst_listindices |
-  forall xs ys vs cs, length xs = len -> listindices inst xs ns ys ->
+  forall xs ys, length xs = len -> listindices inst xs ns ys -> forall vs cs,
   (xs ++ vs, inst_listindices :: cs) |=>* (ys ++ vs, cs) }.
 Proof.
-  move=> len ns ; eexists=> xs ys vs cs H H0.
+  move=> len ns ; eexists=> xs ys H H0 vs cs.
   evalpartial' evalpush.
-  evalpartial evalpair.
-  eapply evalrtc_trans.
-  eapply (proj2_sig (proof_inst_listindices' len ns) xs ys [] vs _ H H0).
-  evalpartial evalpair.
-  eapply evalrtc_trans.
-  eapply (proj2_sig (proof_clear_used len) (instseqv ys) xs vs _ H).
+  evalpartial' (proj2_sig (exists_inst_listindices_iter len ns) xs ys [] H H0).
+  evalpartial' (proj2_sig (exists_clear_used len) (instseqv ys) xs H).
   evalpartial evalexec.
   apply evalseqv.
 Defined.
