@@ -399,3 +399,67 @@ Proof.
   evalpartial evalexec.
   apply evalseqv.
 Defined.
+
+Lemma exists_inst_fill_template'_iter :
+  forall t, { inst_fill_template' |
+  forall l i1, fill_template' l t i1 -> forall i2 vs cs,
+  (i2 :: l ++ vs, inst_fill_template' :: cs) |=>* (i2 :: i1 :: vs, cs) }.
+Proof.
+  elim ;
+    try by eexists=> l i1 H i2 vs cs ; inversion H ;
+      evalpartial' evalpush ; evalpartial evalswap ; evalauto.
+  - move=> t [i3 IH] ; eexists=> l i1 H i2 vs cs.
+    inversion H.
+    evalpartial' (IH l i H2).
+    evalpartial' evalswap.
+    evalpartial' evalquote.
+    evalpartial evalswap.
+    evalauto.
+  - move=> t1 [i1 IH1] t2 [i2 IH2] ; eexists=> l i3 H i4 vs cs.
+    inversion H.
+    rewrite -app_assoc.
+    evalpartial' (IH1 l1 i0 H3).
+    evalpartial' evalquote.
+    evalpartial' evalswap.
+    evalpartial' evalquote.
+    evalpartial' evalcons.
+    evalpartial' (IH2 l2 i5 H5).
+    evalpartial' evalswap.
+    evalpartial' evalquote.
+    evalpartial' evalcons.
+    evalpartial' evalexec.
+    evalauto.
+    evalpartial' evalcons.
+    evalpartial evalswap.
+    evalauto.
+  - move=> n ; eexists=> l i1 H i2 vs cs.
+    inversion H.
+    evalpartial evalnop.
+    evalauto.
+Defined.
+
+Theorem exists_inst_fill_template' :
+  forall t, { inst_fill_template' |
+  forall l i, fill_template' l t i -> forall vs cs,
+  (l ++ vs, inst_fill_template' :: cs) |=>* (i :: vs, cs) }.
+Proof.
+  move=> t ; eexists=> l i H vs cs.
+  evalpartial' (evalpush instpop).
+  evalpartial' (proj2_sig (exists_inst_fill_template'_iter t) l i H).
+  evalpartial evalpop.
+  evalauto.
+Defined.
+
+Theorem exists_inst_fill_template :
+  forall len t, { inst_fill_template |
+  forall l i, length l = len -> fill_template l t i -> forall vs cs,
+  (l ++ vs, inst_fill_template :: cs) |=>* (i :: vs, cs) }.
+Proof.
+  move=> len t ; eexists=> l i.
+  rewrite -fill_template_eqprop2.
+  move=> H [l' [H0 H1]] vs cs.
+  evalpartial'
+    (proj2_sig (exists_inst_listindices len (holes_of_template t)) l l' H H0).
+  evalpartial (proj2_sig (exists_inst_fill_template' t) l' i H1).
+  evalauto.
+Defined.
