@@ -229,6 +229,24 @@ Proof.
   apply (iff_decidable _ _ (fill_template_eqprop l t)), dec_listindices.
 Defined.
 
+Theorem unique_fill_template :
+  forall l t i1 i2, fill_template l t i1 -> fill_template l t i2 -> i1 = i2.
+Proof.
+  move=> l ; elim ; try by move=> i1 i2 H H0 ; inversion H ; inversion H0.
+  - move=> t IH i1 i2 H H0.
+    inversion H.
+    inversion H0.
+    f_equal ; auto.
+  - move=> t1 IH1 t2 IH2 i1 i2 H H0.
+    inversion H.
+    inversion H0.
+    f_equal ; auto.
+  - move=> n i1 i2 H H0.
+    inversion H.
+    inversion H0.
+    apply (unique_listindex _ l n) ; auto.
+Qed.
+
 Lemma exists_inst_listindex_iter :
   forall n, { inst_listindex |
   forall xs x ys, listindex inst xs n x -> forall vs cs,
