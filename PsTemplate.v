@@ -1,5 +1,7 @@
 Require Import
-  Arith Arith.Min Lists.List Program.Syntax Omega ssreflect Common PsCore.
+  Arith.Min Arith.Wf_nat Numbers.Natural.Peano.NPeano
+  Lists.List Program.Syntax Omega
+  ssreflect Common PsCore.
 
 Section ListIndex.
 
@@ -8,6 +10,14 @@ Variable A : Type.
 Inductive listindex : list A -> nat -> A -> Prop :=
   | lizero : forall x xs, listindex (x :: xs) 0 x
   | lisucc : forall x' xs n x, listindex xs n x -> listindex (x' :: xs) (S n) x.
+
+Theorem lift_listindex :
+  forall xs ys n a, listindex ys n a -> listindex (xs ++ ys) (length xs + n) a.
+Proof.
+  elim => [ | x xs IH ].
+  auto.
+  simpl ; constructor ; auto.
+Qed.
 
 Lemma listindex_eqprop :
   forall xs n, length xs > n <-> exists a, listindex xs n a.
@@ -119,6 +129,27 @@ Fixpoint holes_of_template (t : instt) : list nat :=
     | _ => []
   end.
 
+Fixpoint instt_length (t : instt) : nat :=
+  match t with
+    | insttpush t => S (instt_length t)
+    | insttpair t1 t2 => S (instt_length t1 + instt_length t2)
+    | _ => 1
+  end.
+
+Fixpoint lift_instt (n : nat) (t : instt) : instt :=
+  match t with
+    | insttpush t => insttpush (lift_instt n t)
+    | insttpair t1 t2 => insttpair (lift_instt n t1) (lift_instt n t2)
+    | instthole m => instthole (n + m)
+    | _ => t
+  end.
+
+Theorem instt_length_lifted :
+  forall n t, instt_length t = instt_length (lift_instt n t).
+Proof.
+  move=> n ; elim ; simpl ; f_equal ; auto.
+Qed.
+
 Inductive fill_template : list inst -> instt -> inst -> Prop :=
   | fillpop   : forall l, fill_template l insttpop instpop
   | fillcopy  : forall l, fill_template l insttcopy instcopy
@@ -134,6 +165,22 @@ Inductive fill_template : list inst -> instt -> inst -> Prop :=
     fill_template l (insttpair t1 t2) (instpair i1 i2)
   | fillhole  :
     forall l n i, listindex inst l n i -> fill_template l (instthole n) i.
+
+Theorem lift_fill_template :
+  forall xs ys t i, fill_template ys t i ->
+  fill_template (xs ++ ys) (lift_instt (length xs) t) i.
+Proof.
+  move=> xs ys ; elim ; try by move=> i H ; inversion H ; constructor.
+  - move=> t IH i H.
+    inversion H.
+    simpl ; constructor ; auto.
+  - move=> t1 IH1 t2 IH2 i H.
+    inversion H.
+    simpl ; constructor ; auto.
+  - move=> n i H.
+    inversion H.
+    by simpl ; constructor ; apply lift_listindex.
+Qed.
 
 Lemma fill_template_eqprop :
   forall l t,
@@ -182,129 +229,6 @@ Proof.
   apply (iff_decidable _ _ (fill_template_eqprop l t)), dec_listindices.
 Defined.
 
-Inductive fill_template' : list inst -> instt -> inst -> Prop :=
-  | fillpop'   : fill_template' [] insttpop instpop
-  | fillcopy'  : fill_template' [] insttcopy instcopy
-  | fillswap'  : fill_template' [] insttswap instswap
-  | fillcons'  : fill_template' [] insttcons instcons
-  | fillquote' : fill_template' [] insttquote instquote
-  | fillexec'  : fill_template' [] insttexec instexec
-  | fillpush'  :
-    forall l t i, fill_template' l t i ->
-    fill_template' l (insttpush t) (instpush i)
-  | fillpair'  :
-    forall l1 l2 t1 t2 i1 i2,
-    fill_template' l1 t1 i1 -> fill_template' l2 t2 i2 ->
-    fill_template' (l1 ++ l2) (insttpair t1 t2) (instpair i1 i2)
-  | fillhole'  : forall n i, fill_template' [i] (instthole n) i.
-
-Lemma fill_template'_eqprop :
-  forall l t,
-  length l = length (holes_of_template t) <-> exists i, fill_template' l t i.
-Proof.
-  split.
-  - move: t l ; elim ;
-      try by simpl ; case=> [ | i l] H ;
-        [apply: ex_intro ; constructor | inversion H].
-    - move=> t IH l H.
-      case (IH l H)=> i H0.
-      by apply (ex_intro _ (instpush i)) ; constructor.
-    - simpl=> t1 H1 t2 H2 l.
-      rewrite app_length=> H.
-      case (H2 (skipn (length (holes_of_template t1)) l)).
-        rewrite skipn_length ; omega.
-      case (H1 (firstn (length (holes_of_template t1)) l)).
-        rewrite firstn_length.
-        case (dec_le (length (holes_of_template t1)) (length l)) => H0.
-        - by rewrite min_l.
-        - omega.
-      clear H H1 H2.
-      move=> i1 H i2 H0.
-      rewrite -(firstn_skipn (length (holes_of_template t1)) l).
-      apply (ex_intro _ (instpair i1 i2)).
-      by econstructor.
-    - simpl.
-      move=> n [ | i1 [ | i2 l]] H ; inversion H.
-      apply (ex_intro _ i1) ; constructor.
-  - move: t l ; elim ; try by move=> l [i H] ; inversion H.
-    - move=> t IH l [i H].
-      inversion H.
-      by apply IH, (ex_intro _ i0).
-    - move=> t1 H1 t2 H2 l [i H].
-      inversion H.
-      clear i H H0 H3 H4 H6.
-      simpl ; rewrite !app_length ; f_equal.
-      by apply H1, (ex_intro _ i1).
-      by apply H2, (ex_intro _ i2).
-    - move=> n l [i H].
-      by inversion H.
-Qed.
-
-Lemma fill_template'_dec :
-  forall l t, sb_decidable (exists i, fill_template' l t i).
-Proof.
-  move=> l t.
-  apply (iff_decidable _ _ (fill_template'_eqprop l t)), eq_nat_dec.
-Defined.
-
-Theorem fill_template_eqprop2 :
-  forall l t i,
-    (exists l', listindices _ l (holes_of_template t) l' /\
-      fill_template' l' t i) <->
-    fill_template l t i.
-Proof.
-  split ; move:t i.
-  - elim ; try by move=> i [l' [H H0]] ; inversion H0 ; constructor.
-    - move=> t IH i [l' [H H0]].
-      inversion H0.
-      by apply fillpush, IH, (ex_intro _ l').
-    - move=> t1 H t2 H0 i [l' []] ; simpl=> H2 H1 ; move: H2.
-      inversion H1.
-      clear i l' H1 H2 H3 H4 H6 => H1.
-      case (Forall2_app_inv_l (holes_of_template t1) (holes_of_template t2) H1)
-        => [l1' [l2' [H2 [H3 H4]]]].
-      replace l1' with l1 in H2, H4.
-      replace l2' with l2 in H3.
-      - constructor.
-        by apply H, (ex_intro _ l1).
-        by apply H0, (ex_intro _ l2).
-      - apply (app_inv_head _ _ _ H4).
-      - apply eq_trans with (firstn (length (holes_of_template t1)) (l1 ++ l2)).
-        - rewrite -(proj2 (fill_template'_eqprop l1 t1)
-            (ex_intro (fill_template' l1 t1) i1 H5)).
-          apply app_length_firstn.
-        - rewrite H4.
-          rewrite (Forall2_eq_length _ _ _ _ _ H2).
-          apply eq_sym, app_length_firstn.
-    - move=> n i [l' [H H0]].
-      constructor.
-      inversion H.
-      inversion H0.
-      replace i with y ; congruence.
-  - elim ; try by move=> i H ; inversion H ; do !econstructor.
-    - move=> t IH i H.
-      inversion H.
-      clear i H H0 H1 H3.
-      case (IH i0 H2) => l' [H H0].
-      exists l' ; split.
-      - auto.
-      - by constructor.
-    - simpl.
-      move=> t1 H t2 H0 i H1.
-      inversion H1.
-      clear i H1 H2 H3 H4 H6.
-      case (H i1 H5) => ll [H1 H2].
-      case (H0 i2 H7) => lr [H3 H4].
-      clear l0 t0 t3 H H0 H5 H7.
-      exists (ll ++ lr) ; split.
-      by apply Forall2_app.
-      by constructor.
-    - simpl.
-      move=> n i H.
-      inversion H.
-      exists [i] ; split ; by constructor.
-Qed.
-
 Lemma exists_inst_listindex_iter :
   forall n, { inst_listindex |
   forall xs x ys, listindex inst xs n x -> forall vs cs,
@@ -349,117 +273,34 @@ Proof.
   evalauto.
 Defined.
 
-Lemma exists_inst_listindices_iter :
-  forall len ns, { inst_listindices |
-  forall xs ys zs, length xs = len -> listindices inst xs ns ys -> forall vs cs,
-  (instseqv zs :: xs ++ vs, inst_listindices :: cs) |=>*
-  (instseqv (zs ++ ys) :: xs ++ vs, cs) }.
-Proof.
-  move=> len ; elim=> [ | n ns [i IH] ] ;
-    eexists=> xs ys zs H H0 vs cs ; inversion H0.
-  - evalpartial evalnop.
-    by rtcrefl ; rewrite app_nil_r.
-  - clear ys x l H0 H1 H2 H4.
-    evalpartial' (proj2_sig (exists_inst_listindex (S n))
-      (instseqv zs :: xs) y (lisucc _ _ _ _ _ H3)).
-    simpl.
-    evalpartial' evalquote.
-    evalpartial' evalsnoc.
-    rewrite -/(instseqv' [y] (instseqv zs))
-      -(app_instseqv zs [y]) -/([y] ++ l') app_assoc.
-    apply (IH xs l' (zs ++ [y]) H H5).
-Defined.
-
-Theorem exists_clear_used :
-  forall len, { inst_clear_used |
-  forall i vs1, length vs1 = len -> forall vs2 cs,
-  (i :: vs1 ++ vs2, inst_clear_used :: cs) |=>* (i :: vs2, cs) }.
-Proof.
-  elim=> [ | n [i1 IH] ] ; eexists=> i2.
-  - case=> [ | v vs1] H vs2 cs.
-    - evalpartial evalnop.
-      evalauto.
-    - inversion H.
-  - case=> [ | v vs1] H vs2 cs ; inversion H.
-    simpl.
-    evalpartial' evalswap.
-    evalpartial' evalpop.
-    apply (IH i2 vs1 H1).
-Defined.
-
-Theorem exists_inst_listindices :
-  forall len ns, { inst_listindices |
-  forall xs ys, length xs = len -> listindices inst xs ns ys -> forall vs cs,
-  (xs ++ vs, inst_listindices :: cs) |=>* (ys ++ vs, cs) }.
-Proof.
-  move=> len ns ; eexists=> xs ys H H0 vs cs.
-  evalpartial' evalpush.
-  evalpartial' (proj2_sig (exists_inst_listindices_iter len ns) xs ys [] H H0).
-  evalpartial' (proj2_sig (exists_clear_used len) (instseqv ys) xs H).
-  evalpartial evalexec.
-  apply evalseqv.
-Defined.
-
-Lemma exists_inst_fill_template'_iter :
-  forall t, { inst_fill_template' |
-  forall l i1, fill_template' l t i1 -> forall i2 vs cs,
-  (i2 :: l ++ vs, inst_fill_template' :: cs) |=>* (i2 :: i1 :: vs, cs) }.
-Proof.
-  elim ;
-    try by eexists=> l i1 H i2 vs cs ; inversion H ;
-      evalpartial' evalpush ; evalpartial evalswap ; evalauto.
-  - move=> t [i3 IH] ; eexists=> l i1 H i2 vs cs.
-    inversion H.
-    evalpartial' (IH l i H2).
-    evalpartial' evalswap.
-    evalpartial' evalquote.
-    evalpartial evalswap.
-    evalauto.
-  - move=> t1 [i1 IH1] t2 [i2 IH2] ; eexists=> l i3 H i4 vs cs.
-    inversion H.
-    rewrite -app_assoc.
-    evalpartial' (IH1 l1 i0 H3).
-    evalpartial' evalquote.
-    evalpartial' evalswap.
-    evalpartial' evalquote.
-    evalpartial' evalcons.
-    evalpartial' (IH2 l2 i5 H5).
-    evalpartial' evalswap.
-    evalpartial' evalquote.
-    evalpartial' evalcons.
-    evalpartial' evalexec.
-    evalauto.
-    evalpartial' evalcons.
-    evalpartial evalswap.
-    evalauto.
-  - move=> n ; eexists=> l i1 H i2 vs cs.
-    inversion H.
-    evalpartial evalnop.
-    evalauto.
-Defined.
-
-Theorem exists_inst_fill_template' :
-  forall t, { inst_fill_template' |
-  forall l i, fill_template' l t i -> forall vs cs,
-  (l ++ vs, inst_fill_template' :: cs) |=>* (i :: vs, cs) }.
-Proof.
-  move=> t ; eexists=> l i H vs cs.
-  evalpartial' (evalpush instpop).
-  evalpartial' (proj2_sig (exists_inst_fill_template'_iter t) l i H).
-  evalpartial evalpop.
-  evalauto.
-Defined.
-
 Theorem exists_inst_fill_template :
   forall len t, { inst_fill_template |
   forall l i, length l = len -> fill_template l t i -> forall vs cs,
-  (l ++ vs, inst_fill_template :: cs) |=>* (i :: vs, cs) }.
+  (l ++ vs, inst_fill_template :: cs) |=>* (i :: l ++ vs, cs) }.
 Proof.
-  move=> len t ; eexists=> l i.
-  rewrite -fill_template_eqprop2.
-  move=> H [l' [H0 H1]] vs cs.
-  evalpartial'
-    (proj2_sig (exists_inst_listindices len (holes_of_template t)) l l' H H0).
-  evalpartial (proj2_sig (exists_inst_fill_template' t) l' i H1).
-  evalauto.
+  move=> len t ; move: t len.
+  refine (well_founded_induction (well_founded_gtof _ instt_length) _ _).
+  rewrite /gtof ; case ; try by move=> H len ;
+    eexists=> l i H0 H1 vs cs ; inversion H1 ; evalpartial evalpush ; evalauto.
+  - simpl=> t IH len ; eexists=> l i H H0 vs cs.
+    inversion H0.
+    evalpartial' (proj2_sig (IH t (le_n (S (instt_length t))) len) l i0 H H3).
+    evalpartial evalquote.
+    evalauto.
+  - simpl=> t1 t2 IH len ; eexists=> l i H H0 vs cs.
+    inversion H0.
+    clear i l0 t0 t3 H0 H1 H2 H3 H5.
+    evalpartial' (proj2_sig (IH t1 (le_n_S _ _ (le_plus_l _ _)) len) l i1 H H4).
+    evalpartial' (proj2_sig (IH (lift_instt 1 t2)
+      ((le_n_S _ _ (le_trans _ _ _
+        (Nat.eq_le_incl _ _ (eq_sym (instt_length_lifted 1 t2)))
+        (le_plus_r _ _))))
+      (S len)) (i1 :: l) i2 (eq_S _ _ H) (lift_fill_template [i1] l t2 i2 H6)).
+    simpl.
+    evalpartial evalcons.
+    evalauto.
+  - simpl=> n _ len ; eexists=> l i H H0 vs cs.
+    inversion H0.
+    evalpartial (proj2_sig (exists_inst_listindex n) l i H3).
+    evalauto.
 Defined.
