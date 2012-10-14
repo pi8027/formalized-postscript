@@ -301,6 +301,7 @@ Proof.
     eexists=> l i H0 H1 vs cs ; inversion H1 ; evalpartial evalpush ; evalauto.
   - simpl=> t IH len ; eexists=> l i H H0 vs cs.
     inversion H0.
+    clear i l0 t0 H0 H1 H2 H4.
     evalpartial' (proj2_sig (IH t (le_n (S (instt_length t))) len) l i0 H H3).
     evalpartial evalquote.
     evalauto.

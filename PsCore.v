@@ -21,7 +21,7 @@ Inductive inst : Set :=
 inst_to_pscode:
   inst 型の命令を PostScript のプログラムに変換する。
 *)
-Fixpoint inst_to_pscode (i : inst) : string :=
+Fixpoint pscode_of_inst (i : inst) : string :=
   match i with
     | instpop        => "pop"
     | instcopy       => "dup"
@@ -29,8 +29,8 @@ Fixpoint inst_to_pscode (i : inst) : string :=
     | instcons       => "cons"
     | instquote      => "quote"
     | instexec       => "exec"
-    | instpush i     => "{" ++ inst_to_pscode i ++ "}"
-    | instpair i1 i2 => inst_to_pscode i1 ++ " " ++ inst_to_pscode i2
+    | instpush i     => "{" ++ pscode_of_inst i ++ "}"
+    | instpair i1 i2 => pscode_of_inst i1 ++ " " ++ pscode_of_inst i2
   end%string.
 
 (*
