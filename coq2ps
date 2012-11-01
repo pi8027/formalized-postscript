@@ -1,0 +1,6 @@
+#!/bin/bash
+
+(coqtop 2>/dev/null | grep "%string$" | sed 's/^.*"\(.*\)".*$/\1/g') <<EOT
+Require Import Strings.String Common PsCore PsTemplate PsBool PsNat.
+Eval compute in (pscode_of_inst ($1)).
+EOT
