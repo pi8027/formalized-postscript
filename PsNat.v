@@ -1,7 +1,7 @@
 Require Import
   Arith.Compare_dec Arith.Even Arith.Peano_dec
   Relations.Relations Lists.List Program.Basics Program.Syntax
-  ssreflect Common PsCore PsBool.
+  ssreflect Common PsCore PsTemplate PsBool.
 
 (*
 instnat_spec:
@@ -90,10 +90,7 @@ Proof.
     evalpartial' evalcopy.
     evalpartial' H.
     apply evalsnoc.
-  - evalpartial' evalpush.
-    evalpartial' evalcons.
-    evalpartial' evalpush.
-    apply evalsnoc.
+  - evaltemplate 1 (insttseqc [insttcopy; instthole 0; insttswap; insttcons]).
 Defined.
 
 Notation instnat_succ := (proj1_sig exists_instnat_succ).
@@ -151,13 +148,11 @@ Proof.
   rewrite /Mult.tail_mult.
   move: (0) (instnat 0) (eval_instnat 0) => o i1 H.
   eexists=> n m i2 i3 vs cs H0 H1.
-  evalpartial' evalquote.
-  evalpartial' evalpush.
-  evalpartial' evalcons.
-  evalpartial' evalquote.
-  evalpartial' evalsnoc.
-  evalpartial' evalpush.
-  evalpartial' evalswap.
+  do 2 evalpartial' evalpush.
+  evaltemplate' 4 (insttseqc
+    [insttpush (instthole 0);
+     insttpush (insttpair (insttpush (instthole 2)) (instthole 1));
+     instthole 3]).
   evalpartial' evalexec.
   evalauto.
   evalpartial (eval_instnat_repeat n).

@@ -18,32 +18,28 @@ Proof.
   simpl ; constructor ; auto.
 Qed.
 
-Lemma listindex_eqprop :
-  forall xs n, length xs > n <-> exists a, listindex xs n a.
-Proof.
-  elim=> [n | x xs IH [ | n]] ; split=> H.
-  - inversion H.
-  - case: H => x H.
-    inversion H.
-  - exists x.
-    apply lizero.
-  - simpl ; omega.
-  - have: (exists a, listindex xs n a).
-      apply (proj1 (IH n)).
-      simpl in H ; omega.
-    by case=> x' H1 ; exists x' ; constructor.
-  - have: length xs > n.
-      case: H => x' H.
-      inversion H.
-      apply: (proj2 (IH n) (ex_intro _ x' H4)).
-    simpl=> H1 ; omega.
-Qed.
-
 Theorem dec_listindex :
   forall xs n, sb_decidable (exists a, listindex xs n a).
 Proof.
-  move=> xs n.
-  apply (iff_decidable _ _ (listindex_eqprop xs n) (gt_dec (length xs) n)).
+  elim => [ | x xs IH] n.
+  - right ; case=> i H ; inversion H.
+  - case: n => [ | n].
+    - left ; exists x ; constructor.
+    - case (IH n) => H.
+      - by left ; case: H => i H ; exists i ; constructor.
+      - by right => H0 ; apply: H ; case: H0 => i H0 ; exists i ; inversion H0.
+Defined.
+
+Theorem partial_listindex :
+  forall xs n, option {a : A | listindex xs n a}.
+Proof.
+  elim => [ | x xs IH] n.
+  - apply None.
+  - case: n => [ | n].
+    - apply Some ; exists x ; constructor.
+    - case (IH n) => [[i H] | ].
+      - by apply Some ; exists i ; constructor.
+      - apply None.
 Defined.
 
 Theorem unique_listindex :
@@ -59,55 +55,7 @@ Proof.
     by inversion H0.
 Qed.
 
-Notation listindices xs := (Forall2 (listindex xs)).
-
-Lemma listindices_eqprop :
-  forall xs ns, Forall (gt (length xs)) ns <-> exists ys, listindices xs ns ys.
-Proof.
-  move=> xs ; elim => [ | n ns IH] ; split=> H.
-  - eexists [] ; constructor.
-  - constructor.
-  - inversion H.
-    case (proj1 (listindex_eqprop xs n) H2) => y H4.
-    case (proj1 IH H3) => ys H5.
-    exists (y :: ys) ; constructor ; auto.
-  - case: H ; case => [ | y ys ] H.
-    - inversion H.
-    - inversion H.
-      constructor.
-      - rewrite (listindex_eqprop xs n).
-        by exists y.
-      - apply (proj2 IH).
-        by exists ys.
-Qed.
-
-Theorem dec_listindices :
-  forall xs ns, sb_decidable (exists ys, listindices xs ns ys).
-Proof.
-  move=> xs ns.
-  apply (iff_decidable _ _ (listindices_eqprop xs ns)).
-  elim: ns => [ | n ns [IH | IH]].
-  - left ; constructor.
-  - case (gt_dec (length xs) n) => H.
-    - by left ; constructor.
-    - by right=> H1 ; apply: H ; inversion H1.
-  - by right=> H0 ; apply: IH ; inversion H0.
-Defined.
-
-Theorem unique_listindices :
-  forall xs ns ys zs, listindices xs ns ys -> listindices xs ns zs -> ys = zs.
-Proof.
-  move=> xs ; elim=> [ | n ns IH ] ; case=> [ | y ys] ; case => [ | z zs] H H0 ;
-    inversion H ; inversion H0.
-  - auto.
-  - f_equal.
-    - apply: unique_listindex ; eauto.
-    - auto.
-Qed.
-
 End ListIndex.
-
-Notation listindices A xs := (Forall2 (listindex A xs)).
 
 Inductive instt : Set :=
   | insttpop   : instt
@@ -141,6 +89,25 @@ Fixpoint lift_instt (n : nat) (t : instt) : instt :=
     | insttpair t1 t2 => insttpair (lift_instt n t1) (lift_instt n t2)
     | instthole m => instthole (n + m)
     | _ => t
+  end.
+
+Fixpoint instt_of_inst (i : inst) : instt :=
+  match i with
+    | instpop => insttpop
+    | instcopy => insttcopy
+    | instswap => insttswap
+    | instcons => insttcons
+    | instquote => insttquote
+    | instexec => insttexec
+    | instpush i => insttpush (instt_of_inst i)
+    | instpair i1 i2 => insttpair (instt_of_inst i1) (instt_of_inst i2)
+  end.
+
+Fixpoint insttseqc (l : list instt) : instt :=
+  match l with
+    | [] => instt_of_inst instnop
+    | [t1; t2] => insttpair t1 t2
+    | t1 :: l => insttpair t1 (insttseqc l)
   end.
 
 Theorem instt_length_lifted :
@@ -181,51 +148,45 @@ Proof.
     by simpl ; constructor ; apply lift_listindex.
 Qed.
 
-Lemma fill_template_eqprop :
-  forall l t,
-  (exists ys, listindices inst l (holes_of_template t) ys) <->
-  (exists i, fill_template l t i).
-Proof.
-  split.
-  - elim: t ; try by eexists ; constructor.
-    - move=> t IH H.
-      case (IH H) => i H0.
-      exists (instpush i).
-      by constructor.
-    - move=> t1 H t2 H0 [ys H1].
-      case (Forall2_app_inv_l (holes_of_template t1) (holes_of_template t2) H1)
-        => ysl [ysr [H2 [H3 _]]].
-      clear ys H1.
-      case (H (ex_intro _ ysl H2)) => il H4.
-      case (H0 (ex_intro _ ysr H3)) => ir H5.
-      exists (instpair il ir).
-      by constructor.
-    - move=> n [ys H].
-      inversion H.
-      exists y.
-      by constructor.
-  - elim: t ; try by move=> H ; eexists [] ; constructor.
-    - move=> t IH [i H].
-      apply IH.
-      inversion H.
-      by exists i0.
-    - move=> t1 H t2 H0 [i H1].
-      inversion H1.
-      elim (H (ex_intro _ i1 H5)) => [ysl H8].
-      elim (H0 (ex_intro _ i2 H7)) => [ysr H9].
-      exists (ysl ++ ysr).
-      by simpl ; apply Forall2_app.
-    - move=> n [i H].
-      inversion H.
-      exists [i].
-      by do !constructor.
-Qed.
-
 Theorem dec_fill_template :
   forall l t, sb_decidable (exists i, fill_template l t i).
 Proof.
-  move=> l t.
-  apply (iff_decidable _ _ (fill_template_eqprop l t)), dec_listindices.
+  move=> l ; elim ; try by (left ; eexists ; econstructor).
+  - move=> t ; elim=> H.
+    - by left ; elim: H => i H ; exists (instpush i) ; constructor.
+    - right=> H0 ; apply: H ; case: H0 => i H0 ; inversion H0.
+      by exists i0.
+  - move=> t1 ; elim=> H1.
+    - move=> t2 ; elim=> H2.
+      - left ; elim: H1 => i1 H1 ; elim: H2 => i2 H2.
+        by exists (instpair i1 i2) ; constructor.
+      - right=> H3 ; apply: H2 ; case: H3 => i H3 ; inversion H3.
+        by exists i2.
+    - move=> t H2.
+      right=> H3 ; apply: H1 ; case: H3 => i H3 ; inversion H3.
+      by exists i1.
+  - move=> n.
+    case (dec_listindex _ l n) => H.
+    - by left ; case: H => i H ; exists i ; constructor.
+    - by right => H0 ; apply H ; case: H0 => i H0 ; exists i ; inversion H0.
+Defined.
+
+Theorem partial_fill_template :
+  forall l t, option {i : inst | fill_template l t i}.
+Proof.
+  move=> l ; elim ; try by (apply Some ; eexists ; econstructor).
+  - move=> t [[i H] | ].
+    - by apply Some ; exists (instpush i) ; constructor.
+    - apply None.
+  - move=> t1 [[i1 H1] | ].
+    - move=> t2 [[i2 H2] | ].
+      - by apply Some ; exists (instpair i1 i2) ; constructor.
+      - apply None.
+    - move=> t2 H2 ; apply None.
+  - move=> n.
+    case (partial_listindex _ l n) => [[i H] | ].
+    - by apply Some ; exists i ; constructor.
+    - apply None.
 Defined.
 
 Theorem unique_fill_template :
@@ -349,3 +310,31 @@ Proof.
   evalpartial' (proj2_sig (exists_inst_fill_template_iter len t) l i H H0).
   apply (proj2_sig (exists_clear_used len) i l H).
 Defined.
+
+Tactic Notation "evaltemplate_eapply" constr(vs) constr(n) constr(t) :=
+  match eval hnf in (eq_nat_dec n (length (firstn n vs))) with | left ?H2 =>
+    match eval compute in (partial_fill_template (firstn n vs) t) with
+      | Some (exist _ ?i ?H1) =>
+        eapply (proj2_sig (exists_inst_fill_template n t) (firstn n vs) i H2 H1)
+      end
+  end.
+
+Tactic Notation "evaltemplate_evalpartial'" constr(vs) constr(n) constr(t) :=
+  match eval hnf in (eq_nat_dec n (length (firstn n vs))) with | left ?H2 =>
+    match eval compute in (partial_fill_template (firstn n vs) t) with
+      | Some (exist _ ?i ?H1) =>
+        evalpartial' (proj2_sig (exists_inst_fill_template n t) (firstn n vs) i H2 H1)
+      end
+  end.
+
+Tactic Notation "evaltemplate" constr(n) constr(t) :=
+  match goal with
+    | |- (?vs, _) |=>* _ => evaltemplate_eapply vs n t
+    | |- exists _ : inst, _ /\ (?vs, _) |=>* _ => evaltemplate_eapply vs n t
+  end.
+
+Tactic Notation "evaltemplate'" constr(n) constr(t) :=
+  match goal with
+    | |- (?vs, _) |=>* _ => evaltemplate_evalpartial' vs n t
+    | |- exists _ : inst, _ /\ (?vs, _) |=>* _ => evaltemplate_evalpartial' vs n t
+  end.
