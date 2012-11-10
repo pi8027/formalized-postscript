@@ -51,14 +51,14 @@ stack:
 Notation stack := (list inst).
 
 (*
-environment:
-  環境は2本のスタックの組。前者は値のスタック、後者は継続のスタックである。
+state:
+  状態は2本のスタックの組。前者は値のスタック、後者は継続のスタックである。
 *)
-Notation environment := (stack * stack)%type.
+Notation state := (stack * stack)%type.
 
 (*
 eval:
-  計算は環境上の二項関係(書換系)である。
+  計算は状態上の二項関係(書換系)である。
   evalpop (instpop):
     値のスタックの先頭を捨てる。
   evalcopy (instcopy):
@@ -78,7 +78,7 @@ eval:
   evalpair (instpair):
     instpair のパラメータの2つの命令を継続のスタックに積む。
 *)
-Inductive eval : relation environment :=
+Inductive eval : relation state :=
   | evalpop   : forall i vs cs, eval (i :: vs, instpop :: cs) (vs, cs)
   | evalcopy  : forall i vs cs,
       eval (i :: vs, instcopy :: cs) (i :: i :: vs, cs)
@@ -97,7 +97,7 @@ Inductive eval : relation environment :=
 evalrtc:
   eval の反射推移閉包。
 *)
-Notation evalrtc := (clos_refl_trans_1n environment eval).
+Notation evalrtc := (clos_refl_trans_1n state eval).
 
 (*
 |=>, |=>*:
@@ -133,9 +133,9 @@ Qed.
 
 (*
 decide_eval:
-  環境 e1 から eval によって書き換えられる環境 e2 の存在を決定する。
+  状態 e1 から eval によって書き換えられる状態 e2 の存在を決定する。
 *)
-Theorem decide_eval : forall e1, decidable (exists e2 : environment, e1 |=> e2).
+Theorem decide_eval : forall e1, decidable (exists e2 : state, e1 |=> e2).
 Proof.
   elim=> [vs [ | [ | | | | | | | ] ps]] ;
   [ |
@@ -153,7 +153,7 @@ Defined.
 
 (*
 eval_uniqueness:
-  環境 e1 から eval によって書き換えられる環境 e2, e3 は同値である。
+  状態 e1 から eval によって書き換えられる状態 e2, e3 は同値である。
 *)
 Theorem eval_uniqueness : forall e1 e2 e3, e1 |=> e2 -> e1 |=> e3 -> e2 = e3.
 Proof.
@@ -203,7 +203,7 @@ Qed.
 
 (*
 evalstep:
-  ゴールが e1 |=>* e2 の形である場合に、e1 から書き換え可能な環境 e3 を計算し、
+  ゴールが e1 |=>* e2 の形である場合に、e1 から書き換え可能な状態 e3 を計算し、
   ゴールを e3 |=>* e2 で置き換えるタクティク。計算を自動的に1段階進める。
 *)
 Lemma exists_and_right_map :
