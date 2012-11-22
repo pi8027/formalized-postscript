@@ -1,0 +1,329 @@
+\documentclass[cjk, 12pt]{beamer}
+
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{stmaryrd}
+
+\usetheme{Copenhagen}
+\usecolortheme{seahorse}
+\useinnertheme{rounded}
+\useoutertheme{shadow}
+
+\setbeamercovered{transparent}
+
+\definecolor{code-background}{gray}{0.8}
+
+\lstdefinestyle{plain}{
+  basicstyle=\small\tt,
+  keywordstyle=,
+  identifierstyle=,
+  commentstyle=,
+  stringstyle=,
+  emphstyle=,
+  backgroundcolor=\color{code-background},
+  language=,
+  frame=trbl,
+  rulecolor=\color{white},
+  numbers=none,
+  numberstyle=,
+  xleftmargin=0.4zw,
+  xrightmargin=0.4zw,
+  basewidth={0.48em, 0.43em},
+  lineskip=-0.2ex
+}
+
+\lstdefinestyle{postscript}{
+  style=plain,
+  keywordstyle=,
+  identifierstyle=,
+  commentstyle=,
+  stringstyle=,
+  emphstyle=,
+  language=PostScript,
+}
+
+\title{CoqによるPostScriptプログラミング}
+\author{坂口和彦 (@pi8027)}
+\institute{筑波大学 情報学群 情報科学類 B2}
+\date{2012/11/22}
+
+\newlength{\lengthwithlength}
+\newcommand{\bnfvert}
+    {\settowidth{\lengthwithlength}{::=}\mathrel{\makebox[\lengthwithlength][c]{$|$}}}
+\newcommand{\bnfcce}{\mathrel{::=}}
+
+\begin{document}
+
+\begin{frame}[plain]
+
+ \maketitle
+
+\end{frame}
+
+\begin{frame}{概要}
+
+ \begin{itemize}
+  \item 定理証明器CoqでPostScriptのサブセットを定義し、その上で証明付きのプログラムを記述しようとい
+	う試み。
+  \item ソースコード、スライド: http://github.com/pi8027/formalized-postscript
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{目的 - 1}
+
+ \begin{itemize}
+  \item PostScriptプログラミングにはパズルのような楽しさがある。
+  \item しかし、PostScriptのプログラムは書きづらい、検証しづらい。
+  \item 証明を付けられる形で似た意味論を持つ言語を実装したい。
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{目的 - 2}
+
+ \begin{itemize}
+  \item スタックの状態を見ながらプログラムを書きたい。
+  \item 実装の自明なプログラムはより直感的な仕様から自動生成したい。
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]{PostScriptでの簡単なスタック操作}
+
+ \begin{description}
+  \item[\texttt{pop}] スタックの先頭を捨てる
+  \item[\texttt{dup}] スタックの先頭を複製する
+  \item[\texttt{n m roll}] スタックの先頭の$n$要素を先頭方向に$m$個分回転させる
+  \item[\texttt{exch}] \texttt{2 1 roll}と同じ
+ \end{description}
+
+ スタックの先頭の4要素の順序を逆順にする:
+
+\begin{lstlisting}[style=postscript]
+4 1 roll 3 1 roll exch
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]{PostScriptでのメタプログラミング}
+
+ \begin{description}
+  \item[\texttt{\{ ... \}}] 命令列
+  \item[\texttt{[}] マークをスタックに積む
+  \item[\texttt{]}] スタックの先頭に最も近いマークからスタックの先頭までを配列にする
+  \item[\texttt{cvx}] 値を実行可能形式に変換する(配列は命令列になる)
+  \item[\texttt{exec}] 実行可能な値を実行する
+ \end{description}
+
+ 命令列\texttt{\{1 2 add\}}を作る:
+
+\begin{lstlisting}[style=postscript]
+[ 1 2 /add cvx ] cvx
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]{PostScriptメタプログラミングの応用}
+
+ 代入を一切使わずに\texttt{repeat}(命令を指定した回数繰り返し実行する)を実装する:
+
+\begin{lstlisting}[style=postscript]
+{
+  {
+    2 index 0 eq {
+      pop pop pop
+    } {
+      [ 2 index /exec cvx 6 5 roll
+        1 sub 6 4 roll dup /exec cvx ]
+      cvx exec
+    } ifelse
+  } dup exec
+}
+\end{lstlisting}
+
+ \texttt{dup exec}によってその直前の命令列を、それ自身がスタックに積まれた状態で実行している。
+
+\end{frame}
+
+\begin{frame}{言語の定義}
+
+ \begin{align*}
+  i &\bnfcce  \mathit{pop}                & \text{値を捨てる} \\
+    &\bnfvert \mathit{copy}               & \text{値を複製する} \\
+    &\bnfvert \mathit{swap}               & \text{2つの値を入れ替える} \\
+    &\bnfvert \mathit{cons}               & \text{2つの値を\textit{pair}で組にする} \\
+    &\bnfvert \mathit{quote}              & \text{値を\textit{push}で包む} \\
+    &\bnfvert \mathit{exec}               & \text{値を実行する} \\
+    &\bnfvert \mathit{push} \, i          & \text{$i$をスタックに積む} \\
+    &\bnfvert \mathit{pair} \, i_1 \, i_2 & \text{$i_1$と$i_2$を順番に実行する}
+ \end{align*}
+
+ \begin{itemize}
+  \item 命令は可能な限り減らす方針で定義
+  \item スタックは命令のリスト
+  \item 状態は2本のスタックの組
+	\begin{itemize}
+	 \item 値のスタックと継続のスタック
+	\end{itemize}
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{言語の定義}
+ \begin{align*}
+  i_1 :: vs , \mathit{pop} :: cs           & \Mapsto vs , cs \\
+  i_1 :: vs , \mathit{copy} :: cs          & \Mapsto i_1 :: i_1 :: vs , cs \\
+  i_2 :: i_1 :: vs , \mathit{swap} :: cs   & \Mapsto i_1 :: i_2 :: vs, cs \\
+  i_2 :: i_1 :: vs , \mathit{cons} :: cs   & \Mapsto (\mathit{pair} \, i_1 \, i_2) :: vs , cs \\
+  i_1 :: vs , \mathit{quote} :: cs         & \Mapsto (\mathit{push} \, i_1) :: vs , cs \\
+  i_1 :: vs , \mathit{exec} :: cs          & \Mapsto vs , i_1 :: cs \\
+  vs , (\mathit{push} \, i_1) :: cs        & \Mapsto i_1 :: vs , cs \\
+  vs , (\mathit{pair} \, i_1 \, i_2) :: cs & \Mapsto vs , i_1 :: i_2 :: cs
+ \end{align*}
+
+\end{frame}
+
+\begin{frame}{実行による証明の自動化}
+
+ \begin{itemize}
+  \item プログラムを書いてから証明を付けようとすると、
+	\begin{itemize}
+	 \item 継続を見れば明らかなことを書かなければいけない。
+	 \item プログラムと証明がほとんど同じような構造を持っているので無駄が多い。
+	\end{itemize}
+  \item 計算に関するいくつかの性質から、実行によって証明を進めてしまっても問題無いことが分かる。
+	(Ltacで実装)
+	\begin{itemize}
+	 \item $\forall s_1 s_2 s_3. s_1 \Mapsto s_2 \to s_1 \Mapsto s_3 \to s_2 = s_3$
+	 \item $\forall s_1. (\exists s_2. s_1 \Mapsto s_2) \vee (\nexists s_2. s_1 \Mapsto s_2)$
+	\end{itemize}
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{証明とプログラムを同時に記述する}
+
+ \begin{itemize}
+  \item プログラムだけ書いていても計算の状態が全く見えない。
+  \item 証明書いてるとスタックの状態が見えるので、証明とプログラムを行き来することに。
+	\begin{itemize}
+	 \item Coqはインクリメンタルに証明を検証できるが、その利点が少し失なわれてしまう。
+	\end{itemize}
+  \item プログラムとその証明の構造は似ているので、これらを同時に記述したい。
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{証明とプログラムを同時に記述する}
+
+ \begin{itemize}
+  \item 元の方法:
+	\begin{enumerate}
+	 \item プログラム$i$を書く。
+	 \item その仕様$S(i)$を証明する。
+	\end{enumerate}
+  \item 新しい方法:
+	\begin{enumerate}
+	 \item $\exists i. S(i)$から証明を始める。
+
+	       (ただし命令を取り出したいので、\texttt{sig}を使う)
+	 \item $i$をexistential variableにして、継続の先頭を与えながら証明を記述する。
+	\end{enumerate}
+  \item 新しい方法では、証明の状態からスタックの状態が読み取れる。
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{自明な範囲の計算を自動生成する}
+
+ \begin{itemize}
+  \item スタックの先頭の決まった数の要素を消費して、それらをある命令の決められた位置にあてはめただけ
+	の命令を作るのは、構成方法がほぼ自明な計算。
+  \item この範囲の計算を分かりやすく表現する方法を作り、そこから具体的な正しい計算を得られると良い。
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{自明な範囲の計算を自動生成する}
+
+ \begin{itemize}
+  \item 命令の定義にholeを足したものを\textbf{テンプレート}と呼ぶ。
+  \item それぞれのholeは自然数を持つ。これはスタックの先頭からのオフセットを表す。
+  \item テンプレートは、それが持つholeを対応するスタック上の要素で置き換えた命令を作る計算を表す。
+	\begin{itemize}
+	 \item テンプレートで表せる計算全体が、自明な範囲の計算。
+	\end{itemize}
+  \item テンプレートに対応する命令が存在することを証明した。
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{PostScriptへの変換}
+
+  \begin{itemize}
+   \item Coq上で構成した命令を単純な置き換えによってPostScriptプログラム(文字列)に変換できる。
+   \item \texttt{Coq.Strings.String}モジュールを使う。
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{ブール値を作る}
+
+ \begin{itemize}
+  \item nopと同じ振舞いをするのがfalse。
+  \item swapと同じ振舞いをするのがtrue。
+  \item xorを取るにはconsすれば良い。ifも問題無く書ける。
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{自然数を作る}
+
+ \begin{itemize}
+  \item 自然数$n$を表す命令$i_n$は、値のスタックの先頭の命令を消費し、その命令を$n$回実行する命令を作る。
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{作れた計算}
+
+ \begin{itemize}
+  \item ブール型
+	\begin{itemize}
+	 \item 否定
+	 \item if
+	 \item xor
+	\end{itemize}
+  \item 自然数
+	\begin{itemize}
+	 \item 後者関数
+	 \item 加算
+	 \item 乗算
+	 \item 偶奇判定
+	 \item 前者関数
+	 \item 減算
+	 \item (剰余付き除算)
+	\end{itemize}
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{まとめ}
+
+ \begin{itemize}
+  \item PostScriptプログラミングの楽しさを維持しつつ、プログラムを正しく記述するための枠組みを作って
+	います。
+	\begin{itemize}
+	 \item 実行による証明の自動化
+	 \item 計算と証明の対応する部分を同時に記述できる
+	 \item 限定された範囲の計算の自動生成
+	\end{itemize}
+  \item 具体的な計算もいくつか作っています。
+ \end{itemize}
+
+\end{frame}
+
+\end{document}
