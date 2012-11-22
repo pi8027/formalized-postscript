@@ -106,8 +106,15 @@ Fixpoint instt_of_inst (i : inst) : instt :=
 Fixpoint insttseqc (l : list instt) : instt :=
   match l with
     | [] => instt_of_inst instnop
-    | [t1; t2] => insttpair t1 t2
-    | t1 :: l => insttpair t1 (insttseqc l)
+    | [t] => t
+    | t :: l => insttpair t (insttseqc l)
+  end.
+
+Fixpoint insttseqv (l : list instt) : instt :=
+  match l with
+    | [] => instt_of_inst instnop
+    | [t] => insttpush t
+    | t :: l => insttpair (insttseqv l) (insttpush t)
   end.
 
 Theorem instt_length_lifted :

@@ -106,36 +106,36 @@ Notation evalrtc := (clos_refl_trans_1n state eval).
 Infix "|=>" := eval (at level 50, no associativity).
 Infix "|=>*" := evalrtc (at level 50, no associativity).
 
-Lemma evalrtc_refl : forall e, e |=>* e.
+Lemma evalrtc_refl : forall s, s |=>* s.
 Proof.
   constructor.
 Qed.
 
-Lemma evalrtc_refl' : forall e1 e2, e1 = e2 -> e1 |=>* e2.
+Lemma evalrtc_refl' : forall s1 s2, s1 = s2 -> s1 |=>* s2.
 Proof.
-  move=> e1 e2 H ; rewrite H ; constructor.
+  move=> s1 s2 H ; rewrite H ; constructor.
 Qed.
 
-Lemma evalrtc_step : forall e1 e2, e1 |=> e2 -> e1 |=>* e2.
+Lemma evalrtc_step : forall s1 s2, s1 |=> s2 -> s1 |=>* s2.
 Proof.
   do !econstructor ; eauto.
 Qed.
 
-Lemma evalrtc_cons : forall e1 e2 e3, e1 |=> e2 -> e2 |=>* e3 -> e1 |=>* e3.
+Lemma evalrtc_cons : forall s1 s2 s3, s1 |=> s2 -> s2 |=>* s3 -> s1 |=>* s3.
 Proof.
   econstructor ; eauto.
 Qed.
 
-Lemma evalrtc_trans : forall e1 e2 e3, e1 |=>* e2 -> e2 |=>* e3 -> e1 |=>* e3.
+Lemma evalrtc_trans : forall s1 s2 s3, s1 |=>* s2 -> s2 |=>* s3 -> s1 |=>* s3.
 Proof.
   by apply rt1n_trans'.
 Qed.
 
 (*
 decide_eval:
-  状態 e1 から eval によって書き換えられる状態 e2 の存在を決定する。
+  状態 s1 から eval によって書き換えられる状態 s2 の有無を決定する。
 *)
-Theorem decide_eval : forall e1, decidable (exists e2 : state, e1 |=> e2).
+Theorem decide_eval : forall s1, decidable (exists s2 : state, s1 |=> s2).
 Proof.
   elim=> [vs [ | [ | | | | | | | ] ps]] ;
   [ |
@@ -153,22 +153,22 @@ Defined.
 
 (*
 eval_uniqueness:
-  状態 e1 から eval によって書き換えられる状態 e2, e3 は同値である。
+  状態 s1 から eval によって書き換えられる状態 s2, s3 は同値である。
 *)
-Theorem eval_uniqueness : forall e1 e2 e3, e1 |=> e2 -> e1 |=> e3 -> e2 = e3.
+Theorem eval_uniqueness : forall s1 s2 s3, s1 |=> s2 -> s1 |=> s3 -> s2 = s3.
 Proof.
-  destruct e1 as [[ | v vs] [ | [ | | | | | | | ] [ | p ps]]]=> e2 e3 H H0 ;
+  destruct s1 as [[ | v vs] [ | [ | | | | | | | ] [ | p ps]]]=> s2 s3 H H0 ;
     inversion H ; inversion H0 ; congruence.
 Qed.
 
 (*
 eval_semi_uniqueness:
-  e1 |=>* e2 かつ e1 |=>* e3 ならば e2 |=>* e3 もしくは e3 |=>* e2 が成り立つ。
+  s1 |=>* s2 かつ s1 |=>* s3 ならば s2 |=>* s3 もしくは s3 |=>* s2 が成り立つ。
 *)
 Theorem eval_semi_uniqueness:
-  forall e1 e2 e3, e1 |=>* e2 -> e1 |=>* e3 -> e2 |=>* e3 \/ e3 |=>* e2.
+  forall s1 s2 s3, s1 |=>* s2 -> s1 |=>* s3 -> s2 |=>* s3 \/ s3 |=>* s2.
 Proof.
-  move=> e1 e2 e3 ; elim.
+  move=> s1 s2 s3 ; elim.
   - auto.
   - move=> x y z H H0 IH H1.
     inversion H1.
@@ -203,8 +203,8 @@ Qed.
 
 (*
 evalstep:
-  ゴールが e1 |=>* e2 の形である場合に、e1 から書き換え可能な状態 e3 を計算し、
-  ゴールを e3 |=>* e2 で置き換えるタクティク。計算を自動的に1段階進める。
+  ゴールが s1 |=>* s2 の形である場合に、s1 から書き換え可能な状態 s3 を計算し、
+  ゴールを s3 |=>* s2 で置き換えるタクティク。計算を自動的に1段階進める。
 *)
 Lemma exists_and_right_map :
   forall (P Q R : inst -> Prop), (forall i, Q i -> R i) ->
@@ -213,33 +213,33 @@ Proof.
   by firstorder.
 Qed.
 
-Ltac evalstep_0 e1 e2 :=
+Ltac evalstep_0 s1 s2 :=
   apply evalrtc_refl ||
-  match eval hnf in (decide_eval e1) with
-    | or_introl _ (ex_intro _ ?e3 ?p) => apply (evalrtc_cons _ _ _ p)
+  match eval hnf in (decide_eval s1) with
+    | or_introl _ (ex_intro _ ?s3 ?p) => apply (evalrtc_cons _ _ _ p)
   end.
 
-Ltac evalstep_1 e1 e2 :=
+Ltac evalstep_1 s1 s2 :=
   (eexists ; split ; last apply evalrtc_refl) ||
-  match eval hnf in (decide_eval e1) with
-    | or_introl _ (ex_intro _ ?e3 ?p) =>
+  match eval hnf in (decide_eval s1) with
+    | or_introl _ (ex_intro _ ?s3 ?p) =>
       apply (exists_and_right_map _ _ _ (fun _ => evalrtc_cons _ _ _ p))
   end.
 
-Ltac evalstep_2 e1 e2 :=
+Ltac evalstep_2 s1 s2 :=
   (eexists ; split ; last (eexists ; split ; last apply evalrtc_refl)) ||
-  match eval hnf in (decide_eval e1) with
-    | or_introl _ (ex_intro _ ?e3 ?p) =>
+  match eval hnf in (decide_eval s1) with
+    | or_introl _ (ex_intro _ ?s3 ?p) =>
       apply (exists_and_right_map _ _ _ (fun _ =>
              exists_and_right_map _ _ _ (fun _ => evalrtc_cons _ _ _ p)))
   end.
 
 Ltac evalstep :=
   match goal with
-    | |- ?e1 |=>* ?e2 => evalstep_0 e1 e2
-    | |- exists i1 : inst, _ /\ ?e1 |=>* ?e2 => evalstep_1 e1 e2
-    | |- exists i1 : inst, _ /\ exists i2 : inst, _ /\ ?e1 |=>* ?e2 =>
-      evalstep_2 e1 e2
+    | |- ?s1 |=>* ?s2 => evalstep_0 s1 s2
+    | |- exists i1 : inst, _ /\ ?s1 |=>* ?s2 => evalstep_1 s1 s2
+    | |- exists i1 : inst, _ /\ exists i2 : inst, _ /\ ?s1 |=>* ?s2 =>
+      evalstep_2 s1 s2
   end.
 
 (*
@@ -278,7 +278,7 @@ Tactic Notation "evalpartial'" constr(H) :=
 
 (*
 rtcrefl:
-  ゴール e1 |=>* e2 を e1 = e2 で置き換え、f_equal を繰り返し適用する。
+  ゴール s1 |=>* s2 を s1 = s2 で置き換え、f_equal を繰り返し適用する。
 *)
 Ltac rtcrefl := apply evalrtc_refl' ; do ?f_equal.
 
