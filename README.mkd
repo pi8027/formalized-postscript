@@ -24,18 +24,15 @@ Coq 上で記述した命令を PostScript のプログラムに変換するた�
 
 のようにして使います。このスクリプトが出力する PostScript を実行するためには、`lib.ps`を使う必要があります。
 
-    $ gs -sDEVICE=nullpage lib.ps
-    GPL Ghostscript 9.05 (2012-02-08)
-    Copyright (C) 2010 Artifex Software, Inc.  All rights reserved.
-    This software comes with NO WARRANTY: see the file PUBLIC for details.
-    GS>1 2 3
+    $ gs -sDEVICE=nullpage -q lib.ps
+    GS>/a /b /c
     GS<3>pstack
-    3
-    2
-    1
+    /c
+    /b
+    /a
     GS<3>{{pop} pop} quote exch quote dup cons exch cons exec exch quote cons exec quote {{pop} pop} exch quote exch cons exch quote exch cons quote exch quote dup cons exch cons exec exch quote cons exec quote {{pop} pop} exch quote exch cons exch quote exch cons exch quote exch cons exch quote exch cons quote exch quote dup cons exch cons exec exch quote cons exec quote {pop} quote {pop} cons cons cons cons exch pop exch pop exch pop {pop} pop exec
     GS<3>pstack
-    1
-    2
-    3
+    /a
+    /b
+    /c
     GS<3>
