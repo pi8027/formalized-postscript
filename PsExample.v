@@ -34,7 +34,7 @@ Proof.
   evalauto.
 Qed.
 
-Theorem rev3_proof :
+Theorem rev3_exists :
   { rev3 : inst |
     forall i1 i2 i3 vs cs,
     (i3 :: i2 :: i1 :: vs, rev3 :: cs) |=>* (i1 :: i2 :: i3 :: vs, cs) }.
@@ -51,16 +51,19 @@ Proof.
   evalauto.
 Defined.
 
-Theorem rev3_proof' :
+(*
+Eval compute in (proj1_sig rev3_exists).
+*)
+
+Theorem rev3_exists' :
   { rev3 : inst |
     forall i1 i2 i3 vs cs,
     (i3 :: i2 :: i1 :: vs, rev3 :: cs) |=>* (i1 :: i2 :: i3 :: vs, cs) }.
 Proof.
   eexists => i1 i2 i3 vs cs.
-  evaltemplate' 3 (insttseqc
-    [insttpush (instthole 0);
-     insttpush (instthole 1);
-     insttpush (instthole 2)]).
-  evalpartial evalexec.
-  evalauto.
+  evaltemplate 3 [instthole 2; instthole 1; instthole 0] (@nil instt).
 Defined.
+
+(*
+Eval compute in (proj1_sig rev3_exists').
+*)

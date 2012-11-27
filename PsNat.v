@@ -90,7 +90,10 @@ Proof.
     evalpartial' evalcopy.
     evalpartial' H.
     apply evalsnoc.
-  - evaltemplate 1 (insttseqc [insttcopy; instthole 0; insttswap; insttcons]).
+  - evaltemplate 1
+      [insttpair insttcopy
+        (insttpair (instthole 0) (insttpair insttswap insttcons))]
+      (@nil instt).
 Defined.
 
 Notation instnat_succ := (proj1_sig exists_instnat_succ).
@@ -149,12 +152,9 @@ Proof.
   move: (0) (instnat 0) (eval_instnat 0) => o i1 H.
   eexists=> n m i2 i3 vs cs H0 H1.
   do 2 evalpartial' evalpush.
-  evaltemplate' 4 (insttseqc
-    [insttpush (instthole 0);
-     insttpush (insttpair (insttpush (instthole 2)) (instthole 1));
-     instthole 3]).
-  evalpartial' evalexec.
-  evalauto.
+  evaltemplate' 4
+    [insttpair (insttpush (instthole 2)) (instthole 1); instthole 0]
+    [instthole 3].
   evalpartial (eval_instnat_repeat n).
   clear i2 H0.
   move: n o i1 i3 H H1 ; elim=> [ | n IH] o i1 i2 H H0 ; simpl.

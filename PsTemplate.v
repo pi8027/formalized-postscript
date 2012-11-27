@@ -103,20 +103,6 @@ Fixpoint instt_of_inst (i : inst) : instt :=
     | instpair i1 i2 => insttpair (instt_of_inst i1) (instt_of_inst i2)
   end.
 
-Fixpoint insttseqc (l : list instt) : instt :=
-  match l with
-    | [] => instt_of_inst instnop
-    | [t] => t
-    | t :: l => insttpair t (insttseqc l)
-  end.
-
-Fixpoint insttseqv (l : list instt) : instt :=
-  match l with
-    | [] => instt_of_inst instnop
-    | [t] => insttpush t
-    | t :: l => insttpair (insttseqv l) (insttpush t)
-  end.
-
 Theorem instt_length_lifted :
   forall n t, instt_length t = instt_length (lift_instt n t).
 Proof.
@@ -193,6 +179,18 @@ Proof.
   - move=> n.
     case (partial_listindex _ l n) => [[i H] | ].
     - by apply Some ; exists i ; constructor.
+    - apply None.
+Defined.
+
+Theorem partial_fill_template' :
+  forall l tl, option {il : list inst | Forall2 (fill_template l) tl il}.
+Proof.
+  move=> l ; elim.
+  - by apply Some ; apply: (exist _ []).
+  - move=> t tl ; case => [[il H] | ].
+    - case (partial_fill_template l t) => [[i H0] | ].
+      - by apply Some ; exists (i :: il) ; constructor.
+      - apply None.
     - apply None.
 Defined.
 
@@ -308,7 +306,7 @@ Proof.
     apply (IH i2 vs1 H1).
 Defined.
 
-Theorem exists_inst_fill_template :
+Theorem exists_inst_fill_template' :
   forall len t, { inst_fill_template |
   forall l i, length l = len -> fill_template l t i -> forall vs cs,
   (l ++ vs, inst_fill_template :: cs) |=>* (i :: vs, cs) }.
@@ -318,30 +316,83 @@ Proof.
   apply (proj2_sig (exists_clear_used len) i l H).
 Defined.
 
-Tactic Notation "evaltemplate_eapply" constr(vs) constr(n) constr(t) :=
-  match eval hnf in (eq_nat_dec n (length (firstn n vs))) with | left ?H2 =>
-    match eval compute in (partial_fill_template (firstn n vs) t) with
-      | Some (exist _ ?i ?H1) =>
-        eapply (proj2_sig (exists_inst_fill_template n t) (firstn n vs) i H2 H1)
-      end
+Theorem exists_inst_fill_template :
+  forall len tvs tcs, { inst_fill_template |
+    forall l vs' cs', length l = len ->
+    Forall2 (fill_template l) tvs vs' ->
+    Forall2 (fill_template l) tcs cs' -> forall vs cs,
+    (l ++ vs, inst_fill_template :: cs) |=>* (vs' ++ vs, cs' ++ cs) }.
+Proof.
+  move=> len tvs tcs ; eexists=> l vs' cs' H H0 H1.
+  have: fill_template l
+    (fold_left (fun a b => insttpair (insttpush b) a) tvs
+      (fold_left insttpair tcs (instt_of_inst instnop)))
+    (instseqv' vs' (instseqc cs')).
+    clear len H.
+    have: fill_template l
+      (fold_left insttpair tcs (instt_of_inst instnop)) (instseqc cs').
+      clear tvs vs' H0.
+      have: fill_template l (instt_of_inst instnop) instnop.
+        do !constructor.
+      move: {+} instnop (instt_of_inst instnop).
+      move: tcs cs' H1 ; elim.
+      - by move=> cs' H ; inversion H.
+      - move=> tc tcs IH cs' H i t H0.
+        inversion H ; simpl ; apply IH ; auto.
+        by constructor.
+    move: {+} (fold_left insttpair tcs (instt_of_inst instnop)) (instseqc cs').
+    clear tcs cs' H1 ; move: tvs vs' H0 ; elim.
+    - by move=> vs' H t i H0 ; inversion H.
+    - move=> tv tvs IH vs' H t i H0.
+      inversion H ; simpl ; apply IH ; auto.
+      by do! constructor.
+  move=> H2 vs cs.
+  evalpartial' (proj2_sig (exists_inst_fill_template' len _) l _ H H2).
+  evalpartial evalexec.
+  evalpartial evalseqv'.
+  apply evalseqc.
+Defined.
+
+Tactic Notation "evaltemplate_eapply"
+    constr(vs) constr(n) constr(tvs) constr(tcs) :=
+  match eval hnf in (eq_nat_dec n (length (firstn n vs))) with
+    | left ?H1 =>
+      match eval compute in (partial_fill_template' (firstn n vs) tvs) with
+        | Some (exist _ ?vs' ?H2) =>
+          match eval compute in (partial_fill_template' (firstn n vs) tcs) with
+            | Some (exist _ ?cs' ?H3) =>
+              eapply (proj2_sig (exists_inst_fill_template n tvs tcs)
+                      (firstn n vs) vs' cs' H1 H2 H3)
+          end
+        end
   end.
 
-Tactic Notation "evaltemplate_evalpartial'" constr(vs) constr(n) constr(t) :=
-  match eval hnf in (eq_nat_dec n (length (firstn n vs))) with | left ?H2 =>
-    match eval compute in (partial_fill_template (firstn n vs) t) with
-      | Some (exist _ ?i ?H1) =>
-        evalpartial' (proj2_sig (exists_inst_fill_template n t) (firstn n vs) i H2 H1)
-      end
+Tactic Notation "evaltemplate_evalpartial'"
+    constr(vs) constr(n) constr(tvs) constr(tcs) :=
+  match eval hnf in (eq_nat_dec n (length (firstn n vs))) with
+    | left ?H1 =>
+      match eval compute in (partial_fill_template' (firstn n vs) tvs) with
+        | Some (exist _ ?vs' ?H2) =>
+          match eval compute in (partial_fill_template' (firstn n vs) tcs) with
+            | Some (exist _ ?cs' ?H3) =>
+              evalpartial' (proj2_sig (exists_inst_fill_template n tvs tcs)
+                            (firstn n vs) vs' cs' H1 H2 H3)
+          end
+        end
   end.
 
-Tactic Notation "evaltemplate" constr(n) constr(t) :=
+Tactic Notation "evaltemplate" constr(n) constr(tvs) constr(tcs) :=
   match goal with
-    | |- (?vs, _) |=>* _ => evaltemplate_eapply vs n t
-    | |- exists _ : inst, _ /\ (?vs, _) |=>* _ => evaltemplate_eapply vs n t
-  end.
+    | |- (?vs, _) |=>* _ =>
+      evaltemplate_eapply vs n tvs tcs
+    | |- exists _, _ /\ (?vs, _) |=>* _ =>
+      evaltemplate_eapply vs n tvs tcs
+  end ; simpl.
 
-Tactic Notation "evaltemplate'" constr(n) constr(t) :=
+Tactic Notation "evaltemplate'" constr(n) constr(tvs) constr(tcs) :=
   match goal with
-    | |- (?vs, _) |=>* _ => evaltemplate_evalpartial' vs n t
-    | |- exists _ : inst, _ /\ (?vs, _) |=>* _ => evaltemplate_evalpartial' vs n t
-  end.
+    | |- (?vs, _) |=>* _ =>
+      evaltemplate_evalpartial' vs n tvs tcs
+    | |- exists _, _ /\ (?vs, _) |=>* _ =>
+      evaltemplate_evalpartial' vs n tvs tcs
+  end ; simpl.
