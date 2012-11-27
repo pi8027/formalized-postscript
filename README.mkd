@@ -1,0 +1,41 @@
+# formalized-postscript
+
+定理証明器 Coq の上で PostScript のサブセットを実装し、証明付きの PostScript プログラムを記述する。
+
+# モジュール
+
+* `Common.v`:     共通の定義、補題など。
+* `PsCore.v`:     扱うスタック指向言語の定義。重要な補題、タクティク、命令など。
+* `PsTemplate.v`: 自明な計算を表現するための「テンプレート」という仕組みに関するモジュール。
+* `PsBool.v`:     対象言語上でのブール値の実装。
+* `PsNat.v`:      対象言語上での自然数の実装。
+* `PsExample.v`:  簡単な証明の例など。
+
+# `build`
+
+ビルドのためのスクリプトです。.v ファイルに関してビルドが通るかどうか以外のチェックも少しだけしています。Git の pre-commit フックから呼び出して、コミットしても問題無いかどうかを機械的にチェックするためのスクリプトでもあります。
+
+# `coq2ps`
+
+Coq 上で記述した命令を PostScript のプログラムに変換するためのスクリプトです。例えば、
+
+    $ ./coq2ps 'proj1_sig (exists_inst_fill_template 3 [instthole 2; instthole 1; instthole 0] (@nil instt))'
+    {{pop} pop} quote exch quote dup cons exch cons exec exch quote cons exec quote {{pop} pop} exch quote exch cons exch quote exch cons quote exch quote dup cons exch cons exec exch quote cons exec quote {{pop} pop} exch quote exch cons exch quote exch cons exch quote exch cons exch quote exch cons quote exch quote dup cons exch cons exec exch quote cons exec quote {pop} quote {pop} cons cons cons cons exch pop exch pop exch pop {pop} pop exec
+
+のようにして使います。このスクリプトが出力する PostScript を実行するためには、`lib.ps`を使う必要があります。
+
+    $ gs -sDEVICE=nullpage lib.ps
+    GPL Ghostscript 9.05 (2012-02-08)
+    Copyright (C) 2010 Artifex Software, Inc.  All rights reserved.
+    This software comes with NO WARRANTY: see the file PUBLIC for details.
+    GS>1 2 3
+    GS<3>pstack
+    3
+    2
+    1
+    GS<3>{{pop} pop} quote exch quote dup cons exch cons exec exch quote cons exec quote {{pop} pop} exch quote exch cons exch quote exch cons quote exch quote dup cons exch cons exec exch quote cons exec quote {{pop} pop} exch quote exch cons exch quote exch cons exch quote exch cons exch quote exch cons quote exch quote dup cons exch cons exec exch quote cons exec quote {pop} quote {pop} cons cons cons cons exch pop exch pop exch pop {pop} pop exec
+    GS<3>pstack
+    1
+    2
+    3
+    GS<3>
