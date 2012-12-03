@@ -1,6 +1,31 @@
 #!/bin/bash
 
-(coqtop 2>/dev/null | grep "%string$" | sed 's/^.*"\(.*\)".*$/\1/g') <<EOT
-Require Import Strings.String Program.Syntax Common PsCore PsTemplate PsBool PsNat PsExample.
-Eval compute in (pscode_of_inst ($1)).
+usage_exit(){
+cat <<EOT >&2
+Usage: `basename $0` [-m modules] program
 EOT
+exit 1
+}
+
+modules=()
+while getopts m: OPT ; do
+    case $OPT in
+    m) modules=(${modules[@]} ${OPTARG//,/ }) ;;
+    *) usage_exit ;;
+    esac
+done
+
+shift $(( $OPTIND - 1 ))
+
+result=`coqtop 2>/dev/null <<EOT
+Require Import Strings.String PsCore ${modules[@]}.
+Eval compute in (pscode_of_inst ($1)).
+EOT`
+
+echo "$result" | while read l ; do
+    if echo "$l" | grep "^Toplevel input" ; then
+        cat ; exit 1
+    fi
+done >&2
+
+[ $? != 1 ] && echo "$result" | sed -n '/%string$/ { s/.*"\(.*\)".*/\1/ ; p }'

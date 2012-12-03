@@ -19,7 +19,7 @@
 
 Coq 上で記述した命令を PostScript のプログラムに変換するためのスクリプトです。例えば、
 
-    $ ./coq2ps 'proj1_sig (exists_inst_fill_template 3 [instthole 2; instthole 1; instthole 0] (@nil instt))'
+    $ ./coq2ps -m Program.Syntax,PsTemplate 'proj1_sig (exists_inst_fill_template 3 [instthole 2; instthole 1; instthole 0] [])'
     {{pop} pop} quote exch quote dup cons exch cons exec exch quote cons exec quote {{pop} pop} exch quote exch cons exch quote exch cons quote exch quote dup cons exch cons exec exch quote cons exec quote {{pop} pop} exch quote exch cons exch quote exch cons exch quote exch cons exch quote exch cons quote exch quote dup cons exch cons exec exch quote cons exec quote {pop} quote {pop} cons cons cons cons exch pop exch pop exch pop {pop} pop exec
 
 のようにして使います。このスクリプトが出力する PostScript を実行するためには、`lib.ps`を使う必要があります。
