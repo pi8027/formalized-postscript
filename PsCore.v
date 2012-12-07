@@ -8,14 +8,9 @@ inst:
   命令の定義。命令は値も兼ねる。
 *)
 Inductive inst : Set :=
-  | instpop   : inst
-  | instcopy  : inst
-  | instswap  : inst
-  | instcons  : inst
-  | instquote : inst
-  | instexec  : inst
-  | instpush  : inst -> inst
-  | instpair  : inst -> inst -> inst.
+  | instpop | instcopy | instswap | instcons | instquote | instexec
+  | instpush of inst
+  | instpair of inst & inst.
 
 (*
 inst_to_pscode:

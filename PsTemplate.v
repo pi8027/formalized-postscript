@@ -58,15 +58,10 @@ Qed.
 End ListIndex.
 
 Inductive instt : Set :=
-  | insttpop   : instt
-  | insttcopy  : instt
-  | insttswap  : instt
-  | insttcons  : instt
-  | insttquote : instt
-  | insttexec  : instt
-  | insttpush  : instt -> instt
-  | insttpair  : instt -> instt -> instt
-  | instthole  : nat -> instt.
+  | insttpop | insttcopy | insttswap | insttcons | insttquote | insttexec
+  | insttpush of instt
+  | insttpair of instt & instt
+  | instthole of nat.
 
 Fixpoint holes_of_template (t : instt) : list nat :=
   match t with
