@@ -1,4 +1,4 @@
-\documentclass[cjk, 14pt]{beamer}
+\documentclass[cjk, 14pt, dvipdfm]{beamer}
 
 \usepackage{listings}
 
@@ -8,6 +8,9 @@
 \useoutertheme{shadow}
 
 \setbeamercovered{transparent}
+
+\renewcommand\kanjifamilydefault{\gtdefault}
+\renewcommand\familydefault{\sfdefault}
 
 \title{Coqでスタック指向言語を作る}
 \subtitle{Formalized PostScript}

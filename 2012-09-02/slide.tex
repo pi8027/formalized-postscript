@@ -1,4 +1,4 @@
-\documentclass[cjk, 14pt]{beamer}
+\documentclass[cjk, 14pt, dvipdfm]{beamer}
 
 \usepackage{listings}
 
@@ -8,6 +8,9 @@
 \useoutertheme{shadow}
 
 \setbeamercovered{transparent}
+
+\renewcommand\kanjifamilydefault{\gtdefault}
+\renewcommand\familydefault{\sfdefault}
 
 \title{\Coq{}で\\スタック指向プログラミング}
 \author{坂口和彦 (@pi8027)}

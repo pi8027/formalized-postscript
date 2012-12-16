@@ -1,0 +1,203 @@
+\documentclass[cjk, 14pt, dvipdfm]{beamer}
+
+\usepackage{color}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{stmaryrd}
+
+\usetheme{Copenhagen}
+\usecolortheme{seahorse}
+\useinnertheme{rounded}
+\useoutertheme{shadow}
+
+\setbeamercovered{transparent}
+
+\renewcommand\kanjifamilydefault{\gtdefault}
+\renewcommand\familydefault{\sfdefault}
+
+\definecolor{code-background}{gray}{0.8}
+
+\lstdefinestyle{plain}{
+  basicstyle=\small\tt,
+  keywordstyle=,
+  identifierstyle=,
+  commentstyle=,
+  stringstyle=,
+  emphstyle=,
+  backgroundcolor=\color{code-background},
+  language=,
+  frame=trbl,
+  rulecolor=\color{white},
+  numbers=none,
+  numberstyle=,
+  xleftmargin=0.4zw,
+  xrightmargin=0.4zw,
+  basewidth={0.48em, 0.43em},
+  lineskip=-0.2ex
+}
+
+\lstdefinestyle{postscript}{
+  style=plain,
+  keywordstyle=,
+  identifierstyle=,
+  commentstyle=,
+  stringstyle=,
+  emphstyle=,
+  language=PostScript,
+}
+
+\newlength{\lengthwithlength}
+\newcommand{\bnfvert}
+    {\settowidth{\lengthwithlength}{::=}\mathrel{\makebox[\lengthwithlength][c]{$|$}}}
+\newcommand{\bnfcce}{\mathrel{::=}}
+
+\title{定理証明器Coqによる\\PostScriptプログラミング}
+\author{坂口和彦 (@pi8027)}
+\institute{情報科学類 B2}
+\date{2012/12/21}
+
+\begin{document}
+
+\begin{frame}[plain]
+
+ \maketitle
+
+\end{frame}
+
+\begin{frame}{概要}
+
+ \begin{itemize}
+  \item 定理証明器SSReflect-CoqでPostScriptのサブセットを定義し、その上で証明付きのプログラムを記述
+	する試み。
+  \item ソースコード、スライド: http://github.com/pi8027/formalized-postscript
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]{PostScriptプログラムの例}
+
+ 代入を一切使わずに\texttt{repeat}(命令を指定した回数繰り返し実行する)を実装する:
+
+\begin{lstlisting}[style=postscript]
+{
+  2 index 0 eq {
+    pop pop pop
+  } {
+    [ 2 index /exec cvx 6 5 roll
+      1 sub 6 4 roll dup /exec cvx ]
+    cvx exec
+  } ifelse
+} dup exec
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}{目的 - 1}
+
+ \begin{itemize}
+  \item PostScriptプログラミングにはパズルのような楽しさがある。
+  \item しかし、PostScriptのプログラムは書きづらい、検証しづらい。
+  \item 証明を付けられる形で似た意味論を持つ言語を実装したい。
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{目的 - 2}
+
+ \begin{itemize}
+  \item スタックの状態を見ながらプログラムを書きたい。
+  \item 実装の自明なプログラムはより直感的な仕様から自動生成したい。
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{言語の定義 - 1}
+
+ \begin{align*}
+  i &\bnfcce  \mathit{pop}                & \text{値を捨てる} \\
+    &\bnfvert \mathit{copy}               & \text{値を複製する} \\
+    &\bnfvert \mathit{swap}               & \text{2つの値を入れ替える} \\
+    &\bnfvert \mathit{cons}               & \text{2つの値を\textit{pair}で組にする} \\
+    &\bnfvert \mathit{quote}              & \text{値を\textit{push}で包む} \\
+    &\bnfvert \mathit{exec}               & \text{値を実行する} \\
+    &\bnfvert \mathit{push} \, i          & \text{$i$をスタックに積む} \\
+    &\bnfvert \mathit{pair} \, i_1 \, i_2 & \text{$i_1$と$i_2$を順番に実行する}
+ \end{align*}
+
+ スタックは命令のリスト。2本のスタックの組を状態と呼ぶ。
+
+\end{frame}
+
+\begin{frame}{言語の定義 - 2}
+
+ \begin{align*}
+  i_1 :: vs , \mathit{pop} :: cs           & \Mapsto vs , cs \\
+  i_1 :: vs , \mathit{copy} :: cs          & \Mapsto i_1 :: i_1 :: vs , cs \\
+  i_2 :: i_1 :: vs , \mathit{swap} :: cs   & \Mapsto i_1 :: i_2 :: vs, cs \\
+  i_2 :: i_1 :: vs , \mathit{cons} :: cs   & \Mapsto (\mathit{pair} \, i_1 \, i_2) :: vs , cs \\
+  i_1 :: vs , \mathit{quote} :: cs         & \Mapsto (\mathit{push} \, i_1) :: vs , cs \\
+  i_1 :: vs , \mathit{exec} :: cs          & \Mapsto vs , i_1 :: cs \\
+  vs , (\mathit{push} \, i_1) :: cs        & \Mapsto i_1 :: vs , cs \\
+  vs , (\mathit{pair} \, i_1 \, i_2) :: cs & \Mapsto vs , i_1 :: i_2 :: cs
+ \end{align*}
+
+\end{frame}
+
+\begin{frame}[fragile]{実装}
+
+\begin{lstlisting}[style=plain, basicstyle=\tt]
+$ wc *.v
+   90   382  1989 Common.v
+  174   696  4710 PsBool.v
+  413  1771 11971 PsCore.v
+   69   260  1602 PsExample.v
+  384  1824 12261 PsNat.v
+  393  2206 12857 PsTemplate.v
+ 1523  7139 45390 total
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}{証明をより手軽に}
+
+ \begin{itemize}
+  \item 実行による証明の自動化
+  \item 証明とプログラムを同時に記述できる
+  \item 自明な計算を証明付きで自動生成できる
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{プログラミングをより手軽に}
+
+ \begin{itemize}
+  \item Coq上で証明したプログラムをPostScriptに変換可能
+  \item PostScriptのプログラムにCoqの式を埋め込む
+  \item ライブラリも充実!
+	\begin{itemize}
+	 \item と言いたいところだが、まだブール型と自然数に関するものしかない。
+	\end{itemize}
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{これまでとこれから}
+
+ \begin{itemize}
+  \item 2012-06-14: 最初のコミット
+  \item 2012-08-11: コミックマーケット82
+  \item 2012-09-02: Proof Summit 2012
+  \item 2012-09-16: 第45回情報科学若手の会
+  \item 2012-11-22: TPP2012
+  \item \textcolor{red}{2012-12-21: 情報特別演習 最終発表会}
+  \item \dots
+	\begin{itemize}
+	 \item ライブラリを充実させる
+	 \item 他の良く知られた計算体系を模倣できることを証明する
+	 \item より良い形で残したい
+	\end{itemize}
+ \end{itemize}
+
+\end{frame}
+
+\end{document}

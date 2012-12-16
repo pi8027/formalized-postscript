@@ -1,4 +1,4 @@
-\documentclass[cjk, 14pt]{beamer}
+\documentclass[cjk, 14pt, dvipdfm]{beamer}
 
 \usepackage{listings}
 \usepackage{stmaryrd}
@@ -9,6 +9,9 @@
 \useoutertheme{shadow}
 
 \setbeamercovered{transparent}
+
+\renewcommand\kanjifamilydefault{\gtdefault}
+\renewcommand\familydefault{\sfdefault}
 
 \title{定理証明器\Coq{}で\\スタック指向プログラミング}
 \author{坂口和彦 (@pi8027)}

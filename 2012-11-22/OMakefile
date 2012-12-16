@@ -1,10 +1,9 @@
-LATEX = platex --interaction=nonstopmode --kanji=utf8
+LATEX = platex
+LATEXFLAGS = --interaction=nonstopmode --kanji=utf8
 DVIPDFM = dvipdfmx
-
+DVIPDFMFLAGS = -f ptex-ipaex.map
+DVIPS = dvips
 DVIPSFLAGS = -P pdf
-
-slide.pdf : slide.ps
-	ps2pdf slide.ps
 
 LaTeXDocument(slide, slide)
 
