@@ -7,7 +7,7 @@ EOT
 exit 1
 }
 
-modules=()
+modules=(Strings.String PsCore)
 while getopts m: OPT ; do
     case $OPT in
     m) modules=(${modules[@]} ${OPTARG//,/ }) ;;
@@ -18,7 +18,7 @@ done
 shift $(( $OPTIND - 1 ))
 
 result=`coqtop 2>/dev/null <<EOT
-Require Import Strings.String PsCore ${modules[@]}.
+Require Import ${modules[@]}.
 Eval compute in (pscode_of_inst ($1)).
 EOT`
 

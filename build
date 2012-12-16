@@ -7,5 +7,6 @@ for f in *.v ; do
   grep --color=auto -H -n " * $" $f && echo "$f: trailing whitespace" && exit -1
 done
 
-coq_makefile *.v > Makefile
+coq_makefile *.v > Makefile_coq
+make -f Makefile_coq
 make
