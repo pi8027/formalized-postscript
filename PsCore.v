@@ -1,7 +1,7 @@
 Require Import
   Logic.Decidable Relations.Relations Relations.Relation_Operators
-  Lists.List Strings.String Program.Basics Program.Equality
-  ssreflect Common.
+  Strings.String Program.Basics Program.Equality
+  ssreflect seq Common.
 
 (*
 inst:
@@ -43,7 +43,7 @@ Fixpoint inst_length i : nat :=
 stack:
   スタックは命令のリスト。
 *)
-Notation stack := (list inst).
+Notation stack := (seq inst).
 
 (*
 state:
@@ -315,17 +315,17 @@ instseqc', instseqc:
   命令列を素直に記述するためのもの。命令のリストを instpair で畳み込むと、それが
   継続のスタックの先頭にあった場合に、元のリストの通りに展開される。
 *)
-Notation instseqc' := (fold_left instpair).
+Notation instseqc' := (foldl instpair).
 
 Lemma evalseqc' :
-  forall il i vs cs, (vs, instseqc' il i :: cs) |=>* (vs, i :: il ++ cs).
+  forall il i vs cs, (vs, instseqc' i il :: cs) |=>* (vs, i :: il ++ cs).
 Proof.
   elim=> [ | i il IH] i' vs cs.
   evalauto.
   evalpartial IH ; evalauto.
 Qed.
 
-Notation instseqc il := (instseqc' il instnop).
+Notation instseqc := (instseqc' instnop).
 
 Lemma evalseqc : forall il vs cs, (vs, instseqc il :: cs) |=>* (vs, il ++ cs).
 Proof.
@@ -335,28 +335,27 @@ Proof.
 Qed.
 
 Lemma app_instseqc' :
-  forall is1 is2 i, instseqc' (is1 ++ is2) i = instseqc' is2 (instseqc' is1 i).
+  forall il1 il2 i, instseqc' i (il1 ++ il2) = instseqc' (instseqc' i il1) il2.
 Proof.
-  apply fold_left_app.
+  move=> il1 il2 i ; apply foldl_cat.
 Qed.
 
 Lemma app_instseqc :
-  forall is1 is2, instseqc (is1 ++ is2) = instseqc' is2 (instseqc is1).
+  forall il1 il2, instseqc (il1 ++ il2) = instseqc' (instseqc il1) il2.
 Proof.
-  move=> is1 is2 ; apply app_instseqc'.
+  move=> il1 il2 ; apply app_instseqc'.
 Qed.
 
 Notation instseqc_replicate' n i1 i2 :=
-  (fold_right (flip instpair) i2 (replicate n i1)).
+  (foldr (flip instpair) i2 (replicate n i1)).
 
 Notation instseqc_replicate n i := (instseqc_replicate' n i instnop).
 
 Lemma instseqc_replicate_eq :
-  forall n i1 i2, instseqc' (replicate n i1) i2 = instseqc_replicate' n i1 i2.
+  forall n i1 i2, instseqc' i2 (replicate n i1) = instseqc_replicate' n i1 i2.
 Proof.
   move=> n i1 i2.
-  rewrite {2}replicate_rev_id.
-  apply eq_sym, fold_left_rev_right.
+  by rewrite {1}replicate_rev_id foldl_rev.
 Qed.
 
 Lemma evalseqc_replicate' :
@@ -380,10 +379,10 @@ Qed.
 instseqv', instseqv:
   スタックに展開される命令の並びを記述するためのもの。
 *)
-Notation instseqv' := (fold_left (fun a b => instpair (instpush b) a)).
+Notation instseqv' := (foldl (fun a b => instpair (instpush b) a)).
 
 Lemma evalseqv' :
-  forall il i vs cs, (vs, instseqv' il i :: cs) |=>* (il ++ vs, i :: cs).
+  forall il i vs cs, (vs, instseqv' i il :: cs) |=>* (il ++ vs, i :: cs).
 Proof.
   elim=> [ | i' il IH ] i vs cs.
   evalauto.
@@ -391,7 +390,7 @@ Proof.
   evalauto.
 Qed.
 
-Notation instseqv il := (instseqv' il instnop).
+Notation instseqv := (instseqv' instnop).
 
 Lemma evalseqv : forall il vs cs, (vs, instseqv il :: cs) |=>* (il ++ vs, cs).
 Proof.
@@ -401,13 +400,13 @@ Proof.
 Qed.
 
 Lemma app_instseqv' :
-  forall is1 is2 i, instseqv' (is1 ++ is2) i = instseqv' is2 (instseqv' is1 i).
+  forall il1 il2 i, instseqv' i (il1 ++ il2) = instseqv' (instseqv' i il1) il2.
 Proof.
-  apply fold_left_app.
+  move=> il1 il2 i ; apply foldl_cat.
 Qed.
 
 Lemma app_instseqv :
-  forall is1 is2, instseqv (is1 ++ is2) = instseqv' is2 (instseqv is1).
+  forall il1 il2, instseqv (il1 ++ il2) = instseqv' (instseqv il1) il2.
 Proof.
-  move=> is1 is2 ; apply app_instseqv'.
+  move=> il1 il2 ; apply app_instseqv'.
 Qed.

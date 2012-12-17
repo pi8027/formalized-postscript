@@ -1,5 +1,5 @@
 Require Import
-  Relations.Relations Lists.List Program.Basics ssreflect Common PsCore.
+  Relations.Relations Program.Basics ssreflect seq Common PsCore.
 
 (*
 instfalse_spec, insttrue_spec, instbool_spec:

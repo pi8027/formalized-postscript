@@ -1,6 +1,5 @@
 Require Import
-  Relations.Relations Relations.Relation_Operators Lists.List Program.Syntax
-  Omega ssreflect.
+  Relations.Relations Relations.Relation_Operators Omega ssreflect seq.
 
 (*
 replicate:
@@ -23,11 +22,14 @@ Qed.
 Lemma replicate_rev_id :
   forall {A : Set} (n : nat) (a : A), replicate n a = rev (replicate n a).
 Proof.
-  move=> A ; elim=> [ | n IH a].
-  auto.
-  simpl.
-  rewrite -IH (replicate_app n 1 a).
-  by replace (n + 1) with (S n) by omega.
+  move=> A n a.
+  rewrite /rev -{1}(cats0 (replicate n a)) -/(replicate 0 a).
+  move: n (0).
+  elim=> [m | n IH m].
+  - auto.
+  - simpl.
+    rewrite -(IH (S m)) !replicate_app.
+    by replace (n + S m) with (S (n + m)) by omega.
 Qed.
 
 (*
@@ -47,44 +49,3 @@ Qed.
 sb_decidable:
 *)
 Notation sb_decidable a := ({a}+{~a}).
-
-(*
-iff_decidable:
-*)
-Theorem iff_decidable : forall A B, iff A B -> sb_decidable A -> sb_decidable B.
-Proof.
-  by move=> A B eq ; case=> H ; [left | right] ; rewrite -eq.
-Defined.
-
-(*
-skipn_length:
-*)
-Theorem skipn_length :
-  forall A (xs : list A) n, length (skipn n xs) = length xs - n.
-Proof.
-  move=> A ; elim=> [ | x xs IH] [ | n] ; auto.
-  apply IH.
-Qed.
-
-(*
-app_length_firstn:
-*)
-Theorem app_length_firstn :
-  forall A (xs ys : list A), xs = firstn (length xs) (xs ++ ys).
-Proof.
-  move=> A ; elim => [ | x xs IH].
-  auto.
-  simpl=> ys ; f_equal ; auto.
-Qed.
-
-(*
-Forall2_eq_length:
-*)
-Theorem Forall2_eq_length :
-  forall A B (R : A -> B -> Prop) xs ys,
-  Forall2 R xs ys -> length xs = length ys.
-Proof.
-  move=> A B R ; elim=> [ | x xs IH] => ys H ; inversion H.
-  done.
-  simpl ; f_equal ; auto.
-Qed.

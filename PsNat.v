@@ -1,7 +1,7 @@
 Require Import
   Arith.Compare_dec Arith.Even Arith.Peano_dec
-  Relations.Relations Lists.List Program.Basics Program.Syntax
-  ssreflect Common PsCore PsTemplate PsBool.
+  Relations.Relations Program.Basics
+  ssreflect seq Common PsCore PsTemplate PsBool.
 
 (*
 instnat_spec:
@@ -60,15 +60,15 @@ Lemma instnat_eqmap :
   forall n m i, instnat_spec n i -> instnat_spec m i -> n = m.
 Proof.
   move=> n m i1 H0 H1.
-  have: (([], replicate n instpop) |=>* ([], replicate m instpop) \/
-      ([], replicate m instpop) |=>* ([], replicate n instpop)).
-    apply (eval_semi_uniqueness ([instpop], [i1 ; instexec])).
+  have: (([::], replicate n instpop) |=>* ([::], replicate m instpop) \/
+      ([::], replicate m instpop) |=>* ([::], replicate n instpop)).
+    apply (eval_semi_uniqueness ([:: instpop], [:: i1 ; instexec])).
     - evalpartial (eval_instnat_repeat n).
       rtcrefl.
-      apply app_nil_r.
+      apply cats0.
     - evalpartial (eval_instnat_repeat m).
       rtcrefl.
-      apply app_nil_r.
+      apply cats0.
   clear=> H.
   have: (replicate n instpop = replicate m instpop).
     by destruct H, n, m ; inversion H ; (inversion H0 || simpl ; f_equal).
@@ -91,9 +91,9 @@ Proof.
     evalpartial' H.
     apply evalsnoc.
   - evaltemplate 1
-      [insttpair insttcopy
+      [:: insttpair insttcopy
         (insttpair (instthole 0) (insttpair insttswap insttcons))]
-      (@nil instt).
+      (Nil instt).
 Defined.
 
 Notation instnat_succ := (proj1_sig exists_instnat_succ).
@@ -153,8 +153,8 @@ Proof.
   eexists=> n m i2 i3 vs cs H0 H1.
   do 2 evalpartial' evalpush.
   evaltemplate' 4
-    [insttpair (insttpush (instthole 2)) (instthole 1); instthole 0]
-    [instthole 3].
+    [:: insttpair (insttpush (instthole 2)) (instthole 1); instthole 0]
+    [:: instthole 3].
   evalpartial (eval_instnat_repeat n).
   clear i2 H0.
   move: n o i1 i3 H H1 ; elim=> [ | n IH] o i1 i2 H H0 ; simpl.

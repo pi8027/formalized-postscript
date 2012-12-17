@@ -1,6 +1,6 @@
 Require Import
-  Numbers.Natural.Peano.NPeano Lists.List Program.Syntax Omega
-  ssreflect Common PsCore.
+  Numbers.Natural.Peano.NPeano Lists.List Omega
+  ssreflect seq Common PsCore.
 
 Section ListIndex.
 
@@ -67,8 +67,8 @@ Fixpoint holes_of_template (t : instt) : list nat :=
   match t with
     | insttpush i => holes_of_template i
     | insttpair i1 i2 => holes_of_template i1 ++ holes_of_template i2
-    | instthole n => [n]
-    | _ => []
+    | instthole n => [:: n]
+    | _ => [::]
   end.
 
 Fixpoint instt_length (t : instt) : nat :=
@@ -181,7 +181,7 @@ Theorem partial_fill_template' :
   forall l tl, option {il : list inst | Forall2 (fill_template l) tl il}.
 Proof.
   move=> l ; elim.
-  - by apply Some ; apply: (exist _ []).
+  - by apply Some ; apply: (exist _ [::]).
   - move=> t tl ; case => [[il H] | ].
     - case (partial_fill_template l t) => [[i H0] | ].
       - by apply Some ; exists (i :: il) ; constructor.
@@ -235,9 +235,9 @@ Proof.
     evalpartial' evalswap.
     evalpartial' evalquote.
     evalpartial' evalsnoc.
-    rewrite -/(instseqv' [x'] (instseqv ys))
-      -(app_instseqv ys [x']) -/([x'] ++ xs0 ++ vs) app_assoc.
-    apply (IH xs0 x (ys ++ [x']) H2).
+    rewrite -/(instseqv' (instseqv ys) [:: x'])
+      -(app_instseqv ys [:: x']) -/([:: x'] ++ xs0 ++ vs) catA.
+    apply (IH xs0 x (ys ++ [:: x']) H2).
 Defined.
 
 Theorem exists_inst_listindex :
@@ -247,7 +247,7 @@ Theorem exists_inst_listindex :
 Proof.
   move=> n ; eexists=> xs x H vs cs.
   evalpartial' evalpush.
-  evalpartial (proj2_sig (exists_inst_listindex_iter n) xs x [] H).
+  evalpartial (proj2_sig (exists_inst_listindex_iter n) xs x [::] H).
   evalauto.
 Defined.
 
@@ -273,8 +273,8 @@ Proof.
     evalpartial' (proj2_sig (IH (lift_instt 1 t2)
       ((le_n_S _ _ (le_trans _ _ _
         (Nat.eq_le_incl _ _ (eq_sym (instt_length_lifted 1 t2)))
-        (le_plus_r _ _))))
-      (S len)) (i1 :: l) i2 (eq_S _ _ H) (lift_fill_template [i1] l t2 i2 H6)).
+        (le_plus_r _ _)))) (S len))
+      (i1 :: l) i2 (eq_S _ _ H) (lift_fill_template [:: i1] l t2 i2 H6)).
     simpl.
     evalpartial evalcons.
     evalauto.
@@ -322,7 +322,7 @@ Proof.
   have: fill_template l
     (fold_left (fun a b => insttpair (insttpush b) a) tvs
       (fold_left insttpair tcs (instt_of_inst instnop)))
-    (instseqv' vs' (instseqc cs')).
+    (instseqv' (instseqc cs') vs').
     clear len H.
     have: fill_template l
       (fold_left insttpair tcs (instt_of_inst instnop)) (instseqc cs').
