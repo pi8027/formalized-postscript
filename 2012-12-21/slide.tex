@@ -68,45 +68,58 @@
 
  \begin{itemize}
   \item 定理証明器SSReflect-CoqでPostScriptのサブセットを定義し、その上で証明付きのプログラムを記述
-	する試み。
-  \item ソースコード、スライド: http://github.com/pi8027/formalized-postscript
+	する
+  \item ソースコード、スライド: \small\texttt{http://github.com/pi8027/formalized-postscript}
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{SSReflect-Coq}
+
+ \begin{itemize}
+  \item Coqはコンピュータの上でプログラムや形式的な証明を記述するためのソフトウェア
+  \item SSReflectはCoqをより便利かつ強力な道具にするための拡張とライブラリ
+  \item ソフトウェアやその周辺技術の検証の道具としてCoqを使う例は多い
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{PostScript}
+
+ \begin{itemize}
+  \item ベクタ画像を記述するための形式
+  \item スタックの指向プログラミング言語
+  \item プリンタとかGhostScriptで実行できる
  \end{itemize}
 
 \end{frame}
 
 \begin{frame}[fragile]{PostScriptプログラムの例}
 
- 代入を一切使わずに\texttt{repeat}(命令を指定した回数繰り返し実行する)を実装する:
-
 \begin{lstlisting}[style=postscript]
-{
-  2 index 0 eq {
-    pop pop pop
-  } {
-    [ 2 index /exec cvx 6 5 roll
-      1 sub 6 4 roll dup /exec cvx ]
-    cvx exec
-  } ifelse
-} dup exec
+> 1 2 add =
+3
+> 3 dup mul dup mul =
+81
+> 10 20 exch sub =
+10
+> 10 [ exch /add cvx ] cvx dup ==
+{10 add}
+> 10 1 index exec = 20 1 index exch =
+20
+30
 \end{lstlisting}
 
 \end{frame}
 
-\begin{frame}{目的 - 1}
+\begin{frame}{目的}
 
  \begin{itemize}
-  \item PostScriptプログラミングにはパズルのような楽しさがある。
-  \item しかし、PostScriptのプログラムは書きづらい、検証しづらい。
-  \item 証明を付けられる形で似た意味論を持つ言語を実装したい。
- \end{itemize}
-
-\end{frame}
-
-\begin{frame}{目的 - 2}
-
- \begin{itemize}
-  \item スタックの状態を見ながらプログラムを書きたい。
-  \item 実装の自明なプログラムはより直感的な仕様から自動生成したい。
+  \item 証明を付けられる形でPostScriptに似た意味を持つ言語を実装したい
+  \item 実行中のプログラムの(十分に一般化された)状態を見ながらプログラムを書きたい
+  \item 実装の自明なプログラムはより直感的な仕様から自動生成したい
+  \pause
+  \item これらの目的は全て達成できた
  \end{itemize}
 
 \end{frame}
@@ -124,7 +137,10 @@
     &\bnfvert \mathit{pair} \, i_1 \, i_2 & \text{$i_1$と$i_2$を順番に実行する}
  \end{align*}
 
- スタックは命令のリスト。2本のスタックの組を状態と呼ぶ。
+ \begin{itemize}
+  \item スタックは命令のリスト
+  \item 2本のスタックの組を状態と呼ぶ
+ \end{itemize}
 
 \end{frame}
 
@@ -146,6 +162,9 @@
 \begin{frame}[fragile]{実装}
 
 \begin{lstlisting}[style=plain, basicstyle=\tt]
+$ git log --oneline --all | wc -l
+172
+$ wc *.v
    51   225  1253 Common.v
   174   684  4703 PsBool.v
   412  1733 11944 PsCore.v
@@ -157,16 +176,6 @@
 
 \end{frame}
 
-\begin{frame}{証明をより手軽に}
-
- \begin{itemize}
-  \item 実行による証明の自動化
-  \item 証明とプログラムを同時に記述できる
-  \item 自明な計算を証明付きで自動生成できる
- \end{itemize}
-
-\end{frame}
-
 \begin{frame}{プログラミングをより手軽に}
 
  \begin{itemize}
@@ -174,7 +183,7 @@
   \item PostScriptのプログラムにCoqの式を埋め込む
   \item ライブラリも充実!
 	\begin{itemize}
-	 \item と言いたいところだが、まだブール型と自然数に関するものしかない。
+	 \item と言いたいところだが、まだブール型と自然数に関するものしかない
 	\end{itemize}
  \end{itemize}
 
