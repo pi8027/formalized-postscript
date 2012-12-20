@@ -6,28 +6,36 @@
 
 % boolean values ADD_MODULES(PsBool)
 
+/boolfalse  EMBEDPUSH(instfalse) def
+/booltrue   EMBEDPUSH(insttrue) def
+/boolnot    EMBEDPUSH(instnot) def
+/boolif     EMBEDPUSH(instif) def
+/boolexecif EMBEDPUSH(instexecif) def
+/boolxor    EMBEDPUSH(instxor) def
+/booland    EMBEDPUSH(instand) def
+/boolor     EMBEDPUSH(instor) def
+
 /boolenc {
-    {
-        EMBEDPUSH(proj1_sig exists_true)
-    } {
-        EMBEDPUSH(proj1_sig exists_false)
-    } ifelse
+    { booltrue }{ boolfalse } ifelse
 } def
 
 /booldec {
-    {
-        true
-    } {
-        false
-    } EMBED(proj1_sig exists_execif)
+    { true }{ false } boolexecif
 } def
 
 % natural numbers ADD_MODULES(PsNat)
 
+/natsucc   EMBEDPUSH(instnat_succ) def
+/natadd    EMBEDPUSH(instnat_add) def
+/natmult   EMBEDPUSH(instnat_mult) def
+/nateven   EMBEDPUSH(instnat_even) def
+/natiszero EMBEDPUSH(instnat_iszero) def
+/natpred   EMBEDPUSH(instnat_pred) def
+/natsub    EMBEDPUSH(instnat_sub) def
+/natle     EMBEDPUSH(instnat_le) def
+
 /natenc {
-    EMBEDPUSH(proj1_sig (exists_instnat 0)) exch {
-        EMBED(proj1_sig exists_instnat_succ)
-    } repeat
+    EMBEDPUSH(instnat 0) exch { natsucc } repeat
 } def
 
 /natdec {
