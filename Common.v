@@ -2,31 +2,29 @@ Require Import
   Relations.Relations Relations.Relation_Operators Omega
   ssreflect ssrnat seq.
 
-Lemma nseq_app :
-  forall {A : Set} n m (a : A), nseq n a ++ nseq m a = nseq (n + m) a.
+Lemma nseq_app : forall A n m (a : A), nseq n a ++ nseq m a = nseq (n + m) a.
 Proof.
   move=> A; elim.
   done.
   by simpl=>n IH m a; f_equal.
 Qed.
 
-Lemma nseq_rev_id : forall {A : Set} n (a : A), nseq n a = rev (nseq n a).
+Lemma nseq_rev_id : forall A n (a : A), nseq n a = rev (nseq n a).
 Proof.
   move=> A n a.
-  rewrite -{1}(cats0 (nseq n a)) /rev.
-  rewrite -{1 2}/(iter 0 (cons a) [::]) -/(ncons 0 a [::]) -/(nseq 0 a).
+  rewrite -{1}(cats0 (nseq n a)) /rev -[[::]]/(nseq 0 a).
   move: n (0); elim.
   - by simpl=> m.
-  - simpl=> m IH n.
-    rewrite -(IH (S n)) !nseq_app.
-    by replace (m + n.+1) with (S (m + n)).
+  - rewrite //= => n IH m.
+    rewrite -(IH (S m)) !nseq_app.
+    by replace (n + m.+1) with (n + m).+1.
 Qed.
 
 (*
 rt1n_trans':
   clos_refl_trans_1n は推移関係である。
 *)
-Lemma rt1n_trans' : forall (A : Type) (R : relation A) (x y z : A),
+Lemma rt1n_trans' : forall A (R : relation A) (x y z : A),
   clos_refl_trans_1n A R x y -> clos_refl_trans_1n A R y z ->
   clos_refl_trans_1n A R x z.
 Proof.
