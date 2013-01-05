@@ -59,7 +59,7 @@ Proof.
   evalpartial' (evalpush instswap).
   evalpartial evalcons.
   evalauto.
-  move: b H ; case=> H i2 i3 vs' cs' ; evalauto ; evalpartial H ; evalauto.
+  move: b H; case=> H i2 i3 vs' cs'; evalauto; evalpartial H; evalauto.
 Defined.
 
 Notation instnot := (proj1_sig exists_not).
@@ -86,7 +86,7 @@ Proof.
   evalpartial' evalsnoc.
   evalpartial' evalexec.
   evalauto.
-  move: b H ; case=> H ; evalpartial H ; evalpartial evalpop ; evalauto.
+  move: b H; case=> H; evalpartial H; evalpartial evalpop; evalauto.
 Defined.
 
 Notation instif := (proj1_sig exists_if).
@@ -119,8 +119,8 @@ Lemma evalxor :
   exists i3 : inst, instbool_spec (xorb b1 b2) i3 /\
   (i2 :: i1 :: vs, instxor :: cs) |=>* (i3 :: vs, cs).
 Proof.
-  (do 2 case)=> i1 i2 vs cs H H0 ; evalauto=> i3 i4 vs' cs' ;
-    evalauto ; evalpartial H ; evalpartial H0 ; evalauto.
+  (do 2 case)=> i1 i2 vs cs H H0; evalauto=> i3 i4 vs' cs';
+    evalauto; evalpartial H; evalpartial H0; evalauto.
 Qed.
 
 (*
@@ -137,7 +137,7 @@ Proof.
   evalpartial' evalswap.
   do 2 evalpartial' evalpush.
   evalpartial (evalexecif b1).
-  case b1 ; simpl.
+  case b1; simpl.
   - evalpartial evalnop.
     by evalauto.
   - evalpartial' evalpop.
@@ -162,7 +162,7 @@ Proof.
   evalpartial' evalswap.
   do 2 evalpartial' evalpush.
   evalpartial (evalexecif b1).
-  case b1 ; simpl.
+  case b1; simpl.
   - evalpartial' evalpop.
     evalpartial evalpush.
     by evalauto.

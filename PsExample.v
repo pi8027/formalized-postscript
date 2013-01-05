@@ -5,8 +5,8 @@ Require Import
 (* rev3 *)
 
 Definition rev3 : inst := instseqc
-  [:: instquote ; instswap ; instquote ; instcons ;
-    instswap ; instquote ; instcons ; instexec].
+  [:: instquote; instswap; instquote; instcons;
+    instswap; instquote; instcons; instexec].
 
 Goal forall i1 i2 i3 vs cs,
   (i3 :: i2 :: i1 :: vs, rev3 :: cs) |=>* (i1 :: i2 :: i3 :: vs, cs).
