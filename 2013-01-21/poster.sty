@@ -1,0 +1,80 @@
+\setlength\textheight{0.92\paperheight}
+\setlength\textwidth{0.92\paperwidth}
+
+\setlength\topmargin{\dimexpr0.5\paperheight-0.5\textheight-1in\relax}
+\setlength\headheight{0pt}
+\setlength\headsep{0pt}
+
+\setlength\oddsidemargin{\dimexpr0.5\paperwidth-0.5\textwidth-1in\relax}
+\setlength\marginparsep{0pt}
+\setlength\marginparwidth{0pt}
+
+\renewcommand{\maketitle}{\par
+\begingroup
+  \renewcommand{\thefootnote}{\fnsymbol{footnote}}%
+  \def\@makefnmark{\hbox{\ifydir $\m@th^{\@thefnmark}$
+    \else\hbox{\yoko$\m@th^{\@thefnmark}$}\fi}}%
+   \long\def\@makefntext##1{\parindent 1em\noindent
+     \hbox to1.8em{\hss$\m@th^{\@thefnmark}$}##1}%
+  \if@twocolumn
+    \ifnum \col@number=\@ne \@maketitle
+    \else \twocolumn[\@maketitle]%
+    \fi
+  \else
+    \newpage
+    \global\@topnum\z@   % Prevents figures from going at top of page.
+    \@maketitle
+  \fi
+\endgroup
+\setcounter{footnote}{0}%
+\global\let\thanks\relax
+\global\let\maketitle\relax
+\global\let\p@thanks\relax
+\global\let\@thanks\@empty
+\global\let\@author\@empty
+\global\let\@date\@empty
+\global\let\@title\@empty
+\global\let\title\relax
+\global\let\author\relax
+\global\let\date\relax
+\global\let\and\relax
+}
+\def\@maketitle{%
+\newpage\null
+%\vskip 2em%
+\begin{center}%
+\let\footnote\thanks
+  {\LARGE \@title \par}%
+  \vskip .5em%
+  {\large
+    \lineskip .5em%
+    \begin{tabular}[t]{c}%
+      \@author
+    \end{tabular}\par}%
+%  \vskip 1em%
+%  {\large \@date}%
+\end{center}%
+\par\vskip 1.5em}
+
+\renewcommand{\section}{\@startsection{section}{1}{\z@}%
+   {.5\Cvs}%
+   {.5\Cvs}%
+   {\reset@font\Large\bfseries}}
+\renewcommand{\subsection}{\@startsection{subsection}{2}{\z@}%
+   {.5\Cvs}%
+   {.5\Cvs}%
+   {\reset@font\large\bfseries}}
+\renewcommand{\subsubsection}{\@startsection{subsubsection}{3}{\z@}%
+   {.5\Cvs}%
+   {.5\Cvs}%
+   {\reset@font\normalsize\bfseries}}
+\renewcommand{\paragraph}{\@startsection{paragraph}{4}{\z@}%
+   {3.25ex \@plus 1ex \@minus .2ex}%
+   {-1em}%
+   {\reset@font\normalsize\bfseries}}
+\renewcommand{\subparagraph}{\@startsection{subparagraph}{5}{\z@}%
+   {3.25ex \@plus 1ex \@minus .2ex}%
+   {-1em}%
+   {\reset@font\normalsize\bfseries}}
+
+\pagestyle{empty}

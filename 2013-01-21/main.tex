@@ -1,0 +1,151 @@
+\documentclass[a4paper, 10.5pt, twocolumn]{ujarticle}
+
+\usepackage{poster}
+\usepackage{color}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{stmaryrd}
+\usepackage{atbegshi}
+\AtBeginShipoutFirst{\special{pdf:tounicode UTF8-UCS2}}
+\usepackage[dvipdfm,
+    pdfauthor={坂口和彦},
+    pdftitle={計算の状態を見ながらプログラミングできるプログラム導出システム},
+    pdfsubject={計算の状態を見ながらプログラミングできるプログラム導出システム},
+    pdfkeywords={Coq; SSReflect; PostScript}]{hyperref}
+
+\definecolor{code-background}{gray}{0.8}
+
+\lstdefinestyle{plain}{
+  basicstyle=\small\tt,
+  keywordstyle=,
+  identifierstyle=,
+  commentstyle=,
+  stringstyle=,
+  emphstyle=,
+  backgroundcolor=\color{code-background},
+  language=,
+  frame=trbl,
+  rulecolor=\color{white},
+  numbers=none,
+  numberstyle=,
+  xleftmargin=0.2zw,
+  xrightmargin=0.2zw,
+  basewidth=0.44em,
+  lineskip=-0.2ex
+}
+
+\renewcommand{\lstlistingname}{リスト}
+
+\title{計算の状態を見ながらプログラミングできるプログラム導出システム}
+\author{情報学群情報科学類 B2 坂口和彦}
+\date{2013/01/21}
+
+\begin{document}
+
+\maketitle
+
+\section*{概要}
+
+現在使われている一般的なプログラミング言語、環境ではプログラムの実行途中の状態を明示的に扱うことはできず、プログラムを書く人が実行中のプログラムのそれぞれの部分で満たすべき性質を満たせるように十分に注意しながらプログラムを書く必要がある。本研究ではこの問題を解消し、プログラムの状態を明示的に扱えるプログラミング環境を開発した。本研究における対象言語はPostScriptという既存のプログラミング言語のサブセットであり、実装は主にSSReflect-Coqで記述した。
+
+また、この環境の上で記述したプログラムは記述した仕様を必ず満たすことが保証されている。Coqなどのソフトウェア検証のツールとの違いは、証明を書いている時点でその対象のプログラムの残りの部分を埋めていなくても良いというところである。
+
+\section*{対象言語}
+
+\vspace{-1cm}
+\[
+ i \: ::= \: pop
+   \:  |  \: copy
+   \:  |  \: swap
+   \:  |  \: cons
+   \:  |  \: quote
+   \:  |  \: exec
+   \:  |  \: push \, i
+   \:  |  \: pair \, i_1 \, i_2
+\]
+\vspace{-1cm}
+\begin{align*}
+ i_1 :: vs , \mathit{pop} :: cs           & \Mapsto vs , cs \\[-2mm]
+ i_1 :: vs , \mathit{copy} :: cs          & \Mapsto i_1 :: i_1 :: vs , cs \\[-2mm]
+ i_2 :: i_1 :: vs , \mathit{swap} :: cs   & \Mapsto i_1 :: i_2 :: vs, cs \\[-2mm]
+ i_2 :: i_1 :: vs , \mathit{cons} :: cs   & \Mapsto (\mathit{pair} \, i_1 \, i_2) :: vs , cs \\[-2mm]
+ i_1 :: vs , \mathit{quote} :: cs         & \Mapsto (\mathit{push} \, i_1) :: vs , cs \\[-2mm]
+ i_1 :: vs , \mathit{exec} :: cs          & \Mapsto vs , i_1 :: cs \\[-2mm]
+ vs , (\mathit{push} \, i_1) :: cs        & \Mapsto i_1 :: vs , cs \\[-2mm]
+ vs , (\mathit{pair} \, i_1 \, i_2) :: cs & \Mapsto vs , i_1 :: i_2 :: cs
+\end{align*}
+
+\section*{SSReflect-Coq}
+
+SSReflect-Coqは計算機でプログラムや(数学、論理学的な)証明を記述するための定理証明器と呼ばれる種類のソフトウェアである。本研究では、SSReflect-Coqで言語の定義を記述し、証明を記述するための枠組みの上にプログラムの十分に一般化された状態を見ながらプログラムを記述する仕組みを構成した。
+
+\begin{lstlisting}[style=plain, label=listing:state_example, caption=自然数上の加算を書いている途中の「状態」の例]
+1 subgoals, subgoal 1 (ID 1999)
+  
+  n : nat
+  m : nat
+  i1 : inst
+  i2 : inst
+  vs : stack
+  cs : stack
+  H : instnat_spec n i1
+  H0 : instnat_spec m i2
+  ============================
+   exists i : inst,
+     instnat_spec (Plus.tail_plus n m) i /\
+     ([:: i1, ?1963, i2 & vs], ?1989 :: cs) |=>* (i :: vs, cs)
+\end{lstlisting}
+
+\newpage
+
+\section*{テンプレート}
+
+本研究における\textbf{テンプレート}とは、非常に制約の強い、しかし人間にとっては直感的なプログラムの記述方法の1つである。テンプレートによって記述できるプログラムは、元々ある値に対する順序の入れ替え、値の複製、削除、構造の追加に限定される。
+
+\begin{lstlisting}[style=plain, label=listing:template_example, caption=テンプレートの記述の例]
+evaltemplate' 4
+  [:: insttpair (insttpush (instthole 2)) (instthole 1);
+      instthole 0]
+  [:: instthole 3].
+\end{lstlisting}
+
+テンプレートで記述した計算は、必ず具体的かつ元の意味を保存した命令に変換できることが保証されている。
+
+\section*{PostScriptへの埋め込み}
+
+SSReflect-Coq上で開発した(対象言語上の)プログラムを、PostScriptで記述されているプログラムに直接埋め込む仕組みを開発した。GNU BashとGNU M4によって実装している。
+
+\begin{lstlisting}[style=plain, label=listing:embed_example, caption=PostScriptへの埋め込みの例]
+/natsucc EMBEDPUSH(instnat_succ) def
+/natenc  { EMBEDPUSH(instnat 0) exch { natsucc } repeat } def
+\end{lstlisting}
+
+この形式で記述されたプログラムを通常のPostScriptプログラムに変換できる。
+
+\begin{lstlisting}[style=plain, label=listing:embed_example_converted, caption=リスト\ref{listing:embed_example}を変換して得られるプログラム]
+/natsucc {{dup} {{pop} pop} exch quote exch cons quote exch
+quote dup cons exch cons exec exch quote cons exec {exch} {cons}
+cons cons cons quote {pop} quote {pop} cons cons exch pop {pop}
+pop exec} def
+/natenc  { {pop {{pop} pop}} exch { natsucc } repeat } def
+\end{lstlisting}
+
+\section*{まとめ}
+
+本研究では、以下のことが達成できた。
+
+\begin{itemize}
+ \setlength{\itemsep}{0pt}
+ \setlength{\parskip}{0pt}
+ \item 8命令から成るPostScript言語のサブセットの定義
+ \item SSReflect-Coq上での対象言語のための開発環境の実装
+ \item (ある決められた範囲の)実装の自明なプログラムの自動生成
+ \item ブール値や自然数を扱うためのライブラリの実装
+ \item 記述したプログラムをPostScriptのプログラムに埋め込む仕組みの実装
+\end{itemize}
+
+成果物のほとんど全ての部分は以下のURIで公開しているので、誰でも自由にこれを試したり変更を加えたりできる。
+
+\texttt{https://github.com/pi8027/formalized-postscript}
+
+\end{document}
