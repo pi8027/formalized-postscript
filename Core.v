@@ -248,28 +248,19 @@ evalpartial:
   指定した関数を適用することで計算を途中まで進める。
 *)
 Tactic Notation "evalpartial" constr(H) "by" tactic(tac) :=
-  (eapply evalrtc_cons;
-   [ by eapply H; tac | ]) ||
-  (eapply evalrtc_trans;
-   [ by eapply H; tac | ]) ||
-  (refine (exists_and_right_map _ _ _ (fun _ => evalrtc_cons _ _ _ _) _);
-   [ by eapply H; tac | ]) ||
-  (refine (exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ _ _ _) _);
-   [ by eapply H; tac | ]) ||
-  (refine (exists_and_right_map _ _ _ (fun _ =>
-           exists_and_right_map _ _ _ (fun _ => evalrtc_cons _ _ _ _)) _);
-   [ by eapply H; tac | ]) ||
-  (refine (exists_and_right_map _ _ _ (fun _ =>
-           exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ _ _ _)) _);
-   [ by eapply H; tac | ]).
+  (
+    eapply evalrtc_trans ||
+    refine (exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ _ _ _) _) ||
+    refine (exists_and_right_map _ _ _ (fun _ =>
+            exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ _ _ _)) _)
+  ); [ by (apply evalrtc_step; eapply H) || eapply H; tac | ].
 
 Tactic Notation "evalpartial" constr(H) := evalpartial H by idtac.
 
 Tactic Notation "evalpartial'" constr(H) "by" tactic(tac) :=
   evalpartial evalpair; evalpartial H by tac.
 
-Tactic Notation "evalpartial'" constr(H) :=
-  evalpartial evalpair; evalpartial H.
+Tactic Notation "evalpartial'" constr(H) := evalpartial' H by idtac.
 
 (*
 rtcrefl:
