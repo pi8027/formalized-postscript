@@ -1,5 +1,6 @@
 Require Import
-  Relations.Relations Program.Basics ssreflect seq Common PsCore.
+  Coq.Relations.Relations Coq.Program.Basics Ssreflect.ssreflect Ssreflect.seq
+  FormalPS.stdlib_ext FormalPS.Core.
 
 (*
 instfalse_spec, insttrue_spec, instbool_spec:

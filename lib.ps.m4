@@ -4,7 +4,7 @@
 /cons { [ 3 1 roll /pair cvx ] cvx } def
 /quote { [ exch ] cvx } def
 
-% boolean values ADD_MODULES(PsBool)
+% boolean values ADD_MODULES(FormalPS.Bool)
 
 /boolfalse  EMBEDPUSH(instfalse) def
 /booltrue   EMBEDPUSH(insttrue) def
@@ -23,7 +23,7 @@
     { true }{ false } boolexecif
 } def
 
-% natural numbers ADD_MODULES(PsNat)
+% natural numbers ADD_MODULES(FormalPS.Nat)
 
 /natsucc   EMBEDPUSH(instnat_succ) def
 /natadd    EMBEDPUSH(instnat_add) def

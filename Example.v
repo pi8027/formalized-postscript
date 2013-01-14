@@ -1,6 +1,6 @@
 Require Import
-  Strings.String ssreflect seq
-  Common PsCore PsTemplate PsBool PsNat.
+  Coq.Strings.String Ssreflect.ssreflect Ssreflect.seq FormalPS.stdlib_ext
+  FormalPS.Core FormalPS.Template FormalPS.Bool FormalPS.Nat.
 
 (* rev3 *)
 

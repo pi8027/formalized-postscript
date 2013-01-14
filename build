@@ -1,4 +1,8 @@
-#!/bin/bash
+#!/bin/zsh
+
+if [[ -n $COQBIN ]]; then
+    PATH=$COQBIN:$PATH
+fi
 
 for f in *.v ; do
   tail -c 1 $f | grep -q . && echo "$f: no newline at end of file" && exit -1
@@ -7,6 +11,6 @@ for f in *.v ; do
   grep --color=auto -H -n " * $" $f && echo "$f: trailing whitespace" && exit -1
 done
 
-coq_makefile *.v > Makefile_coq
+coq_makefile -R . FormalPS **/*.v > Makefile_coq
 make -f Makefile_coq
 make

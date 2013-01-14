@@ -1,7 +1,7 @@
 Require Import
-  Logic.Decidable Relations.Relations Relations.Relation_Operators
-  Strings.String Program.Basics Program.Equality
-  ssreflect seq Common.
+  Coq.Logic.Decidable Coq.Relations.Relations Coq.Relations.Relation_Operators
+  Coq.Strings.String Coq.Program.Basics Coq.Program.Equality
+  Ssreflect.ssreflect Ssreflect.seq FormalPS.stdlib_ext.
 
 (*
 inst:

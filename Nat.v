@@ -1,7 +1,8 @@
 Require Import
-  Arith.Compare_dec Arith.Even Arith.Peano_dec
-  Relations.Relations Program.Basics
-  ssreflect seq Common PsCore PsTemplate PsBool.
+  Coq.Arith.Compare_dec Coq.Arith.Even Coq.Arith.Peano_dec
+  Coq.Relations.Relations Coq.Program.Basics
+  Ssreflect.ssreflect Ssreflect.seq
+  FormalPS.stdlib_ext FormalPS.Core FormalPS.Template FormalPS.Bool.
 
 (*
 instnat_spec:

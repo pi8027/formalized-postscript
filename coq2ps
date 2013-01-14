@@ -7,7 +7,7 @@ EOT
 exit 1
 }
 
-modules=(Strings.String PsCore)
+modules=(Coq.Strings.String FormalPS.Core)
 while getopts m: OPT ; do
     case $OPT in
     m) modules=(${modules[@]} ${OPTARG//,/ }) ;;
@@ -17,7 +17,7 @@ done
 
 shift $(( $OPTIND - 1 ))
 
-result=`coqtop 2>/dev/null <<EOT
+result=`coqtop -R . FormalPS 2>/dev/null <<EOT
 Require Import ${modules[@]}.
 Eval compute in (pscode_of_inst ($1)).
 EOT`

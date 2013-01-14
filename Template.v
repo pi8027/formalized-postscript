@@ -1,6 +1,7 @@
 Require Import
-  Numbers.Natural.Peano.NPeano Lists.List Omega
-  ssreflect seq Common PsCore.
+  Coq.Numbers.Natural.Peano.NPeano Coq.Lists.List Omega
+  Ssreflect.ssreflect Ssreflect.seq
+  FormalPS.stdlib_ext FormalPS.Core.
 
 Section ListIndex.
 

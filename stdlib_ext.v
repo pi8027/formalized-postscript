@@ -1,6 +1,6 @@
 Require Import
-  Relations.Relations Relations.Relation_Operators Omega
-  ssreflect ssrnat seq.
+  Coq.Relations.Relations Coq.Relations.Relation_Operators Omega
+  Ssreflect.ssreflect Ssreflect.ssrnat Ssreflect.seq.
 
 Lemma nseq_app : forall A n m (a : A), nseq n a ++ nseq m a = nseq (n + m) a.
 Proof.

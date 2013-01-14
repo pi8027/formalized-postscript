@@ -4,25 +4,25 @@
 
 # モジュール
 
-* `Common.v`:     共通の定義、補題など。
-* `PsCore.v`:     扱うスタック指向言語の定義。重要な補題、タクティク、命令など。
-* `PsTemplate.v`: 自明な計算を表現するための「テンプレート」という仕組みに関するモジュール。
-* `PsBool.v`:     対象言語上でのブール値の実装。
-* `PsNat.v`:      対象言語上での自然数の実装。
-* `PsExample.v`:  簡単な証明の例など。
+* `FormalPS.stdlib_ext`: 標準ライブラリに足りない定義、補題を補うためのモジュール。
+* `FormalPS.Core`:       扱うスタック指向言語の定義。重要な補題、タクティク、命令など。
+* `FormalPS.Template`:   自明な計算を表現するための「テンプレート」という仕組みに関するモジュール。
+* `FormalPS.Bool`:       対象言語上でのブール値の実装。
+* `FormalPS.Nat`:        対象言語上での自然数の実装。
+* `FormalPS.Example`:    簡単な証明の例など。
 
 # `build`
 
-ビルドのためのスクリプトです。.v ファイルに関してビルドが通るかどうか以外のチェックも少しだけしています。Git の pre-commit フックから呼び出して、コミットしても問題無いかどうかを機械的にチェックするためのスクリプトでもあります。
+ビルドのためのスクリプトです。.v ファイルに関してビルドが通るかどうか以外のチェックも少しだけしています。Git の pre-commit フックから呼び出して、コミットしても問題無いかどうかを機械的にチェックするためのスクリプトでもあります。後述の`coq2ps`や`embed.m4`を使う前には必ず実行してください。
 
 # `coq2ps`
 
 Coq 上で記述した命令を PostScript のプログラムに変換するためのスクリプトです。例えば、
 
-    $ ./coq2ps -m Program.Syntax,PsTemplate 'proj1_sig (exists_inst_fill_template 3 [instthole 2; instthole 1; instthole 0] [])'
+    $ ./coq2ps -m 'FormalPS.Template,ssreflect,seq' 'proj1_sig (exists_inst_fill_template 3 [:: instthole 2; instthole 1; instthole 0] [::])'
     {{pop} pop} quote exch quote dup cons exch cons exec exch quote cons exec quote {{pop} pop} exch quote exch cons exch quote exch cons quote exch quote dup cons exch cons exec exch quote cons exec quote {{pop} pop} exch quote exch cons exch quote exch cons exch quote exch cons exch quote exch cons quote exch quote dup cons exch cons exec exch quote cons exec quote {pop} quote {pop} cons cons cons cons exch pop exch pop exch pop {pop} pop exec
 
-のようにして使います。このスクリプトが出力する PostScript を実行するためには、`lib.ps`を使う必要があります。
+のようにして使います。このスクリプトが出力する PostScript を実行するためには、`lib.ps`を使う必要があります。`lib.ps`は`build`によって自動生成されます。
 
     $ gs -sDEVICE=nullpage -q lib.ps
     GS>/a /b /c
@@ -36,3 +36,7 @@ Coq 上で記述した命令を PostScript のプログラムに変換するた�
     /b
     /c
     GS<3>
+
+# `embed.m4`
+
+`embed.m4`を使うと、PostScriptのプログラムにCoqの項を埋め込むことができます。使い方の例が`lib.ps.m4`にあります。
