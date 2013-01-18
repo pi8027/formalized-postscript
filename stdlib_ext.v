@@ -37,3 +37,8 @@ Qed.
 sb_decidable:
 *)
 Notation sb_decidable a := ({a}+{~a}).
+
+(*
+subst_evars:
+*)
+Ltac subst_evars := match goal with |- _ => idtac end.
