@@ -246,21 +246,14 @@ Ltac evalauto := do !evalstep.
 (*
 evalpartial:
   指定した関数を適用することで計算を途中まで進める。
-NOTE:
-  https://gist.github.com/4530669
 *)
 Tactic Notation "evalpartial" constr(H) "by" tactic(tac) :=
-  let temp_evar := fresh in
-  evar (temp_evar : state);
   (
-    apply evalrtc_trans with temp_evar ||
-    refine
-      (exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ temp_evar _ _) _) ||
-    refine
-      (exists_and_right_map _ _ _ (fun _ =>
-       exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ temp_evar _ _)) _);
-    first by subst temp_evar; (apply evalrtc_step; eapply H) || eapply H; tac
-  ); subst temp_evar.
+    eapply evalrtc_trans ||
+    refine (exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ _ _ _) _) ||
+    refine (exists_and_right_map _ _ _ (fun _ =>
+            exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ _ _ _)) _)
+  ); [ by (apply evalrtc_step; eapply H) || eapply H; tac | ].
 
 Tactic Notation "evalpartial" constr(H) := evalpartial H by idtac.
 
