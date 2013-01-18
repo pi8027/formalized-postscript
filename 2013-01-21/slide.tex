@@ -1,0 +1,90 @@
+\documentclass[cjk, 14pt, dvipdfm]{beamer}
+
+\usepackage{color}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{stmaryrd}
+
+\usetheme{Copenhagen}
+\usecolortheme{seahorse}
+\useinnertheme{rounded}
+\useoutertheme{shadow}
+
+\setbeamercovered{transparent}
+
+\renewcommand\kanjifamilydefault{\gtdefault}
+\renewcommand\familydefault{\sfdefault}
+
+\definecolor{code-background}{gray}{0.8}
+
+\lstdefinestyle{plain}{
+  basicstyle=\small\tt,
+  keywordstyle=,
+  identifierstyle=,
+  commentstyle=,
+  stringstyle=,
+  emphstyle=,
+  backgroundcolor=\color{code-background},
+  language=,
+  frame=trbl,
+  rulecolor=\color{white},
+  numbers=none,
+  numberstyle=,
+  xleftmargin=0.4zw,
+  xrightmargin=0.4zw,
+  basewidth={0.48em, 0.43em},
+  lineskip=-0.2ex
+}
+
+\lstdefinestyle{postscript}{
+  style=plain,
+  keywordstyle=,
+  identifierstyle=,
+  commentstyle=,
+  stringstyle=,
+  emphstyle=,
+  language=PostScript,
+}
+
+\newlength{\lengthwithlength}
+\newcommand{\bnfvert}
+    {\settowidth{\lengthwithlength}{::=}\mathrel{\makebox[\lengthwithlength][c]{$|$}}}
+\newcommand{\bnfcce}{\mathrel{::=}}
+
+\title{\large{計算の状態を見ながらプログラミング\\できるプログラム導出システム}}
+\author{坂口和彦}
+\institute{情報学群 情報科学類 B2}
+\date{2013/01/21}
+
+\begin{document}
+
+\begin{frame}[plain]
+
+ \maketitle
+
+\end{frame}
+
+\begin{frame}[plain]
+
+ \begin{itemize}
+  \item 目標
+  \begin{itemize}
+    \item 通常であればプログラムを書いているときに見えない「プログラムの実行中の状態」が見えるプログラミング環境を開発する
+  \end{itemize}
+  \item 方法
+  \begin{itemize}
+    \item SSReflect-Coqという定理証明器を使って実装
+  \end{itemize}
+  \item 結果
+  \begin{itemize}
+    \item 状態が見えるだけでなく証明が書ける
+    \item 自明な計算を自動生成する仕組みを開発した
+    \item ライブラリをそれなりに充実させた
+    \item この仕組みの上で書いたプログラムをPostScriptに変換できる
+    \item \footnotesize\texttt{http://github.com/pi8027/formalized-postscript}
+  \end{itemize}
+ \end{itemize}
+
+\end{frame}
+
+\end{document}

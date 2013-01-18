@@ -5,6 +5,7 @@ DVIPDFMFLAGS = -f uptex-ipaex.map
 DVIPS = dvips
 DVIPSFLAGS = -P pdf
 
-LaTeXDocument(main, main)
+LaTeXDocument(poster, poster)
+LaTeXDocument(slide, slide)
 
-.DEFAULT : main.pdf
+.DEFAULT : poster.pdf slide.pdf
