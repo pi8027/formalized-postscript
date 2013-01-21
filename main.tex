@@ -64,9 +64,9 @@
 ラミング言語のサブセットであり、実装は主に定理証明器SSReflect-Coqで記述した。
 
 開発したソフトウェアは単に便利なプログラミング環境というだけではなく、記述した仕様を必ず満たすことが
-保証される。また、ある範囲の自明なプログラムの自動生成、記述したプログラムのPostScriptプログラムへの
-変換、埋め込みなどをサポートし、ブール値や自然数を扱うためのライブラリを持っている。このレポートでは、
-演習の内容とこのソフトウェアの詳細について述べる。
+保証される。また、ある範囲の実装が自明なプログラムの自動生成、記述したプログラムのPostScriptプログラ
+ムへの変換、埋め込みなどをサポートし、ブール値や自然数を扱うためのライブラリを持っている。このレポー
+トでは、このソフトウェアの詳細について述べる。
 
 成果物のほとんど全ての部分は以下のURIで公開しているので、誰でも自由にこれを試したり変更を加えたりで
 きる。
@@ -85,7 +85,7 @@ PostScriptでは計算の状態を持つ手段としてスタックを使うこ�
 プを除き)スタック上のそれぞれの値のインデックスは1減る。逆に4をスタックに積むと、スタック上のそれぞ
 れの値のインデックスは1増える。このように、インデックスは値自体が変化していなくてもプログラムの実行
 が進むと変化してしまう。また、値自体が変化していくようなプログラムを記述すれば、問題はより難しくなる。
-一見これ変は数があれば何も問題は無いように見える。確かにPostScriptには変数を扱う仕組みが存在するが、
+一見これは変数があれば何も問題は無いように見える。確かにPostScriptには変数を扱う仕組みが存在するが、
 スコープの扱いに問題があり高階性を生かしたプログラムを記述する上では障害となる。これ以降の内容では変
 数の無いPostScriptについて考える。ただし、標準ライブラリに含まれる命令はそのままの名前で使うものとす
 る。
@@ -198,9 +198,12 @@ SSReflect-Coqは定理証明器と呼ばれる種類の、計算機上でプロ�
 ムの性質に関する)証明を記述するためのソフトウェアである。より正確には
 Coq\footnote{http://coq.inria.fr/}という定理証明器があり、
 SSReflect\footnote{http://ssr.msr-inria.inria.fr/}はCoqをより便利な道具にするための拡張と数学上の問
-題に特化したライブラリ群である。本演習で扱う問題ではプログラムの実行中の状態や仕様を扱うが、この種類
-の問題はどこか一箇所で間違いを持ち込んでしまうと全て破綻するため、それらの操作には正しさが要求される。
-SSReflect-Coqは定理証明の道具なので、正しさという点では優れていると考えてこれを採用した。
+題に特化したライブラリ群である。本演習ではプログラムの実行中の状態や仕様に関する問題を扱うが、この種
+類の問題はどこか一箇所で間違いを持ち込んでしまうと全て破綻するため、それらの操作には正しさが要求され
+る。SSReflect-Coqは定理証明の道具なので、正しさという点では優れていると考えてこれを採用した。
+
+演習に使用したCoqは8.3、8.4、8.4pl1であり、SSReflectは1.4である。このレポートを書いている時点での実
+装は、Coq 8.4pl1とSSReflect 1.4で検査した。
 
 \section{言語の定義}
 
@@ -234,8 +237,9 @@ PostScriptにおける通常のスタック(オペランドスタックと呼ぶ
  vs , (\mathit{pair} \, i_1 \, i_2) :: cs & \Mapsto vs , i_1 :: i_2 :: cs \\
 \end{align*}
 
-この8つの規則は、それぞれ1つの命令に対応する実行の規則である。この規則は計算の1ステップしか表さない
-ので、実際には$\Mapsto$の反射推移閉包$\Mapsto^*$を扱う。命令はそれぞれ以下の意味を持つ。
+この8つの規則は、それぞれ1つの命令に対応する実行の規則である。ここでは、命令の定義の順番と実行規則の
+定義の順番が一致するように書いている。この規則は計算の1ステップしか表さないので、実際には$\Mapsto$の
+反射推移閉包$\Mapsto^*$を計算として扱う。命令はそれぞれ以下の意味を持つ。
 
 \begin{description}
  \item[$\mathit{pop}$命令] オペランドスタックの先頭を取り出し、捨てる。PostScriptの\texttt{pop}命令
@@ -250,13 +254,22 @@ PostScriptにおける通常のスタック(オペランドスタックと呼ぶ
  \item[$\mathit{quote}$命令] オペランドスタックの先頭を取り出し、後述の$\mathit{push}$命令を用いて値
 	    を作り、オペランドスタックにプッシュする。PostScriptの命令列\texttt{[ exch ] cvx}に対応
 	    する。
+
+	    この命令にクォートと名付けたのは、ある値をクォートした値を実行するとクォートする前の元の
+	    値が取り出せるからである。
  \item[$\mathit{exec}$命令] オペランドスタックの先頭を取り出し、継続スタックの先頭にプッシュする。
 	    PostScriptの\texttt{exec}命令に対応する。
+
+	    より直感的な意味としては、オペランドスタックの先頭の値を取り出し、それを実行する命令であ
+	    る。
  \item[$\mathit{push} \, i$命令] $i$をオペランドスタックにプッシュする。PostScriptの\texttt{\{ $i$
 	    \}}に対応する。
  \item[$\mathit{pair} \, i_1 \, i_2$命令] $i_1$と$i_2$を継続スタックにプッシュする。PostScriptの命令
 	    列\texttt{$i_1$ $i_2$}に対応する。$i_1$と$i_2$がスタックの先頭に積まれた状態からこれを実
 	    行するには、\texttt{[ 3 2 roll /exec cvx 4 3 roll exec cvx ] cvx exec}を実行する。
+
+	    より直感的な意味としては、$\mathit{pair} \, i_1 \, i_2$は$i_1$と$i_2$を順番に実行する命
+	    令である。
 \end{description}
 
 言語の定義は、SSReflect-Coqでは以下のように書ける。
@@ -302,7 +315,8 @@ Infix "|=>*" := evalrtc (at level 50, no associativity).
 
 次に、具体的なプログラムの書き方を説明する。最終的に落ち着いた記述方法が優れている理由を示すため、開
 発の途中で辿った記述方法を時系列順に紹介する。例として、スタックの先頭にある3つの要素の順序を逆順に
-する命令を構成する。
+する命令を構成する。また、ここでは説明をしないが、帰納法を使うことで計算対象の集合が有限ではないプロ
+グラムを同様の方法で記述できる。
 
 最も原始的な方法ではプログラムを直接的に命令型の値として記述し、それに証明を付けていた。プログラム自
 体は以下のように記述できる。
@@ -424,14 +438,299 @@ Proof.
 Qed.
 \end{lstlisting}
 
+\texttt{evalauto}は、自動実行によって証明を進めるタクティクである。目的の命題は、ほとんどこのタクティ
+クだけで証明できる。しかし、この方法では最初に掲げた「状態を明示的に扱えるプログラミング環境を作る」
+という目標を達成できていない。なぜなら、証明を書く時点ではプログラムの実行中の状態は見えているが、証
+明を書く前にプログラムを書き終えてしまっているので、プログラムを書く時点ではその実行中の状態を見るこ
+とはできないからである。
 
+そこで、プログラムの記述と証明の記述を平行して行う方法を提案する。その新しい方法では、以下のようにし
+て証明を始める。
+
+\begin{lstlisting}[style=plain]
+Theorem rev3_exists :
+  { rev3 : inst |
+    forall i1 i2 i3 vs cs,
+    (i3 :: i2 :: i1 :: vs, rev3 :: cs) |=>*
+    (i1 :: i2 :: i3 :: vs, cs) }.
+\end{lstlisting}
+
+この命題は、さっき証明した命題の外側に\texttt{\{ rev3 : inst | ... \}}というのが付いた形をしている。
+これは、目的の命題を満たす\texttt{rev3}が存在するという意味である。証明は、以下のようにして始める。
+
+\begin{lstlisting}[style=plain]
+Proof.
+  eexists => i1 i2 i3 vs cs.
+\end{lstlisting}
+
+すると、以下の出力が得られる。
+
+\begin{lstlisting}[style=plain]
+1 subgoals, subgoal 1 (ID 252)
+  
+  i1 : inst
+  i2 : inst
+  i3 : inst
+  vs : stack
+  cs : stack
+  ============================
+   ([:: i3, i2, i1 & vs], ?246 :: cs)
+   |=>* ([:: i1, i2, i3 & vs], cs)
+\end{lstlisting}
+
+従来の方法と違うのは、継続の先頭が\texttt{?246}となっているところである。これはexistential variable
+といって、具体的な値を与える必要があるが、その時点では中身は決まっていないことを表している。
+\texttt{Show Existentials}コマンドを使うことで、その時点で存在するexistential variableの情報を見られ
+る。
+
+\begin{lstlisting}[style=plain]
+Existential 1 =
+?252 : [i1 : inst
+        i2 : inst
+        i3 : inst
+        vs : stack
+        cs : stack
+       |- ([:: i3, i2, i1 & vs], ?246 :: cs)
+          |=>* ([:: i1, i2, i3 & vs], cs)] 
+Existential 2 = ?246 : [ |- inst] 
+\end{lstlisting}
+
+1番目の\texttt{?252}はゴールであり、2番目の\texttt{?246}が継続の先頭部分である。existential variable
+はそれぞれコンテキストを持ち、コンテキストに含まれない変数によってその中身を埋めることはできない。
+
+目的の計算を作るためには、まずオペランドスタックの先頭にある$i_3$をクォートしなければならない。なの
+で、以下の入力をする。
+
+\begin{lstlisting}[style=plain]
+  evalpartial' evalquote.
+\end{lstlisting}
+
+すると、以下の出力が得られる。
+
+\begin{lstlisting}[style=plain]
+1 subgoals, subgoal 1 (ID 273)
+  
+  i1 : inst
+  i2 : inst
+  i3 : inst
+  vs : stack
+  cs : stack
+  ============================
+   ([:: instpush i3, i2, i1 & vs], ?270 :: cs)
+   |=>* ([:: i1, i2, i3 & vs], cs)
+\end{lstlisting}
+
+$i_3$がクォートされていることが確認できる。これで「状態を明示的に扱えるプログラミング環境を作る」と
+いう目標は達成できた。証明の続きは、以下の通りである。
+
+\begin{lstlisting}[style=plain]
+  evalpartial' evalswap.
+  evalpartial' evalquote.
+  evalpartial' evalcons.
+  evalpartial' evalswap.
+  evalpartial' evalquote.
+  evalpartial' evalcons.
+  evalpartial evalexec.
+  evalauto.
+Defined.
+\end{lstlisting}
+
+この証明はプログラムの値としての情報も持っているが、\texttt{Qed.}ではその値としての情報は捨てられて
+しまうので、\texttt{Defined.}で証明を終わらせる必要がある。その値は、以下の入力をすることで確認でき
+る。
+
+\begin{lstlisting}[style=plain]
+Eval compute in (proj1_sig rev3_exists).
+\end{lstlisting}
+
+出力は以下の通りである。
+
+\begin{lstlisting}[style=plain]
+     = instpair instquote
+         (instpair instswap
+            (instpair instquote
+               (instpair instcons
+                  (instpair instswap
+                     (instpair instquote
+                        (instpair instcons instexec))))))
+     : inst
+\end{lstlisting}
+
+また、この例のような元々ある値の順序の入れ替え、値の複製、削除、構造の追加だけで構成された計算は、テ
+ンプレートという仕組みを用いて人間にとって分かりやすい直感的な仕様から具体的なプログラムを計算できる。
+テンプレートを用いて生成したプログラムは必ず目的の仕様を満たすことが保証されている。テンプレートによっ
+て同じ証明を以下のように簡潔に記述できる。
+
+\begin{lstlisting}[style=plain]
+Theorem rev3_exists' :
+  { rev3 : inst |
+    forall i1 i2 i3 vs cs,
+    (i3 :: i2 :: i1 :: vs, rev3 :: cs) |=>*
+    (i1 :: i2 :: i3 :: vs, cs) }.
+Proof.
+  eexists => i1 i2 i3 vs cs.
+  evaltemplate 3
+    [:: instthole 2; instthole 1; instthole 0] (@nil instt).
+Defined.
+\end{lstlisting}
+
+\texttt{evaltemplate}は、テンプレートの記述によって証明を進めるタクティクである。1番目の引数の3とい
+うのは、オペランドスタックの先頭の3要素を消費することを表している。2番目と3番目の引数は、実行後のオ
+ペランドスタックと継続スタックに積まれる値の列を表している。\texttt{instthole}というのは元のスタック
+上の値を指すためのもので、例えば\texttt{insthole 2}というのはインデックスが2の値を指している。全体と
+しては、スタックの先頭の3要素を逆順にすることを直接的に表している。
+
+ただし、この方法によって得られるプログラムは、現時点では非常に冗長で複雑である。これは、以下の入力で
+確認できる。
+
+\begin{lstlisting}[style=plain]
+Set Printing Depth 22.
+Eval compute in (proj1_sig rev3_exists').
+\end{lstlisting}
+
+出力は以下の通りである。\texttt{..}と書かれた部分は、省略されていれる。見えている範囲でさえ手で書い
+たものと比較するとかなりの長さだが、実際にはこれ以上に長い。
+
+\begin{lstlisting}[style=plain]
+     = instpair
+         (instpair
+            (instpair
+               (instpair
+                  (instpair
+                     (instpush
+                        (instpair (instpush instpop)
+                           instpop))
+                     (instpair instquote
+                        (instpair instswap
+                           (instpair instquote
+                              (instpair instcopy
+                                 (instpair instcons
+                                    (..)))))))
+                  instquote)
+               (instpair
+                  (instpair
+                     (instpair
+                        (instpair
+                           (instpush
+                              (instpair
+                                 (instpush instpop)
+                                 instpop))
+                           (instpair instswap
+                              (instpair instquote
+                                 (instpair (..) (..)))))
+                        instquote)
+                     (instpair
+                        (instpair
+                           (instpair
+                              (instpair (instpush (..))
+                                 (instpair instswap
+                                    (..))) instquote)
+                           (instpair
+                              (instpair
+                                 (instpair (..)
+                                    instquote)
+                                 (instpair (..)
+                                    instcons)) instcons))
+                        instcons)) instcons))
+            (instpair instswap
+               (instpair instpop
+                  (instpair instswap
+                     (instpair instpop
+                        (instpair instswap
+                           (instpair instpop
+                              (instpair
+                                 (instpush instpop)
+                                 instpop))))))))
+         instexec
+     : inst
+\end{lstlisting}
+
+これで、十分に一般化された状態を見ながらプログラミングを行うという本来の目標と、決められた範囲の実装
+の自明なプログラムの自動生成が達成できた。
 
 \section{ライブラリ}
 
+本演習では単にプログラミング環境とそれを使う手法を開発しただけではなく、それを実際に使ってブール値や
+自然数を対象とする計算のライブラリを実装した。実装した計算は、以下の通りである。
 
+\begin{itemize}
+ \item ブール値
+       \begin{itemize}
+	\item 否定
+	\item 分岐
+	\item 論理積
+	\item 論理和
+	\item 排他的論理和
+       \end{itemize}
+ \item 自然数
+       \begin{itemize}
+	\item 後者関数
+	\item 加算
+	\item 乗算
+	\item 偶奇判定
+	\item ゼロとの比較
+	\item 前者関数
+	\item 減算
+	\item 大小比較
+       \end{itemize}
+\end{itemize}
+
+\section{PostScriptへの埋め込み}
+
+本演習で開発したプログラミング環境上で記述したプログラムを、PostScriptのプログラムに直接的に埋め込む
+形式を考案した。
+
+\begin{lstlisting}[style=plain]
+/natsucc EMBEDPUSH(instnat_succ) def
+/natenc { EMBEDPUSH(instnat 0) exch { natsucc } repeat } def
+\end{lstlisting}
+
+この形式で記述されたプログラムを通常のPostScriptプログラムに変換できる。この仕組みは、GNU BashとGNU
+M4によって実装している。
+
+\begin{lstlisting}[style=plain]
+/natsucc {{dup} {{pop} pop} exch quote exch cons quote exch
+quote dup cons exch cons exec exch quote cons exec {exch}
+{cons} cons cons cons quote {pop} quote {pop} cons cons exch
+pop {pop} pop exec} def
+/natenc { {pop {{pop} pop}} exch { natsucc } repeat } def
+\end{lstlisting}
+
+これによって、証明付きで記述したプログラムをPostScriptから容易に呼び出せるようになり、一方では元々存
+在するPostScriptで記述されたプログラムを利用しやすくなった。
 
 \section{おわりに}
 
+本演習では、以下のことが達成できた。
 
+\begin{itemize}
+ \item 8命令から成るPostScript言語のサブセットの定義
+ \item SSReflect-Coq上での対象言語のためのプログラミング環境の実装
+       \begin{itemize}
+	\item 自動実行による証明の部分的な自動化
+	\item プログラムの十分に一般化された実行時の状態を見ながらプログラムを書ける仕組みの実装
+	\item 記述したプログラムがその仕様を満たすことの保証
+	\item ある決められた範囲の実装の自明なプログラムの自動生成と、それによって生成されたプログラ
+	      ムが必ず正しいことの保証
+       \end{itemize}
+ \item ブール値や自然数を扱うためのライブラリの実装
+ \item 記述したプログラムをPostScriptのプログラムに埋め込み、それを通常のPostScriptプログラムに変換
+       する仕組みの実装
+\end{itemize}
+
+演習で取り組んだ内容に関しては、今後もこれを継続する予定である。以下が、今後の課題である。
+
+\begin{itemize}
+ \item テンプレートが生成するプログラムの長さや実行効率の問題の改善。
+ \item チューリング完全性などの対象言語が持つ良い性質を明らかにし、その証明をする。
+ \item 除算やユークリッドの互除法を追加し、ライブラリをより充実させる。
+ \item どこが革新的な点であるかを明確にする。現状では、一点に集中できていない。
+ \item 帰納法を使う証明において、Coq上の対応する計算の定義を上手く選ばないと証明が書けない場合があっ
+       た。これによって、証明が冗長になっている箇所が存在する。これを解決できないか検討する。
+ \item 例として出した\texttt{repeat}の再実装に対してその正しさの(停止しない場合を含む)完全な証明を現
+       在の方式で記述することはできないことが明らかになっている。これを、解決する。
+\end{itemize}
+
+以上を、このレポートのまとめとする。
 
 \end{document}
