@@ -1,7 +1,7 @@
 Require Import
   Coq.Arith.Compare_dec Coq.Arith.Even Coq.Arith.Peano_dec
   Coq.Relations.Relations Coq.Program.Basics
-  Ssreflect.ssreflect Ssreflect.seq
+  Ssreflect.ssreflect Ssreflect.ssrnat Ssreflect.seq
   FormalPS.stdlib_ext FormalPS.Core FormalPS.Template FormalPS.Bool.
 
 (*
@@ -82,7 +82,7 @@ instnat_succ:
 Lemma exists_instnat_succ :
   { instnat_succ : inst |
     forall n i1 vs cs, instnat_spec n i1 ->
-    exists i2 : inst, instnat_spec (S n) i2 /\
+    exists i2 : inst, instnat_spec n.+1 i2 /\
     (i1 :: vs, instnat_succ :: cs) |=>* (i2 :: vs, cs) }.
 Proof.
   eexists=> n i1 vs cs H; eexists; split.
@@ -106,7 +106,7 @@ instnat_add:
 Lemma exists_instnat_add_tail :
   { instnat_add_tail : inst |
     forall n m i1 i2 vs cs, instnat_spec n i1 -> instnat_spec m i2 ->
-    exists i3 : inst, instnat_spec (Plus.tail_plus n m) i3 /\
+    exists i3 : inst, instnat_spec (NatTrec.add n m) i3 /\
     (i2 :: i1 :: vs, instnat_add_tail :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
   eexists=> n m i1 i2 vs cs H H0.
@@ -132,7 +132,7 @@ Lemma exists_instnat_add :
     (i2 :: i1 :: vs, instnat_add :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
   exists instnat_add => n m.
-  rewrite Plus.plus_tail_plus.
+  rewrite -NatTrec.addE.
   apply instnat_add_proof_tail.
 Defined.
 
@@ -145,10 +145,9 @@ instnat_mult:
 Lemma exists_instnat_mult_tail :
   { instnat_mult_tail : inst |
     forall n m i1 i2 vs cs, instnat_spec n i1 -> instnat_spec m i2 ->
-    exists i3 : inst, instnat_spec (Mult.tail_mult n m) i3 /\
+    exists i3 : inst, instnat_spec (NatTrec.add_mul n m 0) i3 /\
     (i2 :: i1 :: vs, instnat_mult_tail :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
-  rewrite /Mult.tail_mult.
   move: (0) (instnat 0) (eval_instnat 0) => o i1 H.
   eexists=> n m i2 i3 vs cs H0 H1.
   do 2 evalpartial' evalpush.
@@ -177,7 +176,8 @@ Lemma exists_instnat_mult :
     (i2 :: i1 :: vs, instnat_mult :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
   exists instnat_mult => n m.
-  rewrite Mult.mult_tail_mult.
+  replace (n * m) with (NatTrec.add_mul n m 0)
+    by by rewrite !NatTrec.trecE addn0.
   apply instnat_mult_proof_tail.
 Defined.
 
@@ -208,7 +208,7 @@ Proof.
     evalpartial H1; clear IH H0 H1.
     evalauto.
     rewrite -Bool.negb_involutive_reverse in H.
-    destruct (even_odd_dec n), (even_odd_dec (S n)); auto.
+    destruct (even_odd_dec n), (even_odd_dec n.+1); auto.
     by inversion e0; apply False_ind, (not_even_and_odd n).
     by inversion o0; apply False_ind, (not_even_and_odd n).
 Defined.
@@ -300,15 +300,15 @@ Proof.
   - evalpartial' evalswap.
     evalpartial evalpop.
     evalauto.
-    by replace (n + 0 - 1) with (n - 1) by omega.
+    by rewrite addn0.
   - simpl.
     evalpartial' evalpop; clear i2 H0.
     evalpartial' evalcopy.
     edestruct (instnat_succ_proof n i1) as [i2 [H0 H1]]; auto.
     evalpartial' H1; clear H1.
     evalpartial evalswap.
-    replace (n + S m - 1) with (S n + m - 1) by omega.
-    by apply IH; replace (S n - 1) with n by omega.
+    replace (n + m.+1 - 1) with (n.+1 + m - 1) by ssromega.
+    by apply IH; replace (n.+1 - 1) with n by ssromega.
 Defined.
 
 Notation instnat_pred_tail := (proj1_sig exists_instnat_pred_tail).
@@ -345,14 +345,14 @@ Proof.
   evalpartial (eval_instnat_repeat m).
   clear i2 H0; move: m n i1 H; elim=> [ | m IH] n i1 H.
   - evalauto.
-    by replace (n - 0) with n by omega.
+    by rewrite subn0.
   - simpl.
     edestruct (instnat_pred_proof n i1) as [i2 [H1 H2]]; auto.
     evalpartial H2; clear H2.
     edestruct (IH (n - 1) i2) as [i3 [H2 H3]]; auto.
     evalpartial H3.
     evalauto.
-    by replace (n - S m) with (n - 1 - m) by omega.
+    by replace (n - S m) with (n - 1 - m) by ssromega.
 Defined.
 
 Notation instnat_sub := (proj1_sig exists_instnat_sub).
@@ -376,8 +376,8 @@ Proof.
   evalpartial H0; clear i3 H0 H1.
   evalauto.
   move: H; case (le_dec n m) => H.
-  by replace (n - m) with 0 by omega.
-  by replace (n - m) with (S (n - m - 1)) by omega.
+  by replace (n - m) with 0 by ssromega.
+  by replace (n - m) with (S (n - m - 1)) by ssromega.
 Defined.
 
 Notation instnat_le := (proj1_sig exists_instnat_le).

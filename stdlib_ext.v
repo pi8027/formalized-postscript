@@ -16,7 +16,7 @@ Proof.
   move: n (0); elim.
   - by simpl=> m.
   - rewrite //= => n IH m.
-    rewrite -(IH (S m)) !nseq_app.
+    rewrite -(IH m.+1) !nseq_app.
     by replace (n + m.+1) with (n + m).+1.
 Qed.
 
@@ -33,12 +33,11 @@ Proof.
   clear=> x y z' H H0 IH H2; apply rt1n_trans with y; auto.
 Qed.
 
-(*
-sb_decidable:
-*)
+(* sb_decidable *)
 Notation sb_decidable a := ({a}+{~a}).
 
-(*
-subst_evars:
-*)
+(* subst_evars *)
 Ltac subst_evars := match goal with |- _ => idtac end.
+
+(* ssromega *)
+Ltac ssromega := rewrite -?plusE -?minusE -?multE; omega.

@@ -1,7 +1,7 @@
 Require Import
   Coq.Logic.Decidable Coq.Relations.Relations Coq.Relations.Relation_Operators
   Coq.Strings.String Coq.Program.Basics Coq.Program.Equality
-  Ssreflect.ssreflect Ssreflect.seq FormalPS.stdlib_ext.
+  Ssreflect.ssreflect Ssreflect.ssrnat Ssreflect.seq FormalPS.stdlib_ext.
 
 (*
 inst:
@@ -34,8 +34,8 @@ inst_length:
 *)
 Fixpoint inst_length i : nat :=
   match i with
-    | instpush i => S (inst_length i)
-    | instpair i1 i2 => S (inst_length i1 + inst_length i2)
+    | instpush i => (inst_length i).+1
+    | instpair i1 i2 => (inst_length i1 + inst_length i2).+1
     | _ => 1
   end.
 
