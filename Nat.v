@@ -176,8 +176,7 @@ Lemma exists_instnat_mult :
     (i2 :: i1 :: vs, instnat_mult :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
   exists instnat_mult => n m.
-  replace (n * m) with (NatTrec.add_mul n m 0)
-    by by rewrite !NatTrec.trecE addn0.
+  replace (n * m) with (NatTrec.add_mul n m 0) by ssromega.
   apply instnat_mult_proof_tail.
 Defined.
 

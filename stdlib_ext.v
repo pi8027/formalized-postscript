@@ -40,4 +40,4 @@ Notation sb_decidable a := ({a}+{~a}).
 Ltac subst_evars := match goal with |- _ => idtac end.
 
 (* ssromega *)
-Ltac ssromega := rewrite -?plusE -?minusE -?multE; omega.
+Ltac ssromega := rewrite ?NatTrec.trecE -?plusE -?minusE -?multE; omega.
