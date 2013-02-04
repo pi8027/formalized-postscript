@@ -1,6 +1,6 @@
 Require Import
   Coq.Numbers.Natural.Peano.NPeano Coq.Lists.List Omega
-  Ssreflect.ssreflect Ssreflect.seq
+  Ssreflect.ssreflect Ssreflect.ssrnat Ssreflect.seq
   FormalPS.stdlib_ext FormalPS.Core.
 
 Section ListIndex.
@@ -9,7 +9,7 @@ Variable A : Type.
 
 Inductive listindex : list A -> nat -> A -> Prop :=
   | lizero : forall x xs, listindex (x :: xs) 0 x
-  | lisucc : forall x' xs n x, listindex xs n x -> listindex (x' :: xs) (S n) x.
+  | lisucc : forall x' xs n x, listindex xs n x -> listindex (x' :: xs) n.+1 x.
 
 Theorem lift_listindex :
   forall xs ys n a, listindex ys n a -> listindex (xs ++ ys) (length xs + n) a.
@@ -74,10 +74,10 @@ Fixpoint holes_of_template (t : instt) : list nat :=
 
 Fixpoint instt_length (t : instt) : nat :=
   match t with
-    | insttpush t => S (instt_length t)
-    | insttpair t1 t2 => S (instt_length t1 + instt_length t2)
-    | _ => 1
-  end.
+    | insttpush t => (instt_length t)
+    | insttpair t1 t2 => (instt_length t1 + instt_length t2)
+    | _ => 0
+  end.+1.
 
 Fixpoint lift_instt (n : nat) (t : instt) : instt :=
   match t with
@@ -264,7 +264,7 @@ Proof.
   - simpl=> t IH len; eexists=> l i H H0 vs cs.
     inversion H0.
     clear i l0 t0 H0 H1 H2 H4.
-    evalpartial' (proj2_sig (IH t (le_n (S (instt_length t))) len) l i0 H H3).
+    evalpartial' (proj2_sig (IH t (le_n (instt_length t).+1) len) l i0 H H3).
     evalpartial evalquote.
     evalauto.
   - simpl=> t1 t2 IH len; eexists=> l i H H0 vs cs.
@@ -274,7 +274,7 @@ Proof.
     evalpartial' (proj2_sig (IH (lift_instt 1 t2)
       ((le_n_S _ _ (le_trans _ _ _
         (Nat.eq_le_incl _ _ (eq_sym (instt_length_lifted 1 t2)))
-        (le_plus_r _ _)))) (S len))
+        (le_plus_r _ _)))) len.+1)
       (i1 :: l) i2 (eq_S _ _ H) (lift_fill_template [:: i1] l t2 i2 H6)).
     simpl.
     evalpartial evalcons.

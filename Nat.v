@@ -351,7 +351,7 @@ Proof.
     edestruct (IH (n - 1) i2) as [i3 [H2 H3]]; auto.
     evalpartial H3.
     evalauto.
-    by replace (n - S m) with (n - 1 - m) by ssromega.
+    by rewrite (subnDA 1 n m).
 Defined.
 
 Notation instnat_sub := (proj1_sig exists_instnat_sub).
@@ -376,7 +376,7 @@ Proof.
   evalauto.
   move: H; case (le_dec n m) => H.
   by replace (n - m) with 0 by ssromega.
-  by replace (n - m) with (S (n - m - 1)) by ssromega.
+  by replace (n - m) with (n - m - 1).+1 by ssromega.
 Defined.
 
 Notation instnat_le := (proj1_sig exists_instnat_le).
