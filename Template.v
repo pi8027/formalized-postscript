@@ -15,12 +15,12 @@ Theorem lift_listindex :
   forall xs ys n a, listindex ys n a -> listindex (xs ++ ys) (length xs + n) a.
 Proof.
   elim => [ | x xs IH ].
-  auto.
+  done.
   simpl; constructor; auto.
 Qed.
 
 Theorem dec_listindex :
-  forall xs n, sb_decidable (exists a, listindex xs n a).
+  forall xs n, { a | listindex xs n a } + ({ a | listindex xs n a} -> False).
 Proof.
   elim => [ | x xs IH] n.
   - right; case=> i H; inversion H.
@@ -29,18 +29,6 @@ Proof.
     - case (IH n) => H.
       - by left; case: H => i H; exists i; constructor.
       - by right => H0; apply: H; case: H0 => i H0; exists i; inversion H0.
-Defined.
-
-Theorem partial_listindex :
-  forall xs n, option {a : A | listindex xs n a}.
-Proof.
-  elim => [ | x xs IH] n.
-  - apply None.
-  - case: n => [ | n].
-    - apply Some; exists x; constructor.
-    - case (IH n) => [[i H] | ].
-      - by apply Some; exists i; constructor.
-      - apply None.
 Defined.
 
 Theorem unique_listindex :
@@ -138,56 +126,46 @@ Proof.
 Qed.
 
 Theorem dec_fill_template :
-  forall l t, sb_decidable (exists i, fill_template l t i).
+  forall l t, {i | fill_template l t i} + ({i | fill_template l t i} -> False).
 Proof.
   move=> l; elim; try by (left; eexists; econstructor).
   - move=> t; elim=> H.
     - by left; elim: H => i H; exists (instpush i); constructor.
-    - right=> H0; apply: H; case: H0 => i H0; inversion H0.
-      by exists i0.
+    - right=> H0; apply: H; case: H0;
+        case => [||||||i|il ir] H; try by apply False_rec; inversion H.
+      by exists i; inversion H.
   - move=> t1; elim=> H1.
     - move=> t2; elim=> H2.
       - left; elim: H1 => i1 H1; elim: H2 => i2 H2.
         by exists (instpair i1 i2); constructor.
-      - right=> H3; apply: H2; case: H3 => i H3; inversion H3.
-        by exists i2.
+      - right=> H3; apply: H2; case: H3;
+          case => [||||||i|il ir] H; try by apply False_rec; inversion H.
+        by exists ir; inversion H.
     - move=> t H2.
-      right=> H3; apply: H1; case: H3 => i H3; inversion H3.
-      by exists i1.
-  - move=> n.
-    case (dec_listindex _ l n) => H.
-    - by left; case: H => i H; exists i; constructor.
-    - by right => H0; apply H; case: H0 => i H0; exists i; inversion H0.
+      right=> H3; apply: H1; case: H3;
+        case => [||||||i|il ir] H; try by apply False_rec; inversion H.
+      by exists il; inversion H.
+  - move=> n; case (dec_listindex _ l n).
+    - by case=> i; left; eexists i; constructor.
+    - by move=> H; right; case=> i H0 ; apply: H; exists i; inversion H0.
 Defined.
 
-Theorem partial_fill_template :
-  forall l t, option {i : inst | fill_template l t i}.
-Proof.
-  move=> l; elim; try by (apply Some; eexists; econstructor).
-  - move=> t [[i H] | ].
-    - by apply Some; exists (instpush i); constructor.
-    - apply None.
-  - move=> t1 [[i1 H1] | ].
-    - move=> t2 [[i2 H2] | ].
-      - by apply Some; exists (instpair i1 i2); constructor.
-      - apply None.
-    - move=> t2 H2; apply None.
-  - move=> n.
-    case (partial_listindex _ l n) => [[i H] | ].
-    - by apply Some; exists i; constructor.
-    - apply None.
-Defined.
-
-Theorem partial_fill_template' :
-  forall l tl, option {il : list inst | Forall2 (fill_template l) tl il}.
+Theorem dec_fill_template' :
+  forall l tl,
+    {il | Forall2 (fill_template l) tl il} +
+    ({il | Forall2 (fill_template l) tl il} -> False).
 Proof.
   move=> l; elim.
-  - by apply Some; apply: (exist _ [::]).
-  - move=> t tl; case => [[il H] | ].
-    - case (partial_fill_template l t) => [[i H0] | ].
-      - by apply Some; exists (i :: il); constructor.
-      - apply None.
-    - apply None.
+  - by left; exists [::].
+  - move=> t tl; case=> [[il H] | H].
+    - case (dec_fill_template l t) => [[i H0] | H0].
+      - by left; exists (i :: il); constructor.
+      - right; case; case.
+        - move=> H1; inversion H1.
+        - move=> i il'; move=> H1; apply H0.
+          by exists i; inversion H1.
+    - right; case=> l' H1; inversion H1; apply: H.
+      by exists l'0.
 Defined.
 
 Theorem unique_fill_template :
@@ -326,7 +304,7 @@ Proof.
     (instseqv' (instseqc cs') vs').
     clear len H.
     have: fill_template l
-      (fold_left insttpair tcs (instt_of_inst instnop)) (instseqc cs').
+     (fold_left insttpair tcs (instt_of_inst instnop)) (instseqc cs').
       clear tvs vs' H0.
       have: fill_template l (instt_of_inst instnop) instnop.
         do !constructor.
@@ -353,28 +331,28 @@ Tactic Notation "evaltemplate_eapply"
     constr(vs) constr(n) constr(tvs) constr(tcs) :=
   match eval hnf in (eq_nat_dec n (length (firstn n vs))) with
     | left ?H1 =>
-      match eval compute in (partial_fill_template' (firstn n vs) tvs) with
-        | Some (exist _ ?vs' ?H2) =>
-          match eval compute in (partial_fill_template' (firstn n vs) tcs) with
-            | Some (exist _ ?cs' ?H3) =>
+      match eval compute in (dec_fill_template' (firstn n vs) tvs) with
+        | inl (exist _ ?vs' ?H2) =>
+          match eval compute in (dec_fill_template' (firstn n vs) tcs) with
+            | inl (exist _ ?cs' ?H3) =>
               eapply (proj2_sig (exists_inst_fill_template n tvs tcs)
                       (firstn n vs) vs' cs' H1 H2 H3)
           end
-        end
+      end
   end.
 
 Tactic Notation "evaltemplate_evalpartial'"
     constr(vs) constr(n) constr(tvs) constr(tcs) :=
   match eval hnf in (eq_nat_dec n (length (firstn n vs))) with
     | left ?H1 =>
-      match eval compute in (partial_fill_template' (firstn n vs) tvs) with
-        | Some (exist _ ?vs' ?H2) =>
-          match eval compute in (partial_fill_template' (firstn n vs) tcs) with
-            | Some (exist _ ?cs' ?H3) =>
+      match eval compute in (dec_fill_template' (firstn n vs) tvs) with
+        | inl (exist _ ?vs' ?H2) =>
+          match eval compute in (dec_fill_template' (firstn n vs) tcs) with
+            | inl (exist _ ?cs' ?H3) =>
               evalpartial' (proj2_sig (exists_inst_fill_template n tvs tcs)
                             (firstn n vs) vs' cs' H1 H2 H3)
           end
-        end
+      end
   end.
 
 Tactic Notation "evaltemplate" constr(n) constr(tvs) constr(tcs) :=
@@ -391,4 +369,4 @@ Tactic Notation "evaltemplate'" constr(n) constr(tvs) constr(tcs) :=
       evaltemplate_evalpartial' vs n tvs tcs
     | |- exists _, _ /\ (?vs, _) |=>* _ =>
       evaltemplate_evalpartial' vs n tvs tcs
-  end; subst_evars; simpl.
+  end; simpl.

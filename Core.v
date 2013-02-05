@@ -253,7 +253,7 @@ Tactic Notation "evalpartial" constr(H) "by" tactic(tac) :=
     refine (exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ _ _ _) _) ||
     refine (exists_and_right_map _ _ _ (fun _ =>
             exists_and_right_map _ _ _ (fun _ => evalrtc_trans _ _ _ _)) _)
-  ); [ by (apply evalrtc_step; eapply H) || eapply H; tac | ].
+  ); [ by (apply evalrtc_step; eapply H) || eapply H; tac | ]; subst_evars.
 
 Tactic Notation "evalpartial" constr(H) := evalpartial H by idtac.
 
