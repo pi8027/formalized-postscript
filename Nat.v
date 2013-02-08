@@ -235,30 +235,6 @@ Notation instnat_even_proof := (proj2_sig exists_instnat_even).
 instnat_iszero:
   ゼロとの比較をする命令。
 *)
-Lemma exists_instnat_iszero_tail :
-  { instnat_iszero_tail : inst |
-    forall n i1 i2 vs cs, instnat_spec n i2 ->
-    exists i3 : inst, instfalse_spec i3 /\
-    (i2 :: i1 :: vs, instnat_iszero_tail :: cs) |=>*
-    ((if eq_nat_dec 0 n then i1 else i3)%GEN_IF :: vs, cs) }.
-Proof.
-  eexists=> n i1 i2 vs cs H; exists instfalse; split.
-  - auto.
-  - evalpartial' evalpush.
-    evalpartial' evalswap.
-    evalpartial' evalexec.
-    evalpartial (eval_instnat_repeat n).
-    clear i2 H; move: n i1; elim=> [ | n IH] i1.
-    - evalauto.
-    - simpl.
-      evalpartial' evalpop.
-      evalpartial evalpush.
-      move: IH; case (eq_nat_dec 0 n); auto.
-Defined.
-
-Notation instnat_iszero_tail := (proj1_sig exists_instnat_iszero_tail).
-Notation instnat_iszero_proof_tail := (proj2_sig exists_instnat_iszero_tail).
-
 Lemma exists_instnat_iszero :
   { instnat_iszero : inst |
     forall n i1 vs cs, instnat_spec n i1 ->
@@ -267,11 +243,23 @@ Lemma exists_instnat_iszero :
     (i1 :: vs, instnat_iszero :: cs) |=>* (i2 :: vs, cs) }.
 Proof.
   eexists=> n i1 vs cs H.
-  evalpartial' evalpush.
-  evalpartial' evalswap.
-  edestruct instnat_iszero_proof_tail as [i2 [H0 H1]]; first apply H.
-  evalpartial H1.
-  case (eq_nat_dec 0 n) => H2; evalauto; eauto.
+  exists (if eq_nat_dec 0 n then insttrue else instfalse)%GEN_IF; split.
+  - case (eq_nat_dec 0 n) => _; auto.
+  - evalpartial' (evalpush insttrue).
+    evalpartial' evalswap.
+    evalpartial' evalpush.
+    evalpartial' evalswap.
+    evalpartial' evalexec.
+    evalpartial (eval_instnat_repeat n).
+    clear i1 H.
+    move: n insttrue; elim.
+    - simpl=> i.
+      evalauto.
+    - move=> n IH i; simpl.
+      move: IH (IH instfalse) => _ IH.
+      evalpartial' evalpop.
+      evalpartial evalpush.
+      case (eq_nat_dec 0 n) in IH; apply IH.
 Defined.
 
 Notation instnat_iszero := (proj1_sig exists_instnat_iszero).
