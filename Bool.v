@@ -1,5 +1,6 @@
 Require Import
-  Coq.Relations.Relations Coq.Program.Basics Ssreflect.ssreflect Ssreflect.seq
+  Coq.Relations.Relations Coq.Program.Basics Coq.Bool.Sumbool
+  Ssreflect.ssreflect Ssreflect.seq
   FormalPS.stdlib_ext FormalPS.Core.
 
 (*
@@ -14,9 +15,21 @@ Definition instfalse_spec (i1 : inst) : Prop :=
 Definition insttrue_spec (i1 : inst) : Prop :=
   forall i2 i3 vs cs, (i3 :: i2 :: vs, i1 :: cs) |=>* (i2 :: i3 :: vs, cs).
 
-Notation instbool_spec :=
-  (fun (b : bool) (i : inst) =>
-    if b then insttrue_spec i else instfalse_spec i).
+Notation instbool_spec b i :=
+  (if b then insttrue_spec i else instfalse_spec i)%GEN_IF.
+
+Lemma instbool_spec_if_tf : forall A B (P : {A}+{B}) i,
+  instbool_spec (if P then true else false) i <-> instbool_spec P i.
+Proof.
+  move=> A B P i; split; case P; auto.
+Qed.
+
+Lemma instbool_spec_if_ft : forall A B (P : {A}+{B}) i,
+  instbool_spec (if P then false else true) i <->
+  instbool_spec (sumbool_not _ _ P) i.
+Proof.
+  move=> A B P i; split; case P; auto.
+Qed.
 
 (*
 exists_false, exists_true:
@@ -52,7 +65,7 @@ exists_not:
 *)
 Lemma exists_not :
   { instnot : inst |
-    forall b i1 vs cs, instbool_spec b i1 ->
+    forall (b : bool) i1 vs cs, instbool_spec b i1 ->
     exists i2 : inst, instbool_spec (negb b) i2 /\
     (i1 :: vs, instnot :: cs) |=>* (i2 :: vs, cs) }.
 Proof.
@@ -75,7 +88,7 @@ exists_if, exists_execif:
 *)
 Lemma exists_if :
   { instif : inst |
-    forall b i1 i2 i3 vs cs, instbool_spec b i1 ->
+    forall (b : bool) i1 i2 i3 vs cs, instbool_spec b i1 ->
     (i3 :: i2 :: i1 :: vs, instif :: cs) |=>*
     ((if b then i2 else i3) :: vs, cs) }.
 Proof.
@@ -95,7 +108,7 @@ Notation evalif := (proj2_sig exists_if).
 
 Lemma exists_execif :
   { instexecif : inst |
-    forall b i1 i2 i3 vs cs, instbool_spec b i1 ->
+    forall (b : bool) i1 i2 i3 vs cs, instbool_spec b i1 ->
     (i3 :: i2 :: i1 :: vs, instexecif :: cs) |=>*
     (vs, (if b then i2 else i3) :: cs) }.
 Proof.
@@ -115,7 +128,7 @@ instxor:
 Definition instxor : inst := instcons.
 
 Lemma evalxor :
-  forall b1 b2 i1 i2 vs cs,
+  forall (b1 b2 : bool) i1 i2 vs cs,
   instbool_spec b1 i1 -> instbool_spec b2 i2 ->
   exists i3 : inst, instbool_spec (xorb b1 b2) i3 /\
   (i2 :: i1 :: vs, instxor :: cs) |=>* (i3 :: vs, cs).
@@ -130,7 +143,8 @@ exists_and:
 *)
 Lemma exists_and :
   { instand : inst |
-    forall b1 b2 i1 i2 vs cs, instbool_spec b1 i1 -> instbool_spec b2 i2 ->
+    forall (b1 b2 : bool) i1 i2 vs cs,
+    instbool_spec b1 i1 -> instbool_spec b2 i2 ->
     exists i3 : inst, instbool_spec (andb b1 b2) i3 /\
     (i2 :: i1 :: vs, instand :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
@@ -155,7 +169,8 @@ exists_or:
 *)
 Lemma exists_or :
   { instand : inst |
-    forall b1 b2 i1 i2 vs cs, instbool_spec b1 i1 -> instbool_spec b2 i2 ->
+    forall (b1 b2 : bool) i1 i2 vs cs,
+    instbool_spec b1 i1 -> instbool_spec b2 i2 ->
     exists i3 : inst, instbool_spec (orb b1 b2) i3 /\
     (i2 :: i1 :: vs, instand :: cs) |=>* (i3 :: vs, cs) }.
 Proof.

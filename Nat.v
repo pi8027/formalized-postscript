@@ -188,9 +188,9 @@ instnat_even:
 *)
 Lemma exists_instnat_even_tail :
   { instnat_even_tail : inst |
-    forall b n i1 i2 vs cs, instbool_spec b i1 -> instnat_spec n i2 ->
+    forall (b : bool) n i1 i2 vs cs, instbool_spec b i1 -> instnat_spec n i2 ->
     exists i3 : inst,
-    instbool_spec (if even_odd_dec n then b else negb b)%GEN_IF i3 /\
+    instbool_spec (if even_odd_dec n then b else negb b) i3 /\
     (i2 :: i1 :: vs, instnat_even_tail :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
   eexists=> b n i1 i2 vs cs H H0.
@@ -218,14 +218,15 @@ Notation instnat_even_proof_tail := (proj2_sig exists_instnat_even_tail).
 Lemma exists_instnat_even :
   { instnat_even : inst |
     forall n i1 vs cs, instnat_spec n i1 ->
-    exists i2 : inst,
-    instbool_spec (if even_odd_dec n then true else false)%GEN_IF i2 /\
+    exists i2 : inst, instbool_spec (even_odd_dec n) i2 /\
     (i1 :: vs, instnat_even :: cs) |=>* (i2 :: vs, cs) }.
 Proof.
   eexists=> n i1 vs cs H.
   evalpartial' evalpush.
   evalpartial' evalswap.
   edestruct (instnat_even_proof_tail true n) as [i2 [H0 H1]]; eauto.
+  evalpartial H1; evalauto.
+  by move: H0; rewrite instbool_spec_if_tf.
 Defined.
 
 Notation instnat_even := (proj1_sig exists_instnat_even).
@@ -239,12 +240,12 @@ Lemma exists_instnat_iszero :
   { instnat_iszero : inst |
     forall n i1 vs cs, instnat_spec n i1 ->
     exists i2 : inst,
-    instbool_spec (if eq_nat_dec 0 n then true else false)%GEN_IF i2 /\
+    instbool_spec (eq_nat_dec 0 n) i2 /\
     (i1 :: vs, instnat_iszero :: cs) |=>* (i2 :: vs, cs) }.
 Proof.
   eexists=> n i1 vs cs H.
   exists (if eq_nat_dec 0 n then insttrue else instfalse)%GEN_IF; split.
-  - case (eq_nat_dec 0 n) => _; auto.
+  - case (eq_nat_dec 0 n); auto.
   - evalpartial' (evalpush insttrue).
     evalpartial' evalswap.
     evalpartial' evalpush.
@@ -352,8 +353,7 @@ instnat_le:
 Lemma exists_instnat_le :
   { instnat_le : inst |
     forall n m i1 i2 vs cs, instnat_spec n i1 -> instnat_spec m i2 ->
-    exists i3 : inst,
-    instbool_spec (if le_dec n m then true else false)%GEN_IF i3 /\
+    exists i3 : inst, instbool_spec (le_dec n m) i3 /\
     (i2 :: i1 :: vs, instnat_le :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
   eexists=> n m i1 i2 vs cs H H0.
