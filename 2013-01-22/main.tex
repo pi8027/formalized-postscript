@@ -1,0 +1,736 @@
+\documentclass[a4paper, 10pt, twocolumn, titlepage]{ujarticle}
+
+\usepackage{color}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{stmaryrd}
+\usepackage{design}
+\usepackage{atbegshi}
+\AtBeginShipoutFirst{\special{pdf:tounicode UTF8-UCS2}}
+\usepackage[dvipdfm,
+    pdfauthor={坂口和彦},
+    pdftitle={定理証明器CoqによるPostScriptプログラミング},
+    pdfsubject={定理証明器CoqによるPostScriptプログラミング},
+    pdfkeywords={Coq; SSReflect; PostScript}]{hyperref}
+
+\definecolor{code-background}{gray}{0.8}
+
+\lstdefinestyle{plain}{
+  basicstyle=\small\tt,
+  keywordstyle=,
+  identifierstyle=,
+  commentstyle=,
+  stringstyle=,
+  emphstyle=,
+  backgroundcolor=\color{code-background},
+  language=,
+  frame=trbl,
+  rulecolor=\color{white},
+  numbers=none,
+  numberstyle=,
+  xleftmargin=0.2zw,
+  xrightmargin=0.2zw,
+  basewidth=0.42em,
+  lineskip=-0.2ex
+}
+
+\renewcommand{\lstlistingname}{リスト}
+
+%\renewcommand{\_}{\symbol{"5F}}
+\renewcommand{\{}{\symbol{"7B}}
+\renewcommand{\}}{\symbol{"7D}}
+
+\newlength{\lengthwithlength}
+\newcommand{\bnfvert}
+    {\settowidth{\lengthwithlength}{::=}\mathrel{\makebox[\lengthwithlength][c]{$|$}}}
+\newcommand{\bnfcce}{\mathrel{::=}}
+
+\title{情報特別演習II最終レポート\\定理証明器CoqによるPostScriptプログラミング}
+\author{情報学群情報科学類 B2 坂口和彦}
+\date{2013年1月22日}
+
+\begin{document}
+
+\clearpage
+
+\maketitle
+
+\section{概要}
+
+現在使われている一般的なプログラミング言語、環境ではプログラムの実行途中の状態を明示的に扱うことはで
+きず、プログラムを記述する人がプログラムの実行中のそれぞれの部分で満たすべき性質を満たせるように十分
+注意しなければならない。本演習ではこの問題を解消するため、プログラムの実行中の状態を明示的に扱えるプ
+ログラミング環境を開発した。開発したプログラミング環境が対象とする言語はPostScriptという既存のプログ
+ラミング言語のサブセットであり、実装は主に定理証明器SSReflect-Coqで記述した。
+
+開発したソフトウェアは単に便利なプログラミング環境というだけではなく、記述した仕様を必ず満たすことが
+保証される。また、ある範囲の実装が自明なプログラムの自動生成、記述したプログラムのPostScriptプログラ
+ムへの変換、埋め込みなどをサポートし、ブール値や自然数を扱うためのライブラリを持っている。このレポー
+トでは、このソフトウェアの詳細について述べる。
+
+成果物のほとんど全ての部分は以下のURIで公開しているので、誰でも自由にこれを試したり変更を加えたりで
+きる。
+
+{\small\texttt{http://github.com/pi8027/formalized-postscript}}
+
+\section{はじめに}
+
+PostScriptはAdobe Systems社がプリンタ向けに開発したスタック指向のプログラミング言語である。
+PostScriptでは計算の状態を持つ手段としてスタックを使うことができるが、スタックに保存した状態を指し示
+す手段は通常であればスタックの先頭から何番目の値であるかという情報(インデックスと呼ぶこととする)を使
+うことになる。例えば、PostScriptで\texttt{1 2 3}を実行した後のスタックは、トップから順に3, 2, 1が配
+置されている。トップを0番とすると、2を指すインデックスは1であり、1を指すインデックスは2である。
+
+ここで\texttt{pop}命令を実行したとすると、\texttt{pop}命令はスタックのトップの値を捨てるので、(トッ
+プを除き)スタック上のそれぞれの値のインデックスは1減る。逆に4をスタックに積むと、スタック上のそれぞ
+れの値のインデックスは1増える。このように、インデックスは値自体が変化していなくてもプログラムの実行
+が進むと変化してしまう。また、値自体が変化していくようなプログラムを記述すれば、問題はより難しくなる。
+一見これは変数があれば何も問題は無いように見える。確かにPostScriptには変数を扱う仕組みが存在するが、
+スコープの扱いに問題があり高階性を生かしたプログラムを記述する上では障害となる。これ以降の内容では変
+数の無いPostScriptについて考える。ただし、標準ライブラリに含まれる命令はそのままの名前で使うものとす
+る。
+
+さらにPostScriptでは、実行時に命令列を構築してそれを実行することでメタプログラミングができる。このメ
+タプログラミングの手法を使わなければ上手く抽象化できないケースも数多くあるが、それを人が正しく記述す
+ることは困難である。例えば、PostScriptの標準ライブラリに含まれる\texttt{repeat}という命令を再実装す
+ると、その難しさが分かる。
+
+\texttt{repeat}命令は、スタックに自然数$n$と実行可能な値$i$がこの順で積まれている状態で実行すると、
+$i$を$n$回実行する命令である。例えば、\texttt{0 10 \{dup\footnote{スタックの先頭の値を取り出し、2回
+スタックに積む複製の命令。} 1 add\footnote{スタックの先頭の2つの値を取り出し、和をスタックに積む命
+令}\}\footnote{\texttt{\{...\}}は命令列を表すための構文であり、命令列は1つの値として扱われる。}
+{ }repeat}は0をスタックに積んだ後に\texttt{dup 1 add}を10回実行するという意味である。このプログラム
+を実行すると、0から10の自然数がこの順にスタックに積まれる。実際の\texttt{repeat}命令はループの中で
+\texttt{exit}命令を実行するとループから抜け出すこともできるが、\texttt{exit}命令には対応しない形の
+\texttt{repeat}命令の実装方法を以下で考える。
+
+通常のPostScriptプログラミングにおけるループは、ループのための命令を使うか、命令を\texttt{def}コマン
+ドを用いて変数に代入し、自分自身をその変数名で呼び出すことで実現する。しかし、\texttt{repeat}を再実
+装するのにループのための命令を使うのでは再実装の意味が無く、変数は使わないことにしたので、別の方法を
+考えなければならない。ループを書くもう1つの方法は、スタックに自分自身が積まれているという仮定の元で
+自分自身を呼び出して再帰する命令を記述し、それを複製して呼び出すというものである。例えば、
+\texttt{\{dup exec\footnote{スタックの先頭の値を取り出して実行する命令。}\} dup exec}は\texttt{\{dup
+exec\}}を複製して実行するので元の状態に戻る無限ループである。この方法を使って\texttt{0 10 \{dup 1
+add\} repeat}を書き直すと、以下のようになる。
+
+\begin{lstlisting}[style=plain]
+0
+{
+  dup 0 eq {
+    pop pop
+  }{
+    1 sub 2 index 1 add 3 1 roll 1 index exec
+  } ifelse
+} dup 10 exch exec
+\end{lstlisting}
+
+一番外側の\texttt{\{...\}}で括られた部分は、自然数$n$と自分自身と自然数$m$がこの順でスタックに積まれ
+た状態で実行すると$n$から$n+m$までの自然数をこの順でスタックに積む命令である。これを$i$と呼ぶことに
+する。0、$i$、10、$i$が積まれた状態で\texttt{exec}を実行しているので、0から10の値がスタックに積まれ
+る。$i$の中では、まず$m$を0と比較して分岐している。$m$が0の場合は$n$だけをスタック上に残せば良いので、
+\texttt{pop}を2回実行して$i$と$m$をスタックから消している。$m$が0でない場合は$m-1$と$n+1$を計算し、
+スタック上の値の順番を$n$、$n+1$、$i$、$m-1$、$i$にしてから\texttt{exec}を行っている。すると$n+1$、
+$i$、$m$が消化されて$n+1$から$(n+1)+(m-1)=n+m$までの自然数に置き換わるので、$n$から$n+m$までの値がス
+タック上に並ぶ。詳細な説明はしないが、\texttt{sub}は減算命令、\texttt{index}は指定したインデックスの
+値をスタックの先頭に複製する命令、\texttt{n m roll}はスタックの先頭の$n$個の値を先頭方向に$m$個分回
+転させる命令、\texttt{exch}はスタックの先頭の2要素を入れ替える命令\footnote{命令としては\texttt{2 1
+roll}と同値。}、\texttt{eq}は比較の命令、\texttt{ifelse}は条件分岐の命令である。
+
+これを踏まえて\texttt{repeat}命令を再実装することを考える。まず、以下のコードについて考えてみる。
+
+\begin{lstlisting}[style=plain]
+{
+  2 index 0 eq {
+    pop pop pop
+  }{
+    3 2 roll 1 sub 3 1 roll 1 index exec dup exec
+  } ifelse
+} dup exec
+\end{lstlisting}
+
+これは一見正しい\texttt{repeat}の実装であるように見える。例えば、10と\texttt{\{(hello)
+=\}}\footnote{\texttt{(...)}は文字列の構文。\texttt{=}はスタックの先頭の値を出力する。
+\texttt{(hello) =}と書くと、\texttt{hello}という文字列を出力する。}を積んでからこれを実行すると、
+\texttt{hello}という文字列が10回表示される。一方、2と\texttt{\{pstack\footnote{スタックに積まれた値
+をスタックの先頭から順に表示する命令。}\}}を積んでからこれを実行すると、以下の出力が得られる。
+
+\begin{lstlisting}[style=plain]
+{2 index 0 eq {pop pop pop} {3 2 roll 1 sub 3 1 roll 1 index
+exec dup exec} ifelse}
+{pstack}
+1
+{2 index 0 eq {pop pop pop} {3 2 roll 1 sub 3 1 roll 1 index
+exec dup exec} ifelse}
+{pstack}
+0
+\end{lstlisting}
+
+この出力から分かることは、\texttt{repeat}を再実装するつもりで作った上の命令は、繰り返す対象となる命
+令から繰り返しを実現するために持っている状態を隠せていないということである。当然、繰り返す対象となる
+命令はこの状態を書き換えて本来意図していなかった振舞いを引き起こすことも可能である。この問題を解消す
+るには、最初に述べたメタプログラミングの仕組みを使わなければならない。以下が正しい実装である。
+
+\begin{lstlisting}[style=plain]
+{
+  2 index 0 eq {
+    pop pop pop
+  }{
+    [ 2 index /exec cvx 6 5 roll 1 sub
+    6 4 roll dup /exec cvx ] cvx exec
+  } ifelse
+} dup exec
+\end{lstlisting}
+
+正しくない実装との違いは、\texttt{ifelse}による分岐の後半部分だけである。\texttt{cvx}命令はスタック
+の先頭の値を実行可能形式に変換する命令、\texttt{[}はマークと呼ばれる値をスタックに積む命令、
+\texttt{]}はスタックの先頭に最も近い位置に積まれたマークからスタックの先頭までの値を配列にする命令で
+ある。\texttt{cvx}は元の値が名前\footnote{\texttt{/}で始まるのが名前である。}であればその名前が指す
+命令に、元の値が配列であれば命令列に変換する。この仕組みを使うとスタックに積んでいた値を継続に持つこ
+とができるので、正しい\texttt{repeat}の実装ができる。しかしこの方法で正しいプログラムを記述するのは
+難しく、また最終的にできた正しい実装も難解なものとなっている。
+
+これらの問題は、プログラムの実行中のそれぞれの時点での十分に一般化された状態を明示的に扱えるようにす
+ることで解決できると考えられる。「十分に一般化された」というのは、例えば任意の2つの自然数の組に対し
+てその和を計算する加算命令を考えているのに、1+1の場合だけ取り出して状態を考えてもあまり意味が無いと
+いうことである。演習で開発したプログラミング環境では、実際にこれを実現できている。
+
+SSReflect-Coqは定理証明器と呼ばれる種類の、計算機上でプログラムや(数学、論理学的な、もしくはプログラ
+ムの性質に関する)証明を記述するためのソフトウェアである。より正確には
+Coq\footnote{http://coq.inria.fr/}という定理証明器があり、
+SSReflect\footnote{http://ssr.msr-inria.inria.fr/}はCoqをより便利な道具にするための拡張と数学上の問
+題に特化したライブラリ群である。本演習ではプログラムの実行中の状態や仕様に関する問題を扱うが、この種
+類の問題はどこか一箇所で間違いを持ち込んでしまうと全て破綻するため、それらの操作には正しさが要求され
+る。SSReflect-Coqは定理証明の道具なので、正しさという点では優れていると考えてこれを採用した。
+
+演習に使用したCoqは8.3、8.4、8.4pl1であり、SSReflectは1.4である。このレポートを書いている時点での実
+装は、Coq 8.4pl1とSSReflect 1.4で検査した。
+
+\section{言語の定義}
+
+本演習で対象とした言語の定義について述べる。まず、命令を以下の規則で帰納的に定義した。
+
+\begin{align*}
+ i &\bnfcce  \mathit{pop} \\
+   &\bnfvert \mathit{copy} \\
+   &\bnfvert \mathit{swap} \\
+   &\bnfvert \mathit{cons} \\
+   &\bnfvert \mathit{quote} \\
+   &\bnfvert \mathit{exec} \\
+   &\bnfvert \mathit{push} \, i \\
+   &\bnfvert \mathit{pair} \, i_1 \, i_2 \\
+\end{align*}
+
+この言語では、命令と値を区別しない。言い換えると、上で定義した集合を用いて値も命令も表現する。
+PostScriptにおける通常のスタック(オペランドスタックと呼ぶ)に相当するものは、命令のリストで表現できる。
+プログラムも、命令のリストで表現できる。なので、オペランドスタックを表す命令のリストと残りの実行すべ
+きプログラム(継続スタックと呼ぶ)を表す命令のリストの組を状態と考え、計算を状態上の二項関係として定義
+する。以下が計算の規則である。
+
+\begin{align*}
+ i_1 :: vs , \mathit{pop} :: cs           & \Mapsto vs , cs \\
+ i_1 :: vs , \mathit{copy} :: cs          & \Mapsto i_1 :: i_1 :: vs , cs \\
+ i_2 :: i_1 :: vs , \mathit{swap} :: cs   & \Mapsto i_1 :: i_2 :: vs, cs \\
+ i_2 :: i_1 :: vs , \mathit{cons} :: cs   & \Mapsto (\mathit{pair} \, i_1 \, i_2) :: vs , cs \\
+ i_1 :: vs , \mathit{quote} :: cs         & \Mapsto (\mathit{push} \, i_1) :: vs , cs \\
+ i_1 :: vs , \mathit{exec} :: cs          & \Mapsto vs , i_1 :: cs \\
+ vs , (\mathit{push} \, i_1) :: cs        & \Mapsto i_1 :: vs , cs \\
+ vs , (\mathit{pair} \, i_1 \, i_2) :: cs & \Mapsto vs , i_1 :: i_2 :: cs \\
+\end{align*}
+
+この8つの規則は、それぞれ1つの命令に対応する実行の規則である。ここでは、命令の定義の順番と実行規則の
+定義の順番が一致するように書いている。この規則は計算の1ステップしか表さないので、実際には$\Mapsto$の
+反射推移閉包$\Mapsto^*$を計算として扱う。命令はそれぞれ以下の意味を持つ。
+
+\begin{description}
+ \item[$\mathit{pop}$命令] オペランドスタックの先頭を取り出し、捨てる。PostScriptの\texttt{pop}命令
+	    に対応する。
+ \item[$\mathit{copy}$命令] オペランドスタックの先頭を取り出し、取り出した値を2回オペランドスタック
+	    にプッシュする。PostScriptの\texttt{dup}命令に対応する。
+ \item[$\mathit{swap}$命令] オペランドスタックの先頭の2つの値を取り出し、元とは逆順になるようにオペ
+	    ランドスタックにプッシュする。PostScriptの\texttt{exch}命令に対応する。
+ \item[$\mathit{cons}$命令] オペランドスタックの先頭の2つの値を取り出し、後述の$\mathit{pair}$命令を
+	    用いて組を作り、オペランドスタックにプッシュする。PostScriptの命令列\texttt{[ 3 1 roll
+	    /pair cvx ] cvx]}に対応する。
+ \item[$\mathit{quote}$命令] オペランドスタックの先頭を取り出し、後述の$\mathit{push}$命令を用いて値
+	    を作り、オペランドスタックにプッシュする。PostScriptの命令列\texttt{[ exch ] cvx}に対応
+	    する。
+
+	    この命令にクォートと名付けたのは、ある値をクォートした値を実行するとクォートする前の元の
+	    値が取り出せるからである。
+ \item[$\mathit{exec}$命令] オペランドスタックの先頭を取り出し、継続スタックの先頭にプッシュする。
+	    PostScriptの\texttt{exec}命令に対応する。
+
+	    より直感的な意味としては、オペランドスタックの先頭の値を取り出し、それを実行する命令であ
+	    る。
+ \item[$\mathit{push} \, i$命令] $i$をオペランドスタックにプッシュする。PostScriptの\texttt{\{ $i$
+	    \}}に対応する。
+ \item[$\mathit{pair} \, i_1 \, i_2$命令] $i_1$と$i_2$を継続スタックにプッシュする。PostScriptの命令
+	    列\texttt{$i_1$ $i_2$}に対応する。$i_1$と$i_2$がスタックの先頭に積まれた状態からこれを実
+	    行するには、\texttt{[ 3 2 roll /exec cvx 4 3 roll exec cvx ] cvx exec}を実行する。
+
+	    より直感的な意味としては、$\mathit{pair} \, i_1 \, i_2$は$i_1$と$i_2$を順番に実行する命
+	    令である。
+\end{description}
+
+言語の定義は、SSReflect-Coqでは以下のように書ける。
+
+\begin{lstlisting}[style=plain]
+Inductive inst : Set :=
+  | instpop | instcopy | instswap
+  | instcons | instquote | instexec
+  | instpush of inst
+  | instpair of inst & inst.
+
+Notation stack := (seq inst).
+
+Notation state := (stack * stack)%type.
+
+Inductive eval : relation state :=
+  | evalpop   : forall i vs cs,
+      eval (i :: vs, instpop :: cs) (vs, cs)
+  | evalcopy  : forall i vs cs,
+      eval (i :: vs, instcopy :: cs) (i :: i :: vs, cs)
+  | evalswap  : forall i1 i2 vs cs,
+      eval (i2 :: i1 :: vs, instswap :: cs)
+           (i1 :: i2 :: vs, cs)
+  | evalcons  : forall i1 i2 vs cs,
+      eval (i2 :: i1 :: vs, instcons :: cs)
+           (instpair i1 i2 :: vs, cs)
+  | evalquote : forall i vs cs,
+      eval (i :: vs, instquote :: cs) (instpush i :: vs, cs)
+  | evalexec  : forall i vs cs,
+      eval (i :: vs, instexec :: cs) (vs, i :: cs)
+  | evalpush  : forall i vs cs,
+      eval (vs, instpush i :: cs) (i :: vs, cs)
+  | evalpair  : forall i1 i2 vs cs,
+      eval (vs, instpair i1 i2 :: cs) (vs, i1 :: i2 :: cs).
+
+Notation evalrtc := (clos_refl_trans_1n state eval).
+
+Infix "|=>" := eval (at level 50, no associativity).
+Infix "|=>*" := evalrtc (at level 50, no associativity).
+\end{lstlisting}
+
+\section{プログラムの書き方}
+
+次に、具体的なプログラムの書き方を説明する。最終的に落ち着いた記述方法が優れている理由を示すため、開
+発の途中で辿った記述方法を時系列順に紹介する。例として、スタックの先頭にある3つの要素の順序を逆順に
+する命令を構成する。また、ここでは説明をしないが、帰納法を使うことで計算対象の集合が有限ではないプロ
+グラムを同様の方法で記述できる。
+
+最も原始的な方法ではプログラムを直接的に命令型の値として記述し、それに証明を付けていた。プログラム自
+体は以下のように記述できる。
+
+\begin{lstlisting}[style=plain]
+Definition rev3 : inst := instseqc
+  [:: instquote; instswap; instquote; instcons;
+    instswap; instquote; instcons; instexec].
+\end{lstlisting}
+
+\texttt{instseqc}は命令列をリストとして表現したものを対応する命令に対応付ける関数である。\texttt{[::
+... ]}はSSReflectが提供しているリストの表記表である。この記述によって\texttt{rev3}という変数が
+\texttt{:=}以降に書かれた値に束縛される。
+
+これに対応する証明を書く必要がある。証明は、以下のようにして始められる。
+
+\begin{lstlisting}[style=plain]
+Goal forall i1 i2 i3 vs cs,
+  (i3 :: i2 :: i1 :: vs, rev3 :: cs) |=>*
+  (i1 :: i2 :: i3 :: vs, cs).
+\end{lstlisting}
+
+これは、\texttt{rev3}という命令が満たすべき性質を命題として書き表したものである。この命題の意味は
+「任意の命令$i_1$、$i_2$、$i_3$と任意の命令のリスト$\mathit{vs}$、$\mathit{cs}$に関して、$(i_3 ::
+i_2 :: i_1 :: \mathit{vs}, \mathit{rev3} :: \mathit{cs}) \Mapsto^* (i_1 :: i_2 :: i_3 ::
+\mathit{vs}, \mathit{cs})$が成り立つ」であり、\texttt{rev3}の仕様としては妥当である。
+
+上に示した通りの入力をすると、以下の出力が得られる。
+
+\begin{lstlisting}[style=plain]
+1 subgoals, subgoal 1 (ID 32)
+  
+  ============================
+   forall (i1 i2 i3 : inst) (vs cs : stack),
+   ([:: i3, i2, i1 & vs], rev3 :: cs)
+   |=>* ([:: i1, i2, i3 & vs], cs)
+\end{lstlisting}
+
+これは、残りの証明すべき命題を表している。現時点では最初に入力した命題と全く同じである。
+
+証明は、\texttt{Proof}コマンドによって始める。\texttt{rev3}を展開して証明がしやすい状態にするには、
+以下の入力をする。
+
+\begin{lstlisting}[style=plain]
+Proof.
+  move=> i1 i2 i3 vs cs.
+  evalpartial evalseqc; subst_evars; simpl.
+\end{lstlisting}
+
+すると、以下の出力が得られる。
+
+\begin{lstlisting}[style=plain]
+1 subgoals, subgoal 1 (ID 42)
+  
+  i1 : inst
+  i2 : inst
+  i3 : inst
+  vs : stack
+  cs : stack
+  ============================
+   ([:: i3, i2, i1 & vs],
+   [:: instquote, instswap, instquote, instcons, instswap,
+       instquote, instcons, instexec
+     & cs]) |=>* ([:: i1, i2, i3 & vs], cs)
+\end{lstlisting}
+
+継続スタックに具体的な命令が並んでいるので、これを順番に実行する。
+
+\begin{lstlisting}[style=plain]
+  evalpartial evalquote.
+  evalpartial evalswap.
+  evalpartial evalquote.
+  evalpartial evalcons.
+  evalpartial evalswap.
+  evalpartial evalquote.
+  evalpartial evalcons.
+  evalpartial evalexec.
+\end{lstlisting}
+
+すると、以下の出力が得られる。
+
+\begin{lstlisting}[style=plain]
+1 subgoals, subgoal 1 (ID 73)
+  
+  i1 : inst
+  i2 : inst
+  i3 : inst
+  vs : stack
+  cs : stack
+  ============================
+   (vs,
+   instpair (instpair (instpush i3) (instpush i2))
+     (instpush i1) :: cs) |=>* ([:: i1, i2, i3 & vs], cs)
+\end{lstlisting}
+
+継続スタックの先頭に$i_3$、$i_2$、$i_1$をこの順に積む命令があることが分かるので、これを実行する。
+
+\begin{lstlisting}[style=plain]
+  do 2 evalpartial evalpair.
+  do 3 evalpartial evalpush.
+  apply evalrtc_refl.
+\end{lstlisting}
+
+すると、\texttt{No more subgoals.}と出力される。これは証明すべき命題が残っていないことを表しているの
+で、以下の入力をして、証明を検査させる。
+
+\begin{lstlisting}[style=plain]
+Qed.
+\end{lstlisting}
+
+これで、目的の性質が証明できた。しかし、証明のほとんどの部分は継続スタックの先頭を見れば分かる程度の
+ことしか書いてない上に、証明の対象となっているプログラムと対応する並びまで含まれている。これは冗長な
+ので、証明を簡潔に記述する仕組みを開発した。新しい方法では、以下のように書ける。
+
+\begin{lstlisting}[style=plain]
+Proof.
+  move=> i1 i2 i3 vs cs.
+  evalauto.
+Qed.
+\end{lstlisting}
+
+\texttt{evalauto}は、自動実行によって証明を進めるタクティクである。目的の命題は、ほとんどこのタクティ
+クだけで証明できる。しかし、この方法では最初に掲げた「状態を明示的に扱えるプログラミング環境を作る」
+という目標を達成できていない。なぜなら、証明を書く時点ではプログラムの実行中の状態は見えているが、証
+明を書く前にプログラムを書き終えてしまっているので、プログラムを書く時点ではその実行中の状態を見るこ
+とはできないからである。
+
+そこで、プログラムの記述と証明の記述を平行して行う方法を提案する。その新しい方法では、以下のようにし
+て証明を始める。
+
+\begin{lstlisting}[style=plain]
+Theorem rev3_exists :
+  { rev3 : inst |
+    forall i1 i2 i3 vs cs,
+    (i3 :: i2 :: i1 :: vs, rev3 :: cs) |=>*
+    (i1 :: i2 :: i3 :: vs, cs) }.
+\end{lstlisting}
+
+この命題は、さっき証明した命題の外側に\texttt{\{ rev3 : inst | ... \}}というのが付いた形をしている。
+これは、目的の命題を満たす\texttt{rev3}が存在するという意味である。証明は、以下のようにして始める。
+
+\begin{lstlisting}[style=plain]
+Proof.
+  eexists => i1 i2 i3 vs cs.
+\end{lstlisting}
+
+すると、以下の出力が得られる。
+
+\begin{lstlisting}[style=plain]
+1 subgoals, subgoal 1 (ID 252)
+  
+  i1 : inst
+  i2 : inst
+  i3 : inst
+  vs : stack
+  cs : stack
+  ============================
+   ([:: i3, i2, i1 & vs], ?246 :: cs)
+   |=>* ([:: i1, i2, i3 & vs], cs)
+\end{lstlisting}
+
+従来の方法と違うのは、継続の先頭が\texttt{?246}となっているところである。これはexistential variable
+といって、具体的な値を与える必要があるが、その時点では中身は決まっていないことを表している。
+\texttt{Show Existentials}コマンドを使うことで、その時点で存在するexistential variableの情報を見られ
+る。
+
+\begin{lstlisting}[style=plain]
+Existential 1 =
+?252 : [i1 : inst
+        i2 : inst
+        i3 : inst
+        vs : stack
+        cs : stack
+       |- ([:: i3, i2, i1 & vs], ?246 :: cs)
+          |=>* ([:: i1, i2, i3 & vs], cs)] 
+Existential 2 = ?246 : [ |- inst] 
+\end{lstlisting}
+
+1番目の\texttt{?252}はゴールであり、2番目の\texttt{?246}が継続の先頭部分である。existential variable
+はそれぞれコンテキストを持ち、コンテキストに含まれない変数によってその中身を埋めることはできない。
+
+目的の計算を作るためには、まずオペランドスタックの先頭にある$i_3$をクォートしなければならない。なの
+で、以下の入力をする。
+
+\begin{lstlisting}[style=plain]
+  evalpartial' evalquote.
+\end{lstlisting}
+
+すると、以下の出力が得られる。
+
+\begin{lstlisting}[style=plain]
+1 subgoals, subgoal 1 (ID 273)
+  
+  i1 : inst
+  i2 : inst
+  i3 : inst
+  vs : stack
+  cs : stack
+  ============================
+   ([:: instpush i3, i2, i1 & vs], ?270 :: cs)
+   |=>* ([:: i1, i2, i3 & vs], cs)
+\end{lstlisting}
+
+$i_3$がクォートされていることが確認できる。これで「状態を明示的に扱えるプログラミング環境を作る」と
+いう目標は達成できた。証明の続きは、以下の通りである。
+
+\begin{lstlisting}[style=plain]
+  evalpartial' evalswap.
+  evalpartial' evalquote.
+  evalpartial' evalcons.
+  evalpartial' evalswap.
+  evalpartial' evalquote.
+  evalpartial' evalcons.
+  evalpartial evalexec.
+  evalauto.
+Defined.
+\end{lstlisting}
+
+この証明はプログラムの値としての情報も持っているが、\texttt{Qed.}ではその値としての情報は捨てられて
+しまうので、\texttt{Defined.}で証明を終わらせる必要がある。その値は、以下の入力をすることで確認でき
+る。
+
+\begin{lstlisting}[style=plain]
+Eval compute in (proj1_sig rev3_exists).
+\end{lstlisting}
+
+出力は以下の通りである。
+
+\begin{lstlisting}[style=plain]
+     = instpair instquote
+         (instpair instswap
+            (instpair instquote
+               (instpair instcons
+                  (instpair instswap
+                     (instpair instquote
+                        (instpair instcons instexec))))))
+     : inst
+\end{lstlisting}
+
+また、この例のような元々ある値の順序の入れ替え、値の複製、削除、構造の追加だけで構成された計算は、テ
+ンプレートという仕組みを用いて人間にとって分かりやすい直感的な仕様から具体的なプログラムを計算できる。
+テンプレートを用いて生成したプログラムは必ず目的の仕様を満たすことが保証されている。テンプレートによっ
+て同じ証明を以下のように簡潔に記述できる。
+
+\begin{lstlisting}[style=plain]
+Theorem rev3_exists' :
+  { rev3 : inst |
+    forall i1 i2 i3 vs cs,
+    (i3 :: i2 :: i1 :: vs, rev3 :: cs) |=>*
+    (i1 :: i2 :: i3 :: vs, cs) }.
+Proof.
+  eexists => i1 i2 i3 vs cs.
+  evaltemplate 3
+    [:: instthole 2; instthole 1; instthole 0] (@nil instt).
+Defined.
+\end{lstlisting}
+
+\texttt{evaltemplate}は、テンプレートの記述によって証明を進めるタクティクである。1番目の引数の3とい
+うのは、オペランドスタックの先頭の3要素を消費することを表している。2番目と3番目の引数は、実行後のオ
+ペランドスタックと継続スタックに積まれる値の列を表している。\texttt{instthole}というのは元のスタック
+上の値を指すためのもので、例えば\texttt{insthole 2}というのはインデックスが2の値を指している。全体と
+しては、スタックの先頭の3要素を逆順にすることを直接的に表している。
+
+ただし、この方法によって得られるプログラムは、現時点では非常に冗長で複雑である。これは、以下の入力で
+確認できる。
+
+\begin{lstlisting}[style=plain]
+Set Printing Depth 22.
+Eval compute in (proj1_sig rev3_exists').
+\end{lstlisting}
+
+出力は以下の通りである。\texttt{..}と書かれた部分は、省略されていれる。見えている範囲でさえ手で書い
+たものと比較するとかなりの長さだが、実際にはこれ以上に長い。
+
+\begin{lstlisting}[style=plain]
+     = instpair
+         (instpair
+            (instpair
+               (instpair
+                  (instpair
+                     (instpush
+                        (instpair (instpush instpop)
+                           instpop))
+                     (instpair instquote
+                        (instpair instswap
+                           (instpair instquote
+                              (instpair instcopy
+                                 (instpair instcons
+                                    (..)))))))
+                  instquote)
+               (instpair
+                  (instpair
+                     (instpair
+                        (instpair
+                           (instpush
+                              (instpair
+                                 (instpush instpop)
+                                 instpop))
+                           (instpair instswap
+                              (instpair instquote
+                                 (instpair (..) (..)))))
+                        instquote)
+                     (instpair
+                        (instpair
+                           (instpair
+                              (instpair (instpush (..))
+                                 (instpair instswap
+                                    (..))) instquote)
+                           (instpair
+                              (instpair
+                                 (instpair (..)
+                                    instquote)
+                                 (instpair (..)
+                                    instcons)) instcons))
+                        instcons)) instcons))
+            (instpair instswap
+               (instpair instpop
+                  (instpair instswap
+                     (instpair instpop
+                        (instpair instswap
+                           (instpair instpop
+                              (instpair
+                                 (instpush instpop)
+                                 instpop))))))))
+         instexec
+     : inst
+\end{lstlisting}
+
+これで、十分に一般化された状態を見ながらプログラミングを行うという本来の目標と、決められた範囲の実装
+の自明なプログラムの自動生成が達成できた。
+
+\section{ライブラリ}
+
+本演習では単にプログラミング環境とそれを使う手法を開発しただけではなく、それを実際に使ってブール値や
+自然数を対象とする計算のライブラリを実装した。実装した計算は、以下の通りである。
+
+\begin{itemize}
+ \item ブール値
+       \begin{itemize}
+	\item 否定
+	\item 分岐
+	\item 論理積
+	\item 論理和
+	\item 排他的論理和
+       \end{itemize}
+ \item 自然数
+       \begin{itemize}
+	\item 後者関数
+	\item 加算
+	\item 乗算
+	\item 偶奇判定
+	\item ゼロとの比較
+	\item 前者関数
+	\item 減算
+	\item 大小比較
+       \end{itemize}
+\end{itemize}
+
+\section{PostScriptへの埋め込み}
+
+本演習で開発したプログラミング環境上で記述したプログラムを、PostScriptのプログラムに直接的に埋め込む
+形式を考案した。
+
+\begin{lstlisting}[style=plain]
+/natsucc EMBEDPUSH(instnat_succ) def
+/natenc { EMBEDPUSH(instnat 0) exch { natsucc } repeat } def
+\end{lstlisting}
+
+この形式で記述されたプログラムを通常のPostScriptプログラムに変換できる。この仕組みは、GNU BashとGNU
+M4によって実装している。
+
+\begin{lstlisting}[style=plain]
+/natsucc {{dup} {{pop} pop} exch quote exch cons quote exch
+quote dup cons exch cons exec exch quote cons exec {exch}
+{cons} cons cons cons quote {pop} quote {pop} cons cons exch
+pop {pop} pop exec} def
+/natenc { {pop {{pop} pop}} exch { natsucc } repeat } def
+\end{lstlisting}
+
+これによって、証明付きで記述したプログラムをPostScriptから容易に呼び出せるようになり、一方では元々存
+在するPostScriptで記述されたプログラムを利用しやすくなった。
+
+\section{おわりに}
+
+本演習では、以下のことが達成できた。
+
+\begin{itemize}
+ \item 8命令から成るPostScript言語のサブセットの定義
+ \item SSReflect-Coq上での対象言語のためのプログラミング環境の実装
+       \begin{itemize}
+	\item 自動実行による証明の部分的な自動化
+	\item プログラムの十分に一般化された実行時の状態を見ながらプログラムを書ける仕組みの実装
+	\item 記述したプログラムがその仕様を満たすことの保証
+	\item ある決められた範囲の実装の自明なプログラムの自動生成と、それによって生成されたプログラ
+	      ムが必ず正しいことの保証
+       \end{itemize}
+ \item ブール値や自然数を扱うためのライブラリの実装
+ \item 記述したプログラムをPostScriptのプログラムに埋め込み、それを通常のPostScriptプログラムに変換
+       する仕組みの実装
+\end{itemize}
+
+演習で取り組んだ内容に関しては、今後もこれを継続する予定である。以下が、今後の課題である。
+
+\begin{itemize}
+ \item テンプレートが生成するプログラムの長さや実行効率の問題の改善。
+ \item チューリング完全性などの対象言語が持つ良い性質を明らかにし、その証明をする。
+ \item 除算やユークリッドの互除法を追加し、ライブラリをより充実させる。
+ \item どこが革新的な点であるかを明確にする。現状では、一点に集中できていない。
+ \item 帰納法を使う証明において、Coq上の対応する計算の定義を上手く選ばないと証明が書けない場合があっ
+       た。これによって、証明が冗長になっている箇所が存在する。これを解決できないか検討する。
+ \item 例として出した\texttt{repeat}の再実装に対してその正しさの(停止しない場合を含む)完全な証明を現
+       在の方式で記述することはできないことが明らかになっている。これを、解決する。
+\end{itemize}
+
+以上を、このレポートのまとめとする。
+
+\end{document}
