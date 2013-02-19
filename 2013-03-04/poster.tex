@@ -87,9 +87,9 @@
 と書ける。プログラムをすでに書いた後であればこの形の命題を証明すれば良い。しかし、PostScriptプログラ
 ムは書いていてどの値がスタックのどこに保存されているか分かりづらくなりやすい。そこで、本研究では
 \begin{align*}
- \exists p. \forall i_1 \dots i_n \, o_1 \dots o_m \, \mathit{vs} \, \mathit{cs}.
- \mathrm{spec}(i_1, \dots, i_n, o_1, \dots, o_m) \implies \\
- i_1 :: \ldots :: i_n :: vs, p :: cs \Mapsto^* o_1 :: \ldots :: o_m :: vs, cs
+ & \exists p. \forall i_1 \dots i_n \, o_1 \dots o_m \, \mathit{vs} \, \mathit{cs}. \\
+ & \quad \mathrm{spec}(i_1, \dots, i_n, o_1, \dots, o_m) \implies \\
+ & \quad\quad i_1 :: \ldots :: i_n :: vs, p :: cs \Mapsto^* o_1 :: \ldots :: o_m :: vs, cs
 \end{align*}
 という形の命題を、対応するプログラムと証明を同時に埋めながら証明するという方法を取る。これによって、
 プログラムの実行中の状態を見ながらプログラムの残りを書けるようになる。
