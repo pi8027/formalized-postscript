@@ -1,0 +1,159 @@
+\documentclass[a4paper, 10.5pt, twocolumn]{ujarticle}
+
+\usepackage{poster}
+\usepackage{color}
+\usepackage{amsmath}
+\usepackage{layout}
+\usepackage{listings}
+\usepackage{stmaryrd}
+\usepackage{atbegshi}
+\AtBeginShipoutFirst{\special{pdf:tounicode UTF8-UCS2}}
+\usepackage[dvipdfm,
+    pdfauthor={坂口和彦},
+    pdftitle={Coq による PostScript プログラミング},
+    pdfsubject={Coq による PostScript プログラミング},
+    pdfkeywords={Coq; SSReflect; PostScript}]{hyperref}
+
+\definecolor{code-background}{gray}{0.8}
+
+\lstdefinestyle{plain}{
+  basicstyle=\small\tt,
+  keywordstyle=,
+  identifierstyle=,
+  commentstyle=,
+  stringstyle=,
+  emphstyle=,
+  backgroundcolor=\color{code-background},
+  language=,
+  frame=trbl,
+  rulecolor=\color{white},
+  numbers=none,
+  numberstyle=,
+  xleftmargin=0.2zw,
+  xrightmargin=0.2zw,
+  basewidth=0.44em,
+  lineskip=-0.2ex
+}
+
+\renewcommand{\lstlistingname}{リスト}
+
+\title{CoqによるPostScriptプログラミング}
+\author{坂口和彦(筑波大学 情報学群 情報科学類)}
+\date{2013/03/04}
+\def\pident{PPL2013-CAT3-1}
+
+\begin{document}
+
+\maketitle
+
+\section*{概要}
+
+本研究では、定理証明器Coqとその拡張SSReflectを用いてPostScript言語のサブセットを定義し、その言語のた
+めの開発環境をCoqのproof editing modeの上に実装した。この開発環境の特徴は、プログラムの十分に一般化
+された実行中の状態を見ながらプログラムを書けるという点にある。
+
+\section*{対象言語}
+
+\vspace{-2em}
+\[
+ i \: ::= \: pop
+   \:  |  \: copy
+   \:  |  \: swap
+   \:  |  \: cons
+   \:  |  \: quote
+   \:  |  \: exec
+   \:  |  \: push \, i
+   \:  |  \: pair \, i_1 \, i_2
+\]
+\vspace{-2em}
+\begin{align*}
+ i_1 :: vs , \mathit{pop} :: cs           & \Mapsto vs , cs \\[-2mm]
+ i_1 :: vs , \mathit{copy} :: cs          & \Mapsto i_1 :: i_1 :: vs , cs \\[-2mm]
+ i_2 :: i_1 :: vs , \mathit{swap} :: cs   & \Mapsto i_1 :: i_2 :: vs, cs \\[-2mm]
+ i_2 :: i_1 :: vs , \mathit{cons} :: cs   & \Mapsto (\mathit{pair} \, i_1 \, i_2) :: vs , cs \\[-2mm]
+ i_1 :: vs , \mathit{quote} :: cs         & \Mapsto (\mathit{push} \, i_1) :: vs , cs \\[-2mm]
+ i_1 :: vs , \mathit{exec} :: cs          & \Mapsto vs , i_1 :: cs \\[-2mm]
+ vs , (\mathit{push} \, i_1) :: cs        & \Mapsto i_1 :: vs , cs \\[-2mm]
+ vs , (\mathit{pair} \, i_1 \, i_2) :: cs & \Mapsto vs , i_1 :: i_2 :: cs
+\end{align*}
+
+\section*{プログラムと証明の記述}
+
+プログラム$p$が値$i_1, \dots, i_n$を取って値$o_1, \dots, o_m$を出力するという命題は、通常であれば
+\[
+ \forall \mathit{vs} \, \mathit{cs}.
+ i_1 :: \ldots :: i_n :: vs, p :: cs \Mapsto^* o_1 :: \ldots :: o_m :: vs, cs
+\]
+と書ける。プログラムをすでに書いた後であればこの形の命題を証明すれば良い。しかし、PostScriptプログラ
+ムは書いていてどの値がスタックのどこに保存されているか分かりづらくなりやすい。そこで、本研究では
+\begin{align*}
+ \exists p. \forall i_1 \, \dots \, i_n \, o_1 \, \dots \, o_m \, \mathit{vs} \, \mathit{cs}.
+ \mathrm{spec}(i_1, \dots, i_n, o_1, \dots, o_m) \implies \\
+ i_1 :: \ldots :: i_n :: vs, p :: cs \Mapsto^* o_1 :: \ldots :: o_m :: vs, cs
+\end{align*}
+という形の命題を、対応するプログラムと証明を同時に埋めながら証明するという方法を取る。これによって、
+プログラムの実行中の状態を見ながらプログラムの残りを書けるようになる。
+
+Coq上で上に示した形の命題をそのまま扱うと問題が非常に複雑になってしまうので、それを回避するためにCoq
+が持つexistential variableという仕組みを用いた。
+
+\section*{自動実行タクティク}
+
+対象としている体系の上では、ある計算の状態の次の状態が2通り以上あることはなく、状態から次の状態を計
+算することができる。よって、自動実行による証明の自動化をしても問題無いことが分かる。これをCoqのタク
+ティクとして実装した。
+
+\section*{テンプレート}
+
+\textbf{テンプレート}とは、0個以上の欠けた場所(ホールと呼ぶ)を持つ命令である。それぞれのホールは1つ
+の自然数を持ち、それらはスタックの先頭からのインデックスを表す。テンプレートはスタックの先頭の決めら
+れた数の値を取り、テンプレートの中のホールをそれらの値で埋めた値を返すプログラムを表している。テンプ
+レートは、それで書ける範囲の計算を直感的に記述できるように作られている。
+
+\begin{lstlisting}[style=plain, label=listing:template_example, caption=テンプレートの記述の例]
+evaltemplate' 4
+  [:: insttpair (insttpush (instthole 2)) (instthole 1);
+      instthole 0]
+  [:: instthole 3].
+\end{lstlisting}
+
+テンプレートは、必ず具体的かつ元の意味を保存した命令に変換できることが保証されている。
+
+\section*{ライブラリ}
+
+実装した開発環境を用いて、ブール値や自然数を扱うためのライブラリを実装した。これによって、開発環境が
+使いやすいかどうか、どのような問題があるかを確認している。
+
+\section*{PostScriptへの埋め込み}
+
+Coq上で開発した(対象言語上の)プログラムを、PostScriptで記述されているプログラムに直接埋め込む仕組み
+を開発した。
+
+\begin{lstlisting}[style=plain, label=listing:embed_example, caption=PostScriptへの埋め込みの例]
+/natsucc EMBEDPUSH(instnat_succ) def
+/natenc  { EMBEDPUSH(instnat 0) exch { natsucc } repeat } def
+\end{lstlisting}
+
+この仕組みはGNU BashとGNU M4で実装している。リスト\ref{listing:embed_example}に示した形式の入力を与
+えると、実行可能なPostScriptプログラムが出力される。
+
+\section*{まとめ}
+
+本研究では、以下のことが達成できた。
+
+\begin{itemize}
+ \setlength{\itemsep}{0pt}
+ \setlength{\parskip}{0pt}
+ \item 8命令から成るPostScript言語のサブセットの定義
+ \item Coq上での対象言語のための開発環境の実装
+ \item 自動実行タクティクによる証明の自動化
+ \item (ある決められた範囲の)実装の自明なプログラムの自動生成
+ \item ブール値や自然数を扱うためのライブラリの実装
+ \item 記述したプログラムをPostScriptのプログラムに埋め込む仕組みの実装
+\end{itemize}
+
+成果物のほとんど全ての部分は以下のURIで公開している。
+
+\texttt{https://github.com/pi8027/formalized-postscript}
+
+\end{document}

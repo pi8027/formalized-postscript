@@ -1,0 +1,10 @@
+LATEX = uplatex
+LATEXFLAGS = --interaction=nonstopmode --kanji=uptex --kanji-internal=uptex
+DVIPDFM = dvipdfmx
+DVIPDFMFLAGS = -f uptex-ipaex.map
+DVIPS = dvips
+DVIPSFLAGS = -P pdf
+
+LaTeXDocument(poster, poster)
+
+.DEFAULT : poster.pdf
