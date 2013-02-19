@@ -3,4 +3,4 @@ open build/LaTeX
 
 DefineCommandVars()
 
-.SUBDIRS: .
+.SUBDIRS: . 2013-01-22
