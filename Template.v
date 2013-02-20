@@ -361,6 +361,8 @@ Tactic Notation "evaltemplate" constr(n) constr(tvs) constr(tcs) :=
       evaltemplate_eapply vs n tvs tcs
     | |- exists _, _ /\ (?vs, _) |=>* _ =>
       evaltemplate_eapply vs n tvs tcs
+    | |- exists _, _ /\ exists _, _ /\ (?vs, _) |=>* _ =>
+      evaltemplate_eapply vs n tvs tcs
   end.
 
 Tactic Notation "evaltemplate'" constr(n) constr(tvs) constr(tcs) :=
@@ -368,5 +370,7 @@ Tactic Notation "evaltemplate'" constr(n) constr(tvs) constr(tcs) :=
     | |- (?vs, _) |=>* _ =>
       evaltemplate_evalpartial' vs n tvs tcs
     | |- exists _, _ /\ (?vs, _) |=>* _ =>
+      evaltemplate_evalpartial' vs n tvs tcs
+    | |- exists _, _ /\ exists _, _ /\ (?vs, _) |=>* _ =>
       evaltemplate_evalpartial' vs n tvs tcs
   end; simpl.
