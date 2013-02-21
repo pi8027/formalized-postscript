@@ -1,6 +1,6 @@
 Require Import
   Coq.Relations.Relations Coq.Relations.Relation_Operators Omega
-  Ssreflect.ssreflect Ssreflect.ssrnat Ssreflect.seq.
+  Ssreflect.ssreflect Ssreflect.ssrbool Ssreflect.ssrnat Ssreflect.seq.
 
 Lemma nseq_app : forall A n m (a : A), nseq n a ++ nseq m a = nseq (n + m) a.
 Proof.
@@ -40,4 +40,21 @@ Notation sb_decidable a := ({a}+{~a}).
 Ltac subst_evars := match goal with |- _ => idtac end.
 
 (* ssromega *)
-Ltac ssromega := rewrite ?NatTrec.trecE -?plusE -?minusE -?multE; omega.
+Ltac arith_hypo_ssrnat2coqnat :=
+  match goal with
+    | H : context [?L < ?R] |- _ => move/ltP: H => H
+    | H : context [addn ?L ?R] |- _ => rewrite -plusE in H
+    | H : context [muln ?L ?R] |- _ => rewrite -multE in H
+  end.
+
+Ltac arith_goal_ssrnat2coqnat :=
+  rewrite ?NatTrec.trecE -?plusE -?minusE -?multE;
+  match goal with
+    | |- is_true (_ < _) => apply/ltP
+    | |- _ => idtac
+  end.
+
+Ltac ssromega :=
+  repeat arith_hypo_ssrnat2coqnat ;
+  arith_goal_ssrnat2coqnat ;
+  omega.

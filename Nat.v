@@ -1,7 +1,8 @@
 Require Import
-  Coq.Arith.Compare_dec Coq.Arith.Even Coq.Arith.Peano_dec
+  Coq.Arith.Compare_dec Coq.Arith.Even Coq.Arith.Peano_dec Coq.Arith.Wf_nat
   Coq.Relations.Relations Coq.Program.Basics
-  Ssreflect.ssreflect Ssreflect.ssrnat Ssreflect.seq Ssreflect.div
+  Ssreflect.ssreflect Ssreflect.ssrbool
+  Ssreflect.ssrnat Ssreflect.seq Ssreflect.div
   FormalPS.stdlib_ext FormalPS.Core FormalPS.Template FormalPS.Bool.
 
 (*
@@ -372,13 +373,13 @@ Notation instnat_le_proof := (proj2_sig exists_instnat_le).
 instnat_divmod:
   割り算を行い、商と余りを計算する命令。
 *)
-Lemma exists_instnat_divmod_iter :
-  { instnat_divmod_iter : inst |
+Lemma exists_instnat_divmod_part :
+  { instnat_divmod_part : inst |
     forall n m q i1 i2 i3 i4 vs cs,
     instnat_spec n i1 -> instnat_spec m.+1 i2 -> instnat_spec q i3 ->
     exists i1' : inst, instnat_spec (n - m.+1) i1' /\
     exists i3' : inst, instnat_spec q.+1 i3' /\
-    (i4 :: i3 :: i2 :: i1 :: vs, instnat_divmod_iter :: cs) |=>*
+    (i4 :: i3 :: i2 :: i1 :: vs, instnat_divmod_part :: cs) |=>*
     (if m.+1 <= n
       then (i4 :: i3' :: i2 :: i1' :: vs, i4 :: cs)
       else (i1 :: i3 :: vs, cs))
@@ -417,13 +418,60 @@ Proof.
     evalauto; eauto.
 Defined.
 
+Lemma exists_instnat_divmod_tail :
+  { instnat_divmod : inst |
+    forall n m q i1 i2 i3 vs cs,
+    instnat_spec n i1 -> instnat_spec m.+1 i2 -> instnat_spec q i3 ->
+    exists i4 : inst, instnat_spec (q + n %/ m.+1) i4 /\
+    exists i5 : inst, instnat_spec (n %% m.+1) i5 /\
+    (i3 :: i2 :: i1 :: vs, instnat_divmod :: cs) |=>* (i5 :: i4 :: vs, cs) }.
+Proof.
+  eexists=> n m q i1 i2 i3 vs cs H H0 H1.
+  evalpartial' evalpush.
+  evalpartial' evalcopy.
+  evalpartial evalexec.
+  move: i1 H q i3 H1.
+  apply (gt_wf_rec n).
+  clear n.
+  move=> n IHn i1 H q i3 H1.
+  edestruct (proj2_sig exists_instnat_divmod_part n m q i1 i2 i3)
+    as [i4 [H2 [i5 [H3 H4]]]]; auto.
+  evalpartial H4.
+  clear H4.
+  case: ifP => H4.
+  - clear i1 i3 H H0 H1.
+    have H5: (n > n - m.+1)%coq_nat by ssromega.
+    edestruct (IHn (n - m.+1) H5 i4 H2 q.+1 i5 H3) as [i6 [H6 [i7 [H7 H8]]]].
+    evalpartial H8.
+    clear i2 i4 i5 H2 H3 H8 IHn.
+    have H: n = n - m.+1 + m.+1 by ssromega.
+    evalauto.
+    - replace (q + n %/ m.+1) with (q.+1 + (n - m.+1) %/ m.+1); first done.
+      rewrite addSnnS {2}H (addnC _ m.+1) -{3}(mul1n m.+1) divnMDl; auto.
+    - replace (n %% m.+1) with ((n - m.+1) %% m.+1); first done.
+      by rewrite {2}H addnC -{3}(mul1n m.+1) modnMDl.
+  - evalauto.
+    - replace (q + n %/ m.+1) with q; first done.
+      rewrite -{1}(addn0 q); f_equal; rewrite divn_small; ssromega.
+    - replace (n %% m.+1) with n; first done.
+      rewrite modn_small //=; ssromega.
+Defined.
+
 Lemma exists_instnat_divmod :
   { instnat_divmod : inst |
     forall n m i1 i2 vs cs,
     instnat_spec n i1 -> instnat_spec m.+1 i2 ->
-    exists i3 : inst, instnat_spec (divn n m) i3 /\
-    exists i4 : inst, instnat_spec (modn n m) i4 /\
+    exists i3 : inst, instnat_spec (n %/ m.+1) i3 /\
+    exists i4 : inst, instnat_spec (n %% m.+1) i4 /\
     (i2 :: i1 :: vs, instnat_divmod :: cs) |=>* (i4 :: i3 :: vs, cs) }.
 Proof.
   eexists=> n m i1 i2 vs cs H H0.
-Abort.
+  evalpartial' evalpush.
+  edestruct (proj2_sig exists_instnat_divmod_tail n m 0 i1 i2)
+    as [i3 [H1 [i4 [H2 H3]]]]; auto.
+  evalpartial H3.
+  by evalauto.
+Defined.
+
+Notation instnat_divmod := (proj1_sig exists_instnat_divmod).
+Notation instnat_divmod_proof := (proj2_sig exists_instnat_divmod).
