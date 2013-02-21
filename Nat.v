@@ -444,17 +444,15 @@ Proof.
     edestruct (IHn (n - m.+1) H5 i4 H2 q.+1 i5 H3) as [i6 [H6 [i7 [H7 H8]]]].
     evalpartial H8.
     clear i2 i4 i5 H2 H3 H8 IHn.
-    have H: n = n - m.+1 + m.+1 by ssromega.
+    replace n with (m.+1 + (n - m.+1)) by ssromega.
     evalauto.
-    - replace (q + n %/ m.+1) with (q.+1 + (n - m.+1) %/ m.+1); first done.
-      rewrite addSnnS {2}H (addnC _ m.+1) -{3}(mul1n m.+1) divnMDl; auto.
-    - replace (n %% m.+1) with ((n - m.+1) %% m.+1); first done.
-      by rewrite {2}H addnC -{3}(mul1n m.+1) modnMDl.
-  - evalauto.
-    - replace (q + n %/ m.+1) with q; first done.
-      rewrite -{1}(addn0 q); f_equal; rewrite divn_small; ssromega.
-    - replace (n %% m.+1) with n; first done.
-      rewrite modn_small //=; ssromega.
+    - rewrite -{1}(mul1n m.+1) divnMDl //= add1n -addSnnS //.
+    - rewrite -{1}(mul1n m.+1) modnMDl //.
+  - clear i2 i4 i5 H0 H2 H3 IHn.
+    evalauto.
+    - rewrite leqNgt in H4.
+      by rewrite (divn_small (negbFE H4)) addn0.
+    - rewrite modn_small //=; ssromega.
 Defined.
 
 Lemma exists_instnat_divmod :
