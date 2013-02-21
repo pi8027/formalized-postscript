@@ -444,10 +444,10 @@ Proof.
     edestruct (IHn (n - m.+1) H5 i4 H2 q.+1 i5 H3) as [i6 [H6 [i7 [H7 H8]]]].
     evalpartial H8.
     clear i2 i4 i5 H2 H3 H8 IHn.
-    replace n with (m.+1 + (n - m.+1)) by ssromega.
+    replace n with (1 * m.+1 + (n - m.+1)) by ssromega.
     evalauto.
-    - rewrite -{1}(mul1n m.+1) divnMDl //= add1n -addSnnS //.
-    - rewrite -{1}(mul1n m.+1) modnMDl //.
+    - rewrite divnMDl //= add1n -addSnnS //.
+    - rewrite modnMDl //.
   - clear i2 i4 i5 H0 H2 H3 IHn.
     evalauto.
     - rewrite leqNgt in H4.
