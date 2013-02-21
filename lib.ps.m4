@@ -33,6 +33,7 @@
 /natpred   EMBEDPUSH(instnat_pred) def
 /natsub    EMBEDPUSH(instnat_sub) def
 /natle     EMBEDPUSH(instnat_le) def
+/natdivmod EMBEDPUSH(instnat_divmod) def
 
 /natenc {
     EMBEDPUSH(instnat 0) exch { natsucc } repeat
