@@ -11,9 +11,8 @@ Definition rev3 : inst := instseqc
 Goal forall i1 i2 i3 vs cs,
   (i3 :: i2 :: i1 :: vs, rev3 :: cs) |=>* (i1 :: i2 :: i3 :: vs, cs).
 Proof.
-  move=> i1 i2 i3 vs cs.
-  evalpartial evalseqc.
-  simpl.
+  move => i1 i2 i3 vs cs.
+  evalpartial evalseqc => /=.
   evalpartial evalquote.
   evalpartial evalswap.
   evalpartial evalquote.
@@ -30,7 +29,7 @@ Qed.
 Goal forall i1 i2 i3 vs cs,
   (i3 :: i2 :: i1 :: vs, rev3 :: cs) |=>* (i1 :: i2 :: i3 :: vs, cs).
 Proof.
-  move=> i1 i2 i3 vs cs.
+  move => i1 i2 i3 vs cs.
   evalauto.
 Qed.
 

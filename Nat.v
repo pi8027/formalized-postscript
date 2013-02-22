@@ -5,6 +5,8 @@ Require Import
   Ssreflect.ssrnat Ssreflect.seq Ssreflect.div
   FormalPS.stdlib_ext FormalPS.Core FormalPS.Template FormalPS.Bool.
 
+Set Implicit Arguments.
+
 (*
 instnat_spec:
   自然数の仕様。
@@ -18,9 +20,8 @@ exists_instnat:
 *)
 Lemma exists_instnat : forall n, { i : inst | instnat_spec n i }.
 Proof.
-  elim=> [| n [i H]]; eexists=> i2 vs cs.
-  - simpl.
-    evalpartial' evalpop.
+  elim => [| n [i H]]; eexists => i2 vs cs /=.
+  - evalpartial' evalpop.
     evalpartial evalpush.
     evalauto.
   - evalpartial' evalcopy.
@@ -42,7 +43,7 @@ Lemma exists_instnat_repeat :
     forall n i1 i2 vs cs, instnat_spec n i2 ->
     (i1 :: vs, i2 :: instnat_repeat :: cs) |=>* (vs, nseq n i1 ++ cs) }.
 Proof.
-  eexists=> n i1 i2 vs cs H.
+  eexists => n i1 i2 vs cs H.
   evalpartial H.
   evalpartial evalexec.
   apply evalseqc_nseq.
@@ -60,20 +61,20 @@ instnat_eqmap:
 Lemma instnat_eqmap :
   forall n m i, instnat_spec n i -> instnat_spec m i -> n = m.
 Proof.
-  move=> n m i1 H0 H1.
+  move => n m i1 H0 H1.
   have: (([::], nseq n instpop) |=>* ([::], nseq m instpop) \/
       ([::], nseq m instpop) |=>* ([::], nseq n instpop)).
-    apply (eval_semi_uniqueness ([:: instpop], [:: i1; instexec])).
+    apply (@eval_semi_uniqueness ([:: instpop], [:: i1; instexec])).
     - evalpartial (eval_instnat_repeat n).
       rtcrefl.
       apply cats0.
     - evalpartial (eval_instnat_repeat m).
       rtcrefl.
       apply cats0.
-  clear=> H.
+  clear => H.
   have: (nseq n instpop = nseq m instpop).
-    by destruct H, n, m; inversion H; (inversion H0 || simpl; f_equal).
-  clear; move: n m; elim=> [ | n IHn]; case=> [ | m] H; inversion H; auto.
+    by destruct H, n, m; inversion H => /=; (inversion H0 || f_equal).
+  clear; move: n m; elim => [ | n IHn]; case => [ | m] H; inversion H; auto.
 Qed.
 
 (*
@@ -86,8 +87,8 @@ Lemma exists_instnat_succ :
     exists i2 : inst, instnat_spec n.+1 i2 /\
     (i1 :: vs, instnat_succ :: cs) |=>* (i2 :: vs, cs) }.
 Proof.
-  eexists=> n i1 vs cs H; eexists; split.
-  - move=> i2 vs' cs'.
+  eexists => n i1 vs cs H; eexists; split.
+  - move => i2 vs' cs'.
     evalpartial' evalcopy.
     evalpartial' H.
     apply evalsnoc.
@@ -111,13 +112,13 @@ Lemma exists_instnat_add_tail :
     exists i3 : inst, instnat_spec (NatTrec.add n m) i3 /\
     (i2 :: i1 :: vs, instnat_add_tail :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
-  eexists=> n m i1 i2 vs cs H H0.
+  eexists => n m i1 i2 vs cs H H0.
   evalpartial' evalswap.
   evalpartial' evalpush.
   evalpartial' evalswap.
   evalpartial' evalexec.
   evalpartial (eval_instnat_repeat n).
-  clear H i1; move: n m i2 H0; elim=> [ | n IH] m i1 H; simpl.
+  clear H i1; move: n m i2 H0; elim => [ | n IH] m i1 H /=.
   - by evalauto.
   - edestruct (instnat_succ_proof m i1) as [i2 [H1 H2]]; auto.
     evalpartial H2.
@@ -151,14 +152,14 @@ Lemma exists_instnat_mult_tail :
     (i2 :: i1 :: vs, instnat_mult_tail :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
   move: (0) (instnat 0) (eval_instnat 0) => o i1 H.
-  eexists=> n m i2 i3 vs cs H0 H1.
+  eexists => n m i2 i3 vs cs H0 H1.
   do 2 evalpartial' evalpush.
   evaltemplate' 4
     [:: insttpair (insttpush (instthole 2)) (instthole 1); instthole 0]
     [:: instthole 3].
   evalpartial (eval_instnat_repeat n).
   clear i2 H0.
-  move: n o i1 i3 H H1; elim=> [ | n IH] o i1 i2 H H0; simpl.
+  move: n o i1 i3 H H1; elim => [ | n IH] o i1 i2 H H0 //=.
   - evalauto.
     eauto.
   - evalauto.
@@ -195,13 +196,13 @@ Lemma exists_instnat_even_tail :
     instbool_spec (if even_odd_dec n then b else negb b) i3 /\
     (i2 :: i1 :: vs, instnat_even_tail :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
-  eexists=> b n i1 i2 vs cs H H0.
+  eexists => b n i1 i2 vs cs H H0.
   evalpartial' evalpush.
   evalpartial' evalswap.
   evalpartial' evalexec.
   evalpartial (eval_instnat_repeat n).
   clear H0 i2.
-  move: n b i1 H; elim=> [ | n IH] b i1 H.
+  move: n b i1 H; elim => [ | n IH] b i1 H.
   - by evalauto.
   - edestruct (evalnot b i1) as [i2 [H0 H1]]; auto.
     evalpartial H1; clear i1 H H1.
@@ -223,7 +224,7 @@ Lemma exists_instnat_even :
     exists i2 : inst, instbool_spec (even_odd_dec n) i2 /\
     (i1 :: vs, instnat_even :: cs) |=>* (i2 :: vs, cs) }.
 Proof.
-  eexists=> n i1 vs cs H.
+  eexists => n i1 vs cs H.
   evalpartial' evalpush.
   evalpartial' evalswap.
   edestruct (instnat_even_proof_tail true n) as [i2 [H0 H1]]; eauto.
@@ -245,7 +246,7 @@ Lemma exists_instnat_iszero :
     instbool_spec (eqn 0 n) i2 /\
     (i1 :: vs, instnat_iszero :: cs) |=>* (i2 :: vs, cs) }.
 Proof.
-  eexists=> n i1 vs cs H.
+  eexists => n i1 vs cs H.
   exists (if eqn 0 n then insttrue else instfalse)%GEN_IF; split.
   - case (eqn 0 n); auto.
   - evalpartial' (evalpush insttrue).
@@ -255,14 +256,12 @@ Proof.
     evalpartial' evalexec.
     evalpartial (eval_instnat_repeat n).
     clear i1 H.
-    move: n insttrue; elim.
-    - simpl=> i.
-      evalauto.
-    - move=> n IH i; simpl.
-      move: IH (IH instfalse) => _ IH.
+    move: n insttrue; elim => [| n IHn] i /=.
+    - evalauto.
+    - move: IHn (IHn instfalse) => _ IHn.
       evalpartial' evalpop.
       evalpartial evalpush.
-      case (eqn 0 n) in IH; apply IH.
+      case (eqn 0 n) in IHn; apply IHn.
 Defined.
 
 Notation instnat_iszero := (proj1_sig exists_instnat_iszero).
@@ -279,20 +278,19 @@ Lemma exists_instnat_pred_tail :
     exists i4 : inst, instnat_spec (n + m - 1) i4 /\
     (i3 :: i2 :: i1 :: vs, instnat_pred_tail :: cs) |=>* (i4 :: vs, cs) }.
 Proof.
-  eexists=> n m i1 i2 i3 vs cs H H0 H1.
+  eexists => n m i1 i2 i3 vs cs H H0 H1.
   evalpartial' evalpush.
   evalpartial' evalswap.
   evalpartial evalpair.
   evalpartial' evalexec.
   evalpartial (eval_instnat_repeat m).
   clear H1 i3.
-  move: m n i1 i2 H H0; elim=> [ | m IH] n i1 i2 H H0.
+  move: m n i1 i2 H H0; elim => [ | m IH] n i1 i2 H H0 /=.
   - evalpartial' evalswap.
     evalpartial evalpop.
     evalauto.
     by rewrite addn0.
-  - simpl.
-    evalpartial' evalpop; clear i2 H0.
+  - evalpartial' evalpop; clear i2 H0.
     evalpartial' evalcopy.
     edestruct (instnat_succ_proof n i1) as [i2 [H0 H1]]; auto.
     evalpartial' H1; clear H1.
@@ -310,7 +308,7 @@ Lemma exists_instnat_pred :
     exists i2 : inst, instnat_spec (n - 1) i2 /\
     (i1 :: vs, instnat_pred :: cs) |=>* (i2 :: vs, cs) }.
 Proof.
-  eexists=> n i1 vs cs H.
+  eexists => n i1 vs cs H.
   do 2 (evalpartial' evalpush; evalpartial' evalswap).
   edestruct (instnat_pred_proof_tail 0 n) as [i2 [H0 H1]]; eauto.
 Defined.
@@ -328,16 +326,15 @@ Lemma exists_instnat_sub :
     exists i3 : inst, instnat_spec (n - m) i3 /\
     (i2 :: i1 :: vs, instnat_sub :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
-  eexists=> n m i1 i2 vs cs H H0.
+  eexists => n m i1 i2 vs cs H H0.
   evalpartial' evalpush.
   evalpartial' evalswap.
   evalpartial' evalexec.
   evalpartial (eval_instnat_repeat m).
-  clear i2 H0; move: m n i1 H; elim=> [ | m IH] n i1 H.
+  clear i2 H0; move: m n i1 H; elim => [ | m IH] n i1 H /=.
   - evalauto.
     by rewrite subn0.
-  - simpl.
-    edestruct (instnat_pred_proof n i1) as [i2 [H1 H2]]; auto.
+  - edestruct (instnat_pred_proof n i1) as [i2 [H1 H2]]; auto.
     evalpartial H2; clear H2.
     edestruct (IH (n - 1) i2) as [i3 [H2 H3]]; auto.
     evalpartial H3.
@@ -358,13 +355,13 @@ Lemma exists_instnat_le :
     exists i3 : inst, instbool_spec (n <= m) i3 /\
     (i2 :: i1 :: vs, instnat_le :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
-  eexists=> n m i1 i2 vs cs H H0.
+  eexists => n m i1 i2 vs cs H H0.
   edestruct (instnat_sub_proof n m i1 i2) as [i3 [H1 H2]]; auto.
   evalpartial' H2; clear i1 i2 H H0 H2.
   edestruct (instnat_iszero_proof (n - m) i3) as [i1 [H H0]]; auto.
   evalpartial H0; clear i3 H0 H1.
   evalauto.
-  move: H; rewrite /leq; case: (n - m)=> //=.
+  move: H; rewrite /leq; case: (n - m) => //=.
 Defined.
 
 Notation instnat_le := (proj1_sig exists_instnat_le).
@@ -386,7 +383,7 @@ Lemma exists_instnat_divmod_part :
       else (i1 :: i3 :: vs, cs))
   }.
 Proof.
-  eexists=> n m q i1 i2 i3 i4 vs cs H H0 H1.
+  eexists => n m q i1 i2 i3 i4 vs cs H H0 H1.
   evaltemplate' 4
     [:: instthole 3; instthole 2;
         instthole 0; instthole 1; instthole 2; instthole 3 ]
@@ -427,13 +424,13 @@ Lemma exists_instnat_divmod_tail :
     exists i5 : inst, instnat_spec (n %% m.+1) i5 /\
     (i3 :: i2 :: i1 :: vs, instnat_divmod :: cs) |=>* (i5 :: i4 :: vs, cs) }.
 Proof.
-  eexists=> n m q i1 i2 i3 vs cs H H0 H1.
+  eexists => n m q i1 i2 i3 vs cs H H0 H1.
   evalpartial' evalpush.
   evalpartial' evalcopy.
   evalpartial evalexec.
   move: n i1 H q i3 H1.
   refine (well_founded_ind well_founded_lt _ _).
-  move=> n IHn i1 H q i3 H1.
+  move => n IHn i1 H q i3 H1.
   edestruct (proj2_sig exists_instnat_divmod_part n m q i1 i2 i3)
     as [i4 [H2 [i5 [H3 H4]]]]; auto.
   evalpartial H4.
@@ -463,7 +460,7 @@ Lemma exists_instnat_divmod :
     exists i4 : inst, instnat_spec (n %% m.+1) i4 /\
     (i2 :: i1 :: vs, instnat_divmod :: cs) |=>* (i4 :: i3 :: vs, cs) }.
 Proof.
-  eexists=> n m i1 i2 vs cs H H0.
+  eexists => n m i1 i2 vs cs H H0.
   evalpartial' evalpush.
   edestruct (proj2_sig exists_instnat_divmod_tail n m 0 i1 i2)
     as [i3 [H1 [i4 [H2 H3]]]]; auto.
@@ -488,7 +485,7 @@ Lemma exists_instnat_gcd_iter :
       then (i1 :: vs, cs)
       else (i3 :: i4 :: i2 :: vs, i3 :: cs)) }.
 Proof.
-  eexists=> n m i1 i2 i3 vs cs H H0.
+  eexists => n m i1 i2 i3 vs cs H H0.
   evalpartial' evalswap.
   evalpartial' evalcopy.
   edestruct (instnat_iszero_proof m i2) as [i4 [H1 H2]]; auto.
@@ -496,13 +493,11 @@ Proof.
   do 2 evalpartial' evalpush.
   evalpartial (evalexecif (eqn 0 m) i4).
   move: m i2 i4 H0 H1.
-  case=> //=.
-  - move=> i2 _ H1 _.
-    evalpartial' evalpop.
+  case => //= [ | m] i2 _ H0 _.
+  - evalpartial' evalpop.
     evalpartial evalpop.
     by evalauto.
-  - move=> m i2 _ H0 _.
-    evaltemplate' 3
+  - evaltemplate' 3
       [:: instthole 0; instthole 2; instthole 0; instthole 1]
       (Nil instt).
     edestruct (instnat_divmod_proof n m i1 i2) as [i4 [H1 [i5 [H2 H3]]]]; auto.
@@ -518,7 +513,7 @@ Lemma exists_instnat_gcd :
     exists i3 : inst, instnat_spec (gcdn n m) i3 /\
     (i2 :: i1 :: vs, instnat_gcd :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
-  eexists=> n m i1 i2 vs cs H H0.
+  eexists => n m i1 i2 vs cs H H0.
   evalpartial' evalpush.
   evalpartial' evalcopy.
   evalpartial evalexec.
@@ -534,11 +529,11 @@ Proof.
   edestruct (proj2_sig exists_instnat_gcd_iter n m i1 i2) as [i3 [H1 H2]]; auto.
   evalpartial H2; clear H2.
   move: m IH H0 H1.
-  rewrite (lock exists_instnat_gcd_iter); case=> //=.
-  - move=> IH H0 H1.
+  rewrite (lock exists_instnat_gcd_iter); case => //=.
+  - move => IH H0 H1.
     evalauto.
     by rewrite gcdn0.
-  - move=> m IH H0 H1.
+  - move => m IH H0 H1.
     edestruct (IH (m.+1, n %% m.+1)) as [i4 [H2 H3]] => /=.
     - clear; case: ifP.
       - move: (ltn_pmod n (ltn0Sn m)) => H H0.
@@ -547,18 +542,16 @@ Proof.
         - rewrite add0n -addnA add1n -addSn -addnS (addnC n) leq_add2l.
           apply leq_mod.
         - rewrite leqNgt in H.
-          move: (negbFE H)=> H0.
-          rewrite !add0n (addnC n) ltn_add2l.
+          move: (negbFE H) => H0.
           have H1: n = 1 * m.+1 + (n - m.+1) by ssromega.
-          rewrite {1}H1 modnMDl.
-          apply leq_ltn_trans with (n - m.+1).
-          - apply leq_mod.
-          - ssromega.
+          rewrite !add0n (addnC n) ltn_add2l {1}H1 modnMDl.
+          apply (leq_ltn_trans (leq_mod (n - m.+1) m.+1)).
+          ssromega.
     - apply H0.
     - apply H1.
     - evalpartial H3.
       evalauto.
-      move: H2=> /=.
+      move: H2 => /=.
       by rewrite gcdn_modr gcdnC.
 Defined.
 
