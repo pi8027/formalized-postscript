@@ -159,7 +159,7 @@ Proof.
     [:: instthole 3].
   evalpartial (eval_instnat_repeat n).
   clear i2 H0.
-  move: n o i1 i3 H H1; elim => [ | n IH] o i1 i2 H H0 //=.
+  move: n o i1 i3 H H1; elim => [ | n IH] o i1 i2 H H0 /=.
   - evalauto.
     eauto.
   - evalauto.
@@ -361,7 +361,7 @@ Proof.
   edestruct (instnat_iszero_proof (n - m) i3) as [i1 [H H0]]; auto.
   evalpartial H0; clear i3 H0 H1.
   evalauto.
-  move: H; rewrite /leq; case: (n - m) => //=.
+  by move: H; rewrite /leq; case: (n - m).
 Defined.
 
 Notation instnat_le := (proj1_sig exists_instnat_le).
@@ -443,13 +443,13 @@ Proof.
     clear i2 i4 i5 H2 H3 H8 IHn.
     replace n with (1 * m.+1 + (n - m.+1)) by ssromega.
     evalauto.
-    - rewrite divnMDl //= add1n -addSnnS //.
-    - rewrite modnMDl //.
+    - by rewrite divnMDl // add1n -addSnnS.
+    - by rewrite modnMDl.
   - clear i2 i4 i5 H0 H2 H3 IHn.
     evalauto.
     - rewrite leqNgt in H4.
       by rewrite (divn_small (negbFE H4)) addn0.
-    - rewrite modn_small //=; ssromega.
+    - rewrite modn_small //; ssromega.
 Defined.
 
 Lemma exists_instnat_divmod :
@@ -493,7 +493,7 @@ Proof.
   do 2 evalpartial' evalpush.
   evalpartial (evalexecif (eqn 0 m) i4).
   move: m i2 i4 H0 H1.
-  case => //= [ | m] i2 _ H0 _.
+  case => /= [ | m] i2 _ H0 _.
   - evalpartial' evalpop.
     evalpartial evalpop.
     by evalauto.
@@ -529,7 +529,7 @@ Proof.
   edestruct (proj2_sig exists_instnat_gcd_iter n m i1 i2) as [i3 [H1 H2]]; auto.
   evalpartial H2; clear H2.
   move: m IH H0 H1.
-  rewrite (lock exists_instnat_gcd_iter); case => //=.
+  rewrite (lock exists_instnat_gcd_iter); case => /=.
   - move => IH H0 H1.
     evalauto.
     by rewrite gcdn0.

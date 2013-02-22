@@ -16,8 +16,7 @@ Inductive listindex : list A -> nat -> A -> Prop :=
 Theorem lift_listindex :
   forall xs ys n a, listindex ys n a -> listindex (xs ++ ys) (length xs + n) a.
 Proof.
-  elim => [ | x xs IH ] //=.
-  constructor; auto.
+  by elim => //= x xs IH ys n y H; rewrite addSn; apply lisucc, IH.
 Qed.
 
 Theorem dec_listindex :
@@ -115,13 +114,13 @@ Theorem lift_fill_template :
   fill_template (xs ++ ys) (lift_instt (length xs) t) i.
 Proof.
   move => xs ys; elim; try by move => i H; inversion H; constructor.
-  - move => t IH i H //=.
+  - move => t IH i H /=.
     inversion H.
     constructor; auto.
-  - move => t1 IH1 t2 IH2 i H //=.
+  - move => t1 IH1 t2 IH2 i H /=.
     inversion H.
     constructor; auto.
-  - move => n i H //=.
+  - move => n i H /=.
     inversion H.
     by constructor; apply lift_listindex.
 Qed.
@@ -193,7 +192,7 @@ Lemma exists_inst_listindex_iter :
   (instseqv ys :: xs ++ vs, inst_listindex :: cs) |=>*
   (x :: ys ++ xs ++ vs, cs) }.
 Proof.
-  elim => [ | n [i IH]]; eexists => xs x ys H vs cs; inversion H => //=.
+  elim => [ | n [i IH]]; eexists => xs x ys H vs cs; inversion H => /=.
   - evalpartial' evalquote.
     evalpartial' evalswap.
     evalpartial' evalquote.
@@ -309,7 +308,7 @@ Proof.
       move: tcs cs' H1; elim.
       - by move => cs' H; inversion H.
       - move => tc tcs IH cs' H i t H0.
-        by inversion H=> //=; apply IH; auto; constructor.
+        by inversion H=> /=; apply IH; auto; constructor.
     move: {+} (fold_left insttpair tcs (instt_of_inst instnop)) (instseqc cs').
     clear tcs cs' H1; move: tvs vs' H0; elim.
     - by move => vs' H t i H0; inversion H.
