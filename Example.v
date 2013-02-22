@@ -62,6 +62,7 @@ Theorem rev3_exists' :
 Proof.
   eexists => i1 i2 i3 vs cs.
   evaltemplate 3 [:: instthole 2; instthole 1; instthole 0] (@nil instt).
+  evalauto.
 Defined.
 
 (*

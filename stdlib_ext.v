@@ -1,6 +1,9 @@
 Require Import
   Coq.Relations.Relations Coq.Relations.Relation_Operators Omega
-  Ssreflect.ssreflect Ssreflect.ssrbool Ssreflect.ssrnat Ssreflect.seq.
+  Ssreflect.ssreflect Ssreflect.ssrfun Ssreflect.ssrbool Ssreflect.eqtype
+  Ssreflect.ssrnat Ssreflect.seq.
+
+Set Implicit Arguments.
 
 Lemma nseq_app : forall A n m (a : A), nseq n a ++ nseq m a = nseq (n + m) a.
 Proof.
@@ -32,6 +35,35 @@ Proof.
   auto.
   clear=> x y z' H H0 IH H2; apply rt1n_trans with y; auto.
 Qed.
+
+(* well-founded induction *)
+Definition ltof A (f : A -> nat) (a b : A) := (f a < f b)%nat.
+
+Theorem well_founded_ltof :
+  forall (A : Type) (f : A -> nat), well_founded (ltof f).
+Proof.
+  move=> A f x.
+  move: {2}(f x) (leqnn (f x)) => n.
+  move: n x.
+  elim.
+  - move=> x.
+    rewrite (leqn0 (f x)).
+    case/eqP => H.
+    constructor; rewrite /ltof H => y.
+    rewrite ltn0 => H0.
+    case: (not_false_is_true H0).
+  - move=> n IHn x H.
+    constructor; rewrite /ltof=> y H0.
+    apply IHn.
+    rewrite -ltnS.
+    apply (leq_trans H0 H).
+Defined.
+
+Theorem well_founded_lt : well_founded (fun n m => n < m).
+Proof.
+  move: (well_founded_ltof id).
+  rewrite /ltof //.
+Defined.
 
 (* sb_decidable *)
 Notation sb_decidable a := ({a}+{~a}).

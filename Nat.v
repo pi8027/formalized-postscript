@@ -1,7 +1,7 @@
 Require Import
   Coq.Arith.Compare_dec Coq.Arith.Even Coq.Arith.Peano_dec Coq.Arith.Wf_nat
   Coq.Relations.Relations Coq.Program.Basics
-  Ssreflect.ssreflect Ssreflect.ssrbool
+  Ssreflect.ssreflect Ssreflect.ssrfun Ssreflect.ssrbool
   Ssreflect.ssrnat Ssreflect.seq Ssreflect.div
   FormalPS.stdlib_ext FormalPS.Core FormalPS.Template FormalPS.Bool.
 
@@ -95,6 +95,7 @@ Proof.
       [:: insttpair insttcopy
         (insttpair (instthole 0) (insttpair insttswap insttcons))]
       (Nil instt).
+    evalauto.
 Defined.
 
 Notation instnat_succ := (proj1_sig exists_instnat_succ).
@@ -241,12 +242,12 @@ Lemma exists_instnat_iszero :
   { instnat_iszero : inst |
     forall n i1 vs cs, instnat_spec n i1 ->
     exists i2 : inst,
-    instbool_spec (eq_nat_dec 0 n) i2 /\
+    instbool_spec (eqn 0 n) i2 /\
     (i1 :: vs, instnat_iszero :: cs) |=>* (i2 :: vs, cs) }.
 Proof.
   eexists=> n i1 vs cs H.
-  exists (if eq_nat_dec 0 n then insttrue else instfalse)%GEN_IF; split.
-  - case (eq_nat_dec 0 n); auto.
+  exists (if eqn 0 n then insttrue else instfalse)%GEN_IF; split.
+  - case (eqn 0 n); auto.
   - evalpartial' (evalpush insttrue).
     evalpartial' evalswap.
     evalpartial' evalpush.
@@ -261,7 +262,7 @@ Proof.
       move: IH (IH instfalse) => _ IH.
       evalpartial' evalpop.
       evalpartial evalpush.
-      case (eq_nat_dec 0 n) in IH; apply IH.
+      case (eqn 0 n) in IH; apply IH.
 Defined.
 
 Notation instnat_iszero := (proj1_sig exists_instnat_iszero).
@@ -430,9 +431,8 @@ Proof.
   evalpartial' evalpush.
   evalpartial' evalcopy.
   evalpartial evalexec.
-  move: i1 H q i3 H1.
-  apply (gt_wf_rec n).
-  clear n.
+  move: n i1 H q i3 H1.
+  refine (well_founded_ind well_founded_lt _ _).
   move=> n IHn i1 H q i3 H1.
   edestruct (proj2_sig exists_instnat_divmod_part n m q i1 i2 i3)
     as [i4 [H2 [i5 [H3 H4]]]]; auto.
@@ -440,7 +440,7 @@ Proof.
   clear H4.
   case: ifP => H4.
   - clear i1 i3 H H0 H1.
-    have H5: (n > n - m.+1)%coq_nat by ssromega.
+    have H5: (n > n - m.+1) by ssromega.
     edestruct (IHn (n - m.+1) H5 i4 H2 q.+1 i5 H3) as [i6 [H6 [i7 [H7 H8]]]].
     evalpartial H8.
     clear i2 i4 i5 H2 H3 H8 IHn.
@@ -473,3 +473,94 @@ Defined.
 
 Notation instnat_divmod := (proj1_sig exists_instnat_divmod).
 Notation instnat_divmod_proof := (proj2_sig exists_instnat_divmod).
+
+(*
+instnat_gcd:
+  ユークリッドの互除法によって最大公約数を計算する。
+*)
+Lemma exists_instnat_gcd_iter :
+  { instnat_gcd_iter : inst |
+    forall n m i1 i2 i3 vs cs,
+    instnat_spec n i1 -> instnat_spec m i2 ->
+    exists i4 : inst, instnat_spec (n %% m) i4 /\
+    (i3 :: i2 :: i1 :: vs, instnat_gcd_iter :: cs) |=>*
+    (if eqn 0 m
+      then (i1 :: vs, cs)
+      else (i3 :: i4 :: i2 :: vs, i3 :: cs)) }.
+Proof.
+  eexists=> n m i1 i2 i3 vs cs H H0.
+  evalpartial' evalswap.
+  evalpartial' evalcopy.
+  edestruct (instnat_iszero_proof m i2) as [i4 [H1 H2]]; auto.
+  evalpartial' H2; clear H2.
+  do 2 evalpartial' evalpush.
+  evalpartial (evalexecif (eqn 0 m) i4).
+  move: m i2 i4 H0 H1.
+  case=> //=.
+  - move=> i2 _ H1 _.
+    evalpartial' evalpop.
+    evalpartial evalpop.
+    by evalauto.
+  - move=> m i2 _ H0 _.
+    evaltemplate' 3
+      [:: instthole 0; instthole 2; instthole 0; instthole 1]
+      (Nil instt).
+    edestruct (instnat_divmod_proof n m i1 i2) as [i4 [H1 [i5 [H2 H3]]]]; auto.
+    evalpartial' H3; clear H3.
+    evaltemplate 4 [:: instthole 3; instthole 0; instthole 2] [:: instthole 3].
+    by evalauto.
+Defined.
+
+Lemma exists_instnat_gcd :
+  { instnat_gcd : inst |
+    forall n m i1 i2 vs cs,
+    instnat_spec n i1 -> instnat_spec m i2 ->
+    exists i3 : inst, instnat_spec (gcdn n m) i3 /\
+    (i2 :: i1 :: vs, instnat_gcd :: cs) |=>* (i3 :: vs, cs) }.
+Proof.
+  eexists=> n m i1 i2 vs cs H H0.
+  evalpartial' evalpush.
+  evalpartial' evalcopy.
+  evalpartial evalexec.
+  move: i1 i2 vs cs H H0.
+  set m' := m.
+  rewrite -/(n, m).1 -/(n, m').2.
+  subst m'.
+  move: (n, m); clear.
+  refine (well_founded_ind (well_founded_ltof
+    (fun p => (if p.1 <= p.2 then 1 else 0) + p.1 + p.2)) _ _).
+  rewrite /ltof.
+  case => n m /= IH i1 i2 vs cs H H0.
+  edestruct (proj2_sig exists_instnat_gcd_iter n m i1 i2) as [i3 [H1 H2]]; auto.
+  evalpartial H2; clear H2.
+  move: m IH H0 H1.
+  rewrite (lock exists_instnat_gcd_iter); case=> //=.
+  - move=> IH H0 H1.
+    evalauto.
+    by rewrite gcdn0.
+  - move=> m IH H0 H1.
+    edestruct (IH (m.+1, n %% m.+1)) as [i4 [H2 H3]] => /=.
+    - clear; case: ifP.
+      - move: (ltn_pmod n (ltn0Sn m)) => H H0.
+        ssromega.
+      - case: ifP => H _.
+        - rewrite add0n -addnA add1n -addSn -addnS (addnC n) leq_add2l.
+          apply leq_mod.
+        - rewrite leqNgt in H.
+          move: (negbFE H)=> H0.
+          rewrite !add0n (addnC n) ltn_add2l.
+          have H1: n = 1 * m.+1 + (n - m.+1) by ssromega.
+          rewrite {1}H1 modnMDl.
+          apply leq_ltn_trans with (n - m.+1).
+          - apply leq_mod.
+          - ssromega.
+    - apply H0.
+    - apply H1.
+    - evalpartial H3.
+      evalauto.
+      move: H2=> /=.
+      by rewrite gcdn_modr gcdnC.
+Defined.
+
+Notation instnat_gcd := (proj1_sig exists_instnat_gcd).
+Notation instnat_gcd_proof := (proj2_sig exists_instnat_gcd).

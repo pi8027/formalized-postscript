@@ -327,7 +327,7 @@ Proof.
   apply evalseqc.
 Defined.
 
-Tactic Notation "evaltemplate_eapply"
+Tactic Notation "evaltemplate_evalpartial"
     constr(vs) constr(n) constr(tvs) constr(tcs) :=
   match eval hnf in (eq_nat_dec n (length (firstn n vs))) with
     | left ?H1 =>
@@ -335,8 +335,8 @@ Tactic Notation "evaltemplate_eapply"
         | inl (exist _ ?vs' ?H2) =>
           match eval compute in (dec_fill_template' (firstn n vs) tcs) with
             | inl (exist _ ?cs' ?H3) =>
-              eapply (proj2_sig (exists_inst_fill_template n tvs tcs)
-                      (firstn n vs) vs' cs' H1 H2 H3)
+              evalpartial (proj2_sig (exists_inst_fill_template n tvs tcs)
+                           (firstn n vs) vs' cs' H1 H2 H3)
           end
       end
   end.
@@ -358,12 +358,12 @@ Tactic Notation "evaltemplate_evalpartial'"
 Tactic Notation "evaltemplate" constr(n) constr(tvs) constr(tcs) :=
   match goal with
     | |- (?vs, _) |=>* _ =>
-      evaltemplate_eapply vs n tvs tcs
+      evaltemplate_evalpartial vs n tvs tcs
     | |- exists _, _ /\ (?vs, _) |=>* _ =>
-      evaltemplate_eapply vs n tvs tcs
+      evaltemplate_evalpartial vs n tvs tcs
     | |- exists _, _ /\ exists _, _ /\ (?vs, _) |=>* _ =>
-      evaltemplate_eapply vs n tvs tcs
-  end.
+      evaltemplate_evalpartial vs n tvs tcs
+  end; simpl.
 
 Tactic Notation "evaltemplate'" constr(n) constr(tvs) constr(tcs) :=
   match goal with
