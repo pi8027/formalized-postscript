@@ -1,6 +1,4 @@
 Require Import
-  Coq.Arith.Compare_dec Coq.Arith.Even Coq.Arith.Peano_dec Coq.Arith.Wf_nat
-  Coq.Relations.Relations Coq.Program.Basics
   Ssreflect.ssreflect Ssreflect.ssrfun Ssreflect.ssrbool
   Ssreflect.ssrnat Ssreflect.seq Ssreflect.div
   FormalPS.stdlib_ext FormalPS.Core FormalPS.Template FormalPS.Bool.
@@ -192,8 +190,7 @@ instnat_even:
 Lemma exists_instnat_even_tail :
   { instnat_even_tail : inst |
     forall (b : bool) n i1 i2 vs cs, instbool_spec b i1 -> instnat_spec n i2 ->
-    exists i3 : inst,
-    instbool_spec (if even_odd_dec n then b else negb b) i3 /\
+    exists i3 : inst, instbool_spec (if odd n then ~~ b else b) i3 /\
     (i2 :: i1 :: vs, instnat_even_tail :: cs) |=>* (i3 :: vs, cs) }.
 Proof.
   eexists => b n i1 i2 vs cs H H0.
@@ -209,10 +206,8 @@ Proof.
     edestruct (IH (negb b) i2) as [i1 [H H1]]; auto.
     evalpartial H1; clear IH H0 H1.
     evalauto.
-    rewrite -Bool.negb_involutive_reverse in H.
-    destruct (even_odd_dec n), (even_odd_dec n.+1); auto.
-    by inversion e0; apply False_ind, (not_even_and_odd n).
-    by inversion o0; apply False_ind, (not_even_and_odd n).
+    move: H => //=.
+    case: b; case: (odd n) => //=.
 Defined.
 
 Notation instnat_even_tail := (proj1_sig exists_instnat_even_tail).
@@ -221,15 +216,13 @@ Notation instnat_even_proof_tail := (proj2_sig exists_instnat_even_tail).
 Lemma exists_instnat_even :
   { instnat_even : inst |
     forall n i1 vs cs, instnat_spec n i1 ->
-    exists i2 : inst, instbool_spec (even_odd_dec n) i2 /\
+    exists i2 : inst, instbool_spec (~~ odd n) i2 /\
     (i1 :: vs, instnat_even :: cs) |=>* (i2 :: vs, cs) }.
 Proof.
   eexists => n i1 vs cs H.
   evalpartial' evalpush.
   evalpartial' evalswap.
   edestruct (instnat_even_proof_tail true n) as [i2 [H0 H1]]; eauto.
-  evalpartial H1; evalauto.
-  by move: H0; rewrite instbool_spec_if_tf.
 Defined.
 
 Notation instnat_even := (proj1_sig exists_instnat_even).
@@ -481,9 +474,7 @@ Lemma exists_instnat_gcd_iter :
     instnat_spec n i1 -> instnat_spec m i2 ->
     exists i4 : inst, instnat_spec (n %% m) i4 /\
     (i3 :: i2 :: i1 :: vs, instnat_gcd_iter :: cs) |=>*
-    (if eqn 0 m
-      then (i1 :: vs, cs)
-      else (i3 :: i4 :: i2 :: vs, i3 :: cs)) }.
+    (if eqn 0 m then (i1 :: vs, cs) else (i3 :: i4 :: i2 :: vs, i3 :: cs)) }.
 Proof.
   eexists => n m i1 i2 i3 vs cs H H0.
   evalpartial' evalswap.
