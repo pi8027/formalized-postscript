@@ -1,5 +1,5 @@
 Require Import
-  Coq.Lists.List Omega
+  Coq.Lists.List
   Ssreflect.ssreflect Ssreflect.ssrbool Ssreflect.ssrnat Ssreflect.seq
   FormalPS.stdlib_ext FormalPS.Core.
 
@@ -324,7 +324,7 @@ Defined.
 
 Tactic Notation "evaltemplate_evalpartial"
     constr(vs) constr(n) constr(tvs) constr(tcs) :=
-  match eval hnf in (eq_nat_dec n (length (firstn n vs))) with
+  match eval compute in (Peano_dec.eq_nat_dec (length (firstn n vs)) n) with
     | left ?H1 =>
       match eval compute in (dec_fill_template' (firstn n vs) tvs) with
         | inl (exist _ ?vs' ?H2) =>
@@ -338,7 +338,7 @@ Tactic Notation "evaltemplate_evalpartial"
 
 Tactic Notation "evaltemplate_evalpartial'"
     constr(vs) constr(n) constr(tvs) constr(tcs) :=
-  match eval hnf in (eq_nat_dec n (length (firstn n vs))) with
+  match eval compute in (Peano_dec.eq_nat_dec (length (firstn n vs)) n) with
     | left ?H1 =>
       match eval compute in (dec_fill_template' (firstn n vs) tvs) with
         | inl (exist _ ?vs' ?H2) =>
