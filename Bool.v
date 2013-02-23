@@ -1,6 +1,5 @@
 Require Import
-  Coq.Relations.Relations Coq.Program.Basics Coq.Bool.Sumbool
-  Ssreflect.ssreflect Ssreflect.seq
+  Coq.Bool.Sumbool Ssreflect.ssreflect Ssreflect.seq
   FormalPS.stdlib_ext FormalPS.Core.
 
 Set Implicit Arguments.

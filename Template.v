@@ -1,6 +1,6 @@
 Require Import
-  Coq.Numbers.Natural.Peano.NPeano Coq.Lists.List Omega
-  Ssreflect.ssreflect Ssreflect.ssrnat Ssreflect.seq
+  Coq.Lists.List Omega
+  Ssreflect.ssreflect Ssreflect.ssrbool Ssreflect.ssrnat Ssreflect.seq
   FormalPS.stdlib_ext FormalPS.Core.
 
 Set Implicit Arguments.
@@ -233,24 +233,25 @@ Lemma exists_inst_fill_template_iter :
   forall l i, length l = len -> fill_template l t i -> forall vs cs,
   (l ++ vs, inst_fill_template :: cs) |=>* (i :: l ++ vs, cs) }.
 Proof.
+  have Heq1: forall n m, n < (n + m).+1 by move=> n m; rewrite ltnS leq_addr //.
+  have Heq2: forall n t1 t2,
+    instt_length (lift_instt n t1) < (instt_length t2 + instt_length t1).+1
+    by move=> n t1 t2; rewrite ltnS -instt_length_lifted leq_addl //.
   move => len t; move: t len.
-  refine (induction_gtof2 _ instt_length _ _).
-  rewrite /gtof; case; try by move => H len;
+  refine (well_founded_induction (well_founded_ltof instt_length) _ _).
+  rewrite /ltof; case; try by move => H len;
     eexists => l i H0 H1 vs cs; inversion H1; evalpartial evalpush; evalauto.
   - move => /= t IH len; eexists => l i H H0 vs cs.
     inversion H0.
     clear i l0 t0 H0 H1 H2 H4.
-    evalpartial' (proj2_sig (IH t (le_n (instt_length t).+1) len) l i0 H H3).
+    evalpartial' (proj2_sig (IH t (ltnSn (instt_length t)) len) l i0 H H3).
     evalpartial evalquote.
     evalauto.
   - move => /= t1 t2 IH len; eexists => l i H H0 vs cs.
     inversion H0.
     clear i l0 t0 t3 H0 H1 H2 H3 H5.
-    evalpartial' (proj2_sig (IH t1 (le_n_S _ _ (le_plus_l _ _)) len) l i1 H H4).
-    evalpartial' (proj2_sig (IH (lift_instt 1 t2)
-      ((le_n_S _ _ (le_trans _ _ _
-        (Nat.eq_le_incl _ _ (eq_sym (instt_length_lifted 1 t2)))
-        (le_plus_r _ _)))) len.+1)
+    evalpartial' (proj2_sig (IH t1 (Heq1 _ _) len) l i1 H H4).
+    evalpartial' (proj2_sig (IH (lift_instt 1 t2) (Heq2 1 t2 t1) len.+1)
       (i1 :: l) i2 (eq_S _ _ H) (@lift_fill_template [:: i1] l t2 i2 H6)) => /=.
     evalpartial evalcons.
     evalauto.
