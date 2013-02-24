@@ -15,7 +15,7 @@ Fixpoint listindex (xs : seq A) n x :=
     else False.
 
 Theorem lift_listindex :
-  forall xs ys n a, listindex ys n a -> listindex (xs ++ ys) (length xs + n) a.
+  forall xs ys n a, listindex ys n a -> listindex (xs ++ ys) (size xs + n) a.
 Proof.
   elim => //.
 Qed.
@@ -50,10 +50,10 @@ Fixpoint holes_of_template (t : instt) : seq nat :=
     | _ => [::]
   end.
 
-Fixpoint instt_length (t : instt) : nat :=
+Fixpoint instt_size (t : instt) : nat :=
   match t with
-    | insttpush t => (instt_length t)
-    | insttpair t1 t2 => (instt_length t1 + instt_length t2)
+    | insttpush t => (instt_size t)
+    | insttpair t1 t2 => (instt_size t1 + instt_size t2)
     | _ => 0
   end.+1.
 
@@ -77,8 +77,8 @@ Fixpoint instt_of_inst (i : inst) : instt :=
     | instpair i1 i2 => insttpair (instt_of_inst i1) (instt_of_inst i2)
   end.
 
-Theorem instt_length_lifted :
-  forall n t, instt_length t = instt_length (lift_instt n t).
+Theorem instt_size_lifted :
+  forall n t, instt_size t = instt_size (lift_instt n t).
 Proof.
   move => n; elim => //=; f_equal; auto.
 Qed.
@@ -101,7 +101,7 @@ Inductive fill_template : seq inst -> instt -> inst -> Prop :=
 
 Theorem lift_fill_template :
   forall xs ys t i, fill_template ys t i ->
-  fill_template (xs ++ ys) (lift_instt (length xs) t) i.
+  fill_template (xs ++ ys) (lift_instt (size xs) t) i.
 Proof.
   move => xs ys; elim; try by move => i H; inversion H; constructor.
   - move => t IH i H /=.
@@ -220,21 +220,21 @@ Defined.
 
 Lemma exists_inst_fill_template_iter :
   forall len t, { inst_fill_template |
-  forall l i, length l = len -> fill_template l t i -> forall vs cs,
+  forall l i, size l = len -> fill_template l t i -> forall vs cs,
   (l ++ vs, inst_fill_template :: cs) |=>* (i :: l ++ vs, cs) }.
 Proof.
   have Heq1: forall n m, n < (n + m).+1 by move=> n m; rewrite ltnS leq_addr //.
   have Heq2: forall n t1 t2,
-    instt_length (lift_instt n t1) < (instt_length t2 + instt_length t1).+1
-    by move=> n t1 t2; rewrite ltnS -instt_length_lifted leq_addl //.
+    instt_size (lift_instt n t1) < (instt_size t2 + instt_size t1).+1
+    by move=> n t1 t2; rewrite ltnS -instt_size_lifted leq_addl //.
   move => len t; move: t len.
-  refine (well_founded_induction (well_founded_ltof instt_length) _ _).
+  refine (well_founded_induction (well_founded_ltof instt_size) _ _).
   rewrite /ltof; case; try by move => H len;
     eexists => l i H0 H1 vs cs; inversion H1; evalpartial evalpush; evalauto.
   - move => /= t IH len; eexists => l i H H0 vs cs.
     inversion H0.
     clear i l0 t0 H0 H1 H2 H4.
-    evalpartial' (proj2_sig (IH t (ltnSn (instt_length t)) len) l i0 H H3).
+    evalpartial' (proj2_sig (IH t (ltnSn (instt_size t)) len) l i0 H H3).
     evalpartial evalquote.
     evalauto.
   - move => /= t1 t2 IH len; eexists => l i H H0 vs cs.
@@ -253,7 +253,7 @@ Defined.
 
 Theorem exists_clear_used :
   forall len, { inst_clear_used |
-  forall i vs1, length vs1 = len -> forall vs2 cs,
+  forall i vs1, size vs1 = len -> forall vs2 cs,
   (i :: vs1 ++ vs2, inst_clear_used :: cs) |=>* (i :: vs2, cs) }.
 Proof.
   elim => [ | n [i1 IH] ]; eexists => i2.
@@ -269,7 +269,7 @@ Defined.
 
 Theorem exists_inst_fill_template' :
   forall len t, { inst_fill_template |
-  forall l i, length l = len -> fill_template l t i -> forall vs cs,
+  forall l i, size l = len -> fill_template l t i -> forall vs cs,
   (l ++ vs, inst_fill_template :: cs) |=>* (i :: vs, cs) }.
 Proof.
   move => len t; eexists => l i H H0 vs cs.
@@ -279,7 +279,7 @@ Defined.
 
 Theorem exists_inst_fill_template :
   forall len tvs tcs, { inst_fill_template |
-    forall l vs' cs', length l = len ->
+    forall l vs' cs', size l = len ->
     Forall2 (fill_template l) tvs vs' ->
     Forall2 (fill_template l) tcs cs' -> forall vs cs,
     (l ++ vs, inst_fill_template :: cs) |=>* (vs' ++ vs, cs' ++ cs) }.
@@ -314,7 +314,7 @@ Defined.
 
 Tactic Notation "evaltemplate_evalpartial"
     constr(vs) constr(n) constr(tvs) constr(tcs) :=
-  match eval compute in (Peano_dec.eq_nat_dec (length (firstn n vs)) n) with
+  match eval compute in (Peano_dec.eq_nat_dec (size (firstn n vs)) n) with
     | left ?H1 =>
       match eval compute in (dec_fill_template' (firstn n vs) tvs) with
         | inl (exist _ ?vs' ?H2) =>
@@ -328,7 +328,7 @@ Tactic Notation "evaltemplate_evalpartial"
 
 Tactic Notation "evaltemplate_evalpartial'"
     constr(vs) constr(n) constr(tvs) constr(tcs) :=
-  match eval compute in (Peano_dec.eq_nat_dec (length (firstn n vs)) n) with
+  match eval compute in (Peano_dec.eq_nat_dec (size (firstn n vs)) n) with
     | left ?H1 =>
       match eval compute in (dec_fill_template' (firstn n vs) tvs) with
         | inl (exist _ ?vs' ?H2) =>

@@ -32,13 +32,13 @@ Fixpoint pscode_of_inst (i : inst) : string :=
   end%string.
 
 (*
-inst_length:
+inst_size:
   命令を構成するコンストラクタの数を計算する。
 *)
-Fixpoint inst_length i : nat :=
+Fixpoint inst_size i : nat :=
   match i with
-    | instpush i => (inst_length i).+1
-    | instpair i1 i2 => (inst_length i1 + inst_length i2).+1
+    | instpush i => (inst_size i).+1
+    | instpair i1 i2 => (inst_size i1 + inst_size i2).+1
     | _ => 1
   end.
 
