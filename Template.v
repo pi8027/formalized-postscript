@@ -10,14 +10,9 @@ Section ListIndex.
 Variable A : Type.
 
 Fixpoint listindex (xs : seq A) n x :=
-  match xs with
-    | [::] => False
-    | x' :: xs =>
-      match n with
-        | 0 => x = x'
-        | S n => listindex xs n x
-      end
-  end.
+  if xs is x' :: xs
+    then (if n is n.+1 then listindex xs n x else x = x')
+    else False.
 
 Theorem lift_listindex :
   forall xs ys n a, listindex ys n a -> listindex (xs ++ ys) (length xs + n) a.
@@ -47,7 +42,7 @@ Inductive instt : Set :=
   | insttpair of instt & instt
   | instthole of nat.
 
-Fixpoint holes_of_template (t : instt) : list nat :=
+Fixpoint holes_of_template (t : instt) : seq nat :=
   match t with
     | insttpush i => holes_of_template i
     | insttpair i1 i2 => holes_of_template i1 ++ holes_of_template i2
@@ -88,7 +83,7 @@ Proof.
   move => n; elim => //=; f_equal; auto.
 Qed.
 
-Inductive fill_template : list inst -> instt -> inst -> Prop :=
+Inductive fill_template : seq inst -> instt -> inst -> Prop :=
   | fillpop   : forall l, fill_template l insttpop instpop
   | fillcopy  : forall l, fill_template l insttcopy instcopy
   | fillswap  : forall l, fill_template l insttswap instswap
