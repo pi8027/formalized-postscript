@@ -9,39 +9,34 @@ Section ListIndex.
 
 Variable A : Type.
 
-Inductive listindex : list A -> nat -> A -> Prop :=
-  | lizero : forall x xs, listindex (x :: xs) 0 x
-  | lisucc : forall x' xs n x, listindex xs n x -> listindex (x' :: xs) n.+1 x.
+Fixpoint listindex (xs : seq A) n x :=
+  match xs with
+    | [::] => False
+    | x' :: xs =>
+      match n with
+        | 0 => x = x'
+        | S n => listindex xs n x
+      end
+  end.
 
 Theorem lift_listindex :
   forall xs ys n a, listindex ys n a -> listindex (xs ++ ys) (length xs + n) a.
 Proof.
-  by elim => //= x xs IH ys n y H; rewrite addSn; apply lisucc, IH.
+  elim => //.
 Qed.
 
 Theorem dec_listindex :
-  forall xs n, { a | listindex xs n a } + ({ a | listindex xs n a} -> False).
+  forall xs n, { a | listindex xs n a } + ({ a | listindex xs n a } -> False).
 Proof.
-  elim => [ | x xs IH] n.
-  - right; case => i H; inversion H.
-  - case: n => [ | n].
-    - left; exists x; constructor.
-    - case (IH n) => H.
-      - by left; case: H => i H; exists i; constructor.
-      - by right => H0; apply: H; case: H0 => i H0; exists i; inversion H0.
+  elim => [ | x xs IH] /=.
+  - by move=> _; right; case.
+  - by case => //=; left; exists x.
 Defined.
 
 Theorem unique_listindex :
   forall xs n x y, listindex xs n x -> listindex xs n y -> x = y.
 Proof.
-  elim => [n | a xs IH [ | n]] x y H H0.
-  - inversion H.
-  - inversion H.
-    inversion H0.
-    congruence.
-  - apply (IH n x y).
-    by inversion H.
-    by inversion H0.
+  elim => // x xs IHxs; case=> //= x' y H H0; congruence.
 Qed.
 
 End ListIndex.
@@ -183,7 +178,7 @@ Proof.
   - move => n i1 i2 H H0.
     inversion H.
     inversion H0.
-    apply (unique_listindex H3 H7).
+    by apply (unique_listindex l n).
 Qed.
 
 Lemma exists_inst_listindex_iter :
@@ -192,8 +187,9 @@ Lemma exists_inst_listindex_iter :
   (instseqv ys :: xs ++ vs, inst_listindex :: cs) |=>*
   (x :: ys ++ xs ++ vs, cs) }.
 Proof.
-  elim => [ | n [i IH]]; eexists => xs x ys H vs cs; inversion H => /=.
-  - evalpartial' evalquote.
+  elim => [ | n [i IH]]; eexists; case => //= x xs x' ys H vs cs.
+  - subst.
+    evalpartial' evalquote.
     evalpartial' evalswap.
     evalpartial' evalquote.
     evalpartial' evalcopy.
@@ -208,13 +204,12 @@ Proof.
     evalauto.
     evalpartial evalseqv.
     evalauto.
-  - clear xs H n0 x0 H1 H0 H3.
-    evalpartial' evalswap.
+  - evalpartial' evalswap.
     evalpartial' evalquote.
     evalpartial' evalsnoc.
-    rewrite -/(instseqv' (instseqv ys) [:: x'])
-      -(app_instseqv ys [:: x']) -/([:: x'] ++ xs0 ++ vs) catA.
-    apply (IH xs0 x (ys ++ [:: x']) H2).
+    rewrite -/(instseqv' (instseqv ys) [:: x])
+      -(app_instseqv ys [:: x]) -/([:: x] ++ xs ++ vs) catA.
+    by apply IH.
 Defined.
 
 Theorem exists_inst_listindex :
