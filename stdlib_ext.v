@@ -1,5 +1,5 @@
 Require Import
-  Coq.Relations.Relations Coq.Relations.Relation_Operators Omega
+  Coq.Relations.Relations Omega
   Ssreflect.ssreflect Ssreflect.ssrfun Ssreflect.ssrbool Ssreflect.eqtype
   Ssreflect.ssrnat Ssreflect.seq.
 
@@ -16,8 +16,7 @@ Proof.
   move => A n a.
   rewrite -{1}(cats0 (nseq n a)) /rev -[[::]]/(nseq 0 a).
   move: n (0); elim => //= n IH m.
-  rewrite -(IH m.+1) !nseq_app.
-  by replace (n + m.+1) with (n + m).+1.
+  by rewrite -(IH m.+1) !nseq_app addnS.
 Qed.
 
 (*
@@ -28,9 +27,8 @@ Lemma rt1n_trans' : forall A (R : relation A) (x y z : A),
   clos_refl_trans_1n A R x y -> clos_refl_trans_1n A R y z ->
   clos_refl_trans_1n A R x z.
 Proof.
-  move => A R x y z; elim.
-  auto.
-  clear => x y z' H H0 IH H2; apply rt1n_trans with y; auto.
+  move => A R x y z; elim=> //=.
+  clear => x y z' H H0 IH H2; apply Relation_Operators.rt1n_trans with y; auto.
 Qed.
 
 (* well-founded induction *)

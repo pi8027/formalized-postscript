@@ -1,5 +1,5 @@
 Require Import
-  Coq.Logic.Decidable Coq.Relations.Relations Coq.Relations.Relation_Operators
+  Coq.Logic.Decidable Coq.Relations.Relations
   Coq.Strings.String Coq.Program.Basics Coq.Program.Equality
   Ssreflect.ssreflect Ssreflect.ssrnat Ssreflect.seq
   FormalPS.stdlib_ext.
