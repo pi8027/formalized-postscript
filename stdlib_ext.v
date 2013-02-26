@@ -18,7 +18,7 @@ Lemma rt1n_trans' : forall A (R : relation A) (x y z : A),
   clos_refl_trans_1n A R x z.
 Proof.
   move => A R x y z; elim=> //=.
-  clear => x y z' H H0 IH H2; apply Relation_Operators.rt1n_trans with y; auto.
+  clear => x y z' H _ H0 H1; apply Relation_Operators.rt1n_trans with y; tauto.
 Qed.
 
 (* well-founded induction *)
@@ -51,16 +51,19 @@ Ltac subst_evars := match goal with |- _ => idtac end.
 (* ssromega *)
 Ltac arith_hypo_ssrnat2coqnat :=
   match goal with
-    | H : context [?L < ?R] |- _ => move/ltP: H => H
+    | H : context [andb _ _] |- _ => let H0 := fresh in case/andP: H => H H0
+    | H : context [orb _ _] |- _ => case/orP: H => H
+    | H : context [?L <= ?R] |- _ => move/leP: H => H
     | H : context [addn ?L ?R] |- _ => rewrite -plusE in H
     | H : context [muln ?L ?R] |- _ => rewrite -multE in H
   end.
 
 Ltac arith_goal_ssrnat2coqnat :=
   rewrite ?NatTrec.trecE -?plusE -?minusE -?multE;
-  match goal with
-    | |- is_true (_ < _) => apply/ltP
-    | |- _ => idtac
+  repeat match goal with
+    | |- is_true (andb _ _) => apply/andP; split
+    | |- is_true (orb _ _) => apply/orP
+    | |- is_true (_ <= _) => apply/leP
   end.
 
 Ltac ssromega :=

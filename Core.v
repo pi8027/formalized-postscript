@@ -252,7 +252,7 @@ evalpartial:
 *)
 Tactic Notation "evalpartial" constr(H) "by" tactic(tac) :=
   (
-    eapply evalrtc_trans ||
+    apply: evalrtc_trans ||
     refine (@exists_and_right_map _ _ _ (fun _ => @evalrtc_trans _ _ _ _) _) ||
     refine (@exists_and_right_map _ _ _ (fun _ =>
             @exists_and_right_map _ _ _ (fun _ => @evalrtc_trans _ _ _ _)) _)
