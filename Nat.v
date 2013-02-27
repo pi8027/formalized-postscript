@@ -525,7 +525,7 @@ Proof.
     evalauto.
     by rewrite gcdn0.
   - move => m IH H0 H1.
-    edestruct (IH (m.+1, n %% m.+1)) as [i4 [H2 H3]] => /=.
+    edestruct (IH (m.+1, n %% m.+1)) as [i4 [H2 H3]] => /=; try eassumption.
     - clear; case: ifP.
       - move: (ltn_pmod n (ltn0Sn m)) => H H0.
         ssromega.
@@ -538,8 +538,6 @@ Proof.
           rewrite !add0n (addnC n) ltn_add2l {1}H1 modnMDl.
           apply (leq_ltn_trans (leq_mod (n - m.+1) m.+1)).
           ssromega.
-    - apply H0.
-    - apply H1.
     - evalpartial H3.
       evalauto.
       move: H2 => /=.
