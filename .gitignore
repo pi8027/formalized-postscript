@@ -1,0 +1,13 @@
+*.aux
+*.dvi
+*.fls
+*.log
+*.nav
+*.omc
+*.out
+*.pdf
+*.snm
+*.toc
+*.vrb
+/.omakedb
+/.omakedb.lock
