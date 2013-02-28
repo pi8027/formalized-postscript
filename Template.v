@@ -103,16 +103,9 @@ Theorem lift_fill_template :
   forall xs ys t i, fill_template ys t i ->
   fill_template (xs ++ ys) (lift_instt (size xs) t) i.
 Proof.
-  move => xs ys; elim; try by move => i H; inversion H; constructor.
-  - move => t IH i H /=.
-    inversion H.
-    constructor; auto.
-  - move => t1 IH1 t2 IH2 i H /=.
-    inversion H.
-    constructor; auto.
-  - move => n i H /=.
-    inversion H.
-    by constructor; apply lift_listindex.
+  move => xs.
+  apply fill_template_ind; constructor => //=.
+  by apply lift_listindex.
 Qed.
 
 Theorem dec_fill_template :
