@@ -104,7 +104,7 @@ Theorem lift_fill_template :
   fill_template (xs ++ ys) (lift_instt (size xs) t) i.
 Proof.
   move => xs.
-  apply fill_template_ind; constructor => //=.
+  apply fill_template_ind; constructor => //.
   by apply lift_listindex.
 Qed.
 
@@ -260,16 +260,6 @@ Proof.
     apply (IH i2 vs1 H1).
 Defined.
 
-Theorem exists_inst_fill_template' :
-  forall len t, { inst_fill_template |
-  forall l i, size l = len -> fill_template l t i -> forall vs cs,
-  (l ++ vs, inst_fill_template :: cs) |=>* (i :: vs, cs) }.
-Proof.
-  move => len t; eexists => l i H H0 vs cs.
-  evalpartial' (proj2_sig (exists_inst_fill_template_iter len t) l i H H0).
-  apply (proj2_sig (exists_clear_used len) i l H).
-Defined.
-
 Theorem exists_inst_fill_template :
   forall len tvs tcs, { inst_fill_template |
     forall l vs' cs', size l = len ->
@@ -299,7 +289,8 @@ Proof.
     - move => tv tvs IH vs' H t i H0.
       by inversion H => /=; apply IH; auto; do! constructor.
   move => H2 vs cs.
-  evalpartial' (proj2_sig (exists_inst_fill_template' len _) l _ H H2).
+  evalpartial' (proj2_sig (exists_inst_fill_template_iter len _) l _ H H2).
+  evalpartial' (proj2_sig (exists_clear_used len)).
   evalpartial evalexec.
   evalpartial evalseqv'.
   apply evalseqc.
