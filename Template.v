@@ -1,5 +1,5 @@
 Require Import
-  Coq.Lists.List
+  Coq.Lists.List Coq.Program.Wf
   Ssreflect.ssreflect Ssreflect.ssrbool Ssreflect.ssrnat Ssreflect.seq
   FormalPS.stdlib_ext FormalPS.Core.
 
@@ -228,8 +228,8 @@ Proof.
     instt_size (lift_instt n t1) < (instt_size t2 + instt_size t1).+1
     by move=> n t1 t2; rewrite ltnS -instt_size_lifted leq_addl //.
   move => len t; move: t len.
-  refine (well_founded_induction (well_founded_ltof instt_size) _ _).
-  rewrite /ltof; case; try by move => H len;
+  refine (well_founded_induction (measure_wf well_founded_lt instt_size) _ _).
+  rewrite /MR; case; try by move => H len;
     eexists => l i H0 H1 vs cs; inversion H1; evalpartial evalpush; evalauto.
   - move => /= t IH len; eexists => l i H H0 vs cs.
     inversion H0.

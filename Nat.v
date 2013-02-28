@@ -1,4 +1,5 @@
 Require Import
+  Coq.Program.Wf
   Ssreflect.ssreflect Ssreflect.ssrfun Ssreflect.ssrbool
   Ssreflect.ssrnat Ssreflect.seq Ssreflect.div
   FormalPS.stdlib_ext FormalPS.Core FormalPS.Template FormalPS.Bool.
@@ -513,10 +514,9 @@ Proof.
   rewrite -/(n, m).1 -/(n, m').2.
   subst m'.
   move: (n, m); clear.
-  refine (well_founded_ind (well_founded_ltof
+  refine (well_founded_ind (measure_wf well_founded_lt
     (fun p => (if p.1 <= p.2 then 1 else 0) + p.1 + p.2)) _ _).
-  rewrite /ltof.
-  case => n m /= IH i1 i2 vs cs H H0.
+  rewrite /MR; case => n m /= IH i1 i2 vs cs H H0.
   edestruct (proj2_sig exists_instnat_gcd_iter n m i1 i2) as [i3 [H1 H2]]; auto.
   evalpartial H2; clear H2.
   move: m IH H0 H1.

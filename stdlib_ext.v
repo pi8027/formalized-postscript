@@ -22,27 +22,19 @@ Proof.
 Qed.
 
 (* well-founded induction *)
-Definition ltof A (f : A -> nat) (a b : A) := (f a < f b)%nat.
 
-Theorem well_founded_ltof :
-  forall (A : Type) (f : A -> nat), well_founded (ltof f).
+Theorem well_founded_lt : well_founded (fun n m => n < m).
 Proof.
-  rewrite /ltof => A f x.
-  move: {2}(f x) (leqnn (f x)) => n.
+  move => x.
+  move: {2}x (leqnn x) => n.
   move: n x.
   elim => [ | n IHn ] x H; constructor => y H0.
   - apply False_ind, notF.
-    rewrite -(ltn0 (f y)).
+    rewrite -(ltn0 y).
     apply (leq_trans H0 H).
   - apply IHn.
     rewrite -ltnS.
     apply (leq_trans H0 H).
-Defined.
-
-Theorem well_founded_lt : well_founded (fun n m => n < m).
-Proof.
-  move: (well_founded_ltof id).
-  rewrite /ltof //.
 Defined.
 
 (* subst_evars *)
