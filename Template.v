@@ -24,14 +24,14 @@ Theorem dec_listindex :
   forall xs n, { a | listindex xs n a } + ({ a | listindex xs n a } -> False).
 Proof.
   elim => [ | x xs IH] /=.
-  - by move=> _; right; case.
+  - by move => _; right; case.
   - by case => //=; left; exists x.
 Defined.
 
 Theorem unique_listindex :
   forall xs n x y, listindex xs n x -> listindex xs n y -> x = y.
 Proof.
-  elim => // x xs IHxs; case=> //= x' y H H0; congruence.
+  elim => // x xs IHxs; case => //= x' y H H0; congruence.
 Qed.
 
 End ListIndex.
@@ -101,7 +101,7 @@ Inductive fill_template : seq inst -> instt -> inst -> Prop :=
 
 Theorem fill_instt_of_inst : forall xs i, fill_template xs (instt_of_inst i) i.
 Proof.
-  by move=> xs; elim; constructor.
+  by move => xs; elim; constructor.
 Qed.
 
 Theorem lift_fill_template :
@@ -220,10 +220,10 @@ Lemma exists_inst_fill_template_iter :
   forall l i, size l = len -> fill_template l t i -> forall vs cs,
   (l ++ vs, inst_fill_template :: cs) |=>* (i :: l ++ vs, cs) }.
 Proof.
-  have Heq1: forall n m, n < (n + m).+1 by move=> n m; rewrite ltnS leq_addr //.
+  have Heq1: forall n m, n < (n + m).+1 by move => n m; rewrite ltnS leq_addr //.
   have Heq2: forall n t1 t2,
     instt_size (lift_instt n t1) < (instt_size t2 + instt_size t1).+1
-    by move=> n t1 t2; rewrite ltnS -instt_size_lifted leq_addl //.
+    by move => n t1 t2; rewrite ltnS -instt_size_lifted leq_addl //.
   move => len t; move: t len.
   refine (well_founded_induction (measure_wf well_founded_lt instt_size) _ _).
   rewrite /MR; case; try by move => H len;
