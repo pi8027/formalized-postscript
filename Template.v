@@ -99,6 +99,11 @@ Inductive fill_template : seq inst -> instt -> inst -> Prop :=
   | fillhole  :
     forall l n i, listindex l n i -> fill_template l (instthole n) i.
 
+Theorem fill_instt_of_inst : forall xs i, fill_template xs (instt_of_inst i) i.
+Proof.
+  by move=> xs; elim; constructor.
+Qed.
+
 Theorem lift_fill_template :
   forall xs ys t i, fill_template ys t i ->
   fill_template (xs ++ ys) (lift_instt (size xs) t) i.
@@ -207,8 +212,7 @@ Theorem exists_inst_listindex :
 Proof.
   move => n; eexists => xs x H vs cs.
   evalpartial' evalpush.
-  evalpartial (proj2_sig (exists_inst_listindex_iter n) xs x [::] H).
-  evalauto.
+  apply (proj2_sig (exists_inst_listindex_iter n) xs x [::] H).
 Defined.
 
 Lemma exists_inst_fill_template_iter :
@@ -228,20 +232,17 @@ Proof.
     inversion H0.
     clear i l0 t0 H0 H1 H2 H4.
     evalpartial' (proj2_sig (IH t (ltnSn (instt_size t)) len) l i0 H H3).
-    evalpartial evalquote.
-    evalauto.
+    apply evalrtc_step, evalquote.
   - move => /= t1 t2 IH len; eexists => l i H H0 vs cs.
     inversion H0.
     clear i l0 t0 t3 H0 H1 H2 H3 H5.
     evalpartial' (proj2_sig (IH t1 (Heq1 _ _) len) l i1 H H4).
     evalpartial' (proj2_sig (IH (lift_instt 1 t2) (Heq2 1 t2 t1) len.+1)
       (i1 :: l) i2 (eq_S _ _ H) (@lift_fill_template [:: i1] l t2 i2 H6)) => /=.
-    evalpartial evalcons.
-    evalauto.
+    apply evalrtc_step, evalcons.
   - move => /= n _ len; eexists => l i H H0 vs cs.
     inversion H0.
-    evalpartial (proj2_sig (exists_inst_listindex n) l i H3).
-    evalauto.
+    apply (proj2_sig (exists_inst_listindex n) l i H3).
 Defined.
 
 Theorem exists_clear_used :
@@ -251,8 +252,7 @@ Theorem exists_clear_used :
 Proof.
   elim => [ | n [i1 IH] ]; eexists => i2.
   - case => [ | v vs1] H vs2 cs.
-    - evalpartial evalnop.
-      evalauto.
+    - apply evalnop.
     - inversion H.
   - case => [ | v vs1] H vs2 cs; inversion H => /=.
     evalpartial' evalswap.
@@ -269,25 +269,18 @@ Theorem exists_inst_fill_template :
 Proof.
   move => len tvs tcs; eexists => l vs' cs' H H0 H1.
   have: fill_template l
-    (fold_left (fun a b => insttpair (insttpush b) a) tvs
-      (fold_left insttpair tcs (instt_of_inst instnop)))
+    (foldl (fun a b => insttpair (insttpush b) a)
+      (foldl insttpair (instt_of_inst instnop) tcs) tvs)
     (instseqv' (instseqc cs') vs').
     clear len H.
-    have: fill_template l
-     (fold_left insttpair tcs (instt_of_inst instnop)) (instseqc cs').
-      clear tvs vs' H0.
-      have: fill_template l (instt_of_inst instnop) instnop.
-        do !constructor.
-      move: {+} instnop (instt_of_inst instnop).
-      move: tcs cs' H1; elim.
-      - by move => cs' H; inversion H.
-      - move => tc tcs IH cs' H i t H0.
-        by inversion H=> /=; apply IH; auto; constructor.
-    move: {+} (fold_left insttpair tcs (instt_of_inst instnop)) (instseqc cs').
-    clear tcs cs' H1; move: tvs vs' H0; elim.
-    - by move => vs' H t i H0; inversion H.
-    - move => tv tvs IH vs' H t i H0.
-      by inversion H => /=; apply IH; auto; do! constructor.
+    move: tcs cs' H1 instnop
+      (instt_of_inst instnop) (fill_instt_of_inst l instnop).
+    refine (Forall2_ind _ _ _) => //=.
+    - move: tvs vs' H0;
+        refine (Forall2_ind _ _ _) => //= t i tl il H H0 H1 i' t' H2.
+      by apply H1; do! constructor.
+    - move => t i tl il H H1 H2 t' i' H3.
+      by apply H2; constructor.
   move => H2 vs cs.
   evalpartial' (proj2_sig (exists_inst_fill_template_iter len _) l _ H H2).
   evalpartial' (proj2_sig (exists_clear_used len)).
