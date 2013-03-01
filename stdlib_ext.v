@@ -17,8 +17,9 @@ Lemma rt1n_trans' : forall A (R : relation A) (x y z : A),
   clos_refl_trans_1n A R x y -> clos_refl_trans_1n A R y z ->
   clos_refl_trans_1n A R x z.
 Proof.
-  move => A R x y z; elim=> //=.
-  clear => x y z' H _ H0 H1; apply Relation_Operators.rt1n_trans with y; tauto.
+  move => A R x y z; move: x y.
+  refine (clos_refl_trans_1n_ind A R _ _ _) => //= x x' y H H0 H1 H2.
+  apply Relation_Operators.rt1n_trans with x'; tauto.
 Qed.
 
 (* well-founded induction *)

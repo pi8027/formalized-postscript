@@ -64,12 +64,8 @@ Proof.
   have: (([::], nseq n instpop) |=>* ([::], nseq m instpop) \/
       ([::], nseq m instpop) |=>* ([::], nseq n instpop)).
     apply (@eval_semi_uniqueness ([:: instpop], [:: i1; instexec])).
-    - evalpartial (eval_instnat_repeat n).
-      rtcrefl.
-      apply cats0.
-    - evalpartial (eval_instnat_repeat m).
-      rtcrefl.
-      apply cats0.
+    - evalpartial (eval_instnat_repeat n); rewrite cats0; constructor.
+    - evalpartial (eval_instnat_repeat m); rewrite cats0; constructor.
   clear => H.
   have: (nseq n instpop = nseq m instpop).
     by destruct H, n, m; inversion H => /=; (inversion H0 || f_equal).

@@ -229,13 +229,11 @@ Proof.
   rewrite /MR; case; try by move => H len;
     eexists => l i H0 H1 vs cs; inversion H1; evalpartial evalpush; evalauto.
   - move => /= t IH len; eexists => l i H H0 vs cs.
-    inversion H0.
-    clear i l0 t0 H0 H1 H2 H4.
+    inversion H0; move => {i l0 t0 H0 H1 H2 H4}.
     evalpartial' (proj2_sig (IH t (ltnSn (instt_size t)) len) l i0 H H3).
     apply evalrtc_step, evalquote.
   - move => /= t1 t2 IH len; eexists => l i H H0 vs cs.
-    inversion H0.
-    clear i l0 t0 t3 H0 H1 H2 H3 H5.
+    inversion H0; move => {i l0 t0 t3 H0 H1 H2 H3 H5}.
     evalpartial' (proj2_sig (IH t1 (Heq1 _ _) len) l i1 H H4).
     evalpartial' (proj2_sig (IH (lift_instt 1 t2) (Heq2 1 t2 t1) len.+1)
       (i1 :: l) i2 (eq_S _ _ H) (@lift_fill_template [:: i1] l t2 i2 H6)) => /=.
@@ -272,10 +270,9 @@ Proof.
     (foldl (fun a b => insttpair (insttpush b) a)
       (foldl insttpair (instt_of_inst instnop) tcs) tvs)
     (instseqv' (instseqc cs') vs').
-    clear len H.
     move: tcs cs' H1 instnop
-      (instt_of_inst instnop) (fill_instt_of_inst l instnop).
-    refine (Forall2_ind _ _ _) => //=.
+      (instt_of_inst instnop) (fill_instt_of_inst l instnop) {len H}.
+    refine (Forall2_ind _ _ _) => //.
     - move: tvs vs' H0;
         refine (Forall2_ind _ _ _) => //= t i tl il H H0 H1 i' t' H2.
       by apply H1; do! constructor.
