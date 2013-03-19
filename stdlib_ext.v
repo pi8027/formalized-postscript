@@ -9,7 +9,7 @@ Lemma nseq_rev_id : forall A n (a : A), nseq n a = rev (nseq n a).
 Proof.
   move => A n a.
   rewrite /rev -{1}(cats0 (nseq n a)) -[[::]]/(nseq 0 a).
-  move: n 0; elim => //= n IH m; rewrite -(IH m.+1); clear.
+  elim: n 0 => //= n IH m; rewrite -(IH m.+1); clear.
   by elim: n => //= n IH; f_equal.
 Qed.
 
@@ -28,8 +28,7 @@ Theorem well_founded_lt : well_founded (fun n m => n < m).
 Proof.
   move => x.
   move: {2}x (leqnn x) => n.
-  move: n x.
-  elim => [ | n IHn ] x H; constructor => y H0.
+  elim: n x => [ | n IHn ] x H; constructor => y H0.
   - apply False_ind, notF.
     rewrite -(ltn0 y).
     apply (leq_trans H0 H).

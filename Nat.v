@@ -69,7 +69,7 @@ Proof.
   clear => H.
   have: (nseq n instpop = nseq m instpop).
     by destruct H, n, m; inversion H => /=; (inversion H0 || f_equal).
-  clear; move: n m; elim => [ | n IHn]; case => [ | m] H; inversion H; auto.
+  elim: n m {H} => [ | n IHn]; case => [ | m] H; inversion H; auto.
 Qed.
 
 (*
@@ -113,7 +113,7 @@ Proof.
   evalpartial' evalswap.
   evalpartial' evalexec.
   evalpartial (eval_instnat_repeat n).
-  clear H i1; move: n m i2 H0; elim => [ | n IH] m i1 H /=.
+  elim: n m i2 H0 {i1 H} => [ | n IH] m i1 H /=.
   - by evalauto.
   - edestruct (instnat_succ_proof m i1) as [i2 [H1 H2]]; auto.
     evalpartial H2.
@@ -154,7 +154,7 @@ Proof.
     [:: instthole 3].
   evalpartial (eval_instnat_repeat n).
   clear i2 H0.
-  move: n o i1 i3 H H1; elim => [ | n IH] o i1 i2 H H0 /=.
+  elim: n o i1 i3 H H1 => [ | n IH] o i1 i2 H H0 /=.
   - evalauto.
     eauto.
   - evalauto.
@@ -196,7 +196,7 @@ Proof.
   evalpartial' evalexec.
   evalpartial (eval_instnat_repeat n).
   clear H0 i2.
-  move: n b i1 H; elim => [ | n IH] b i1 H.
+  elim: n b i1 H => [ | n IH] b i1 H.
   - by evalauto.
   - edestruct (evalnot b i1) as [i2 [H0 H1]]; auto.
     evalpartial H1; clear i1 H H1.
@@ -246,7 +246,7 @@ Proof.
     evalpartial' evalexec.
     evalpartial (eval_instnat_repeat n).
     clear i1 H.
-    move: n insttrue; elim => [| n IHn] i /=.
+    elim: n insttrue => [| n IHn] i /=.
     - evalauto.
     - move: IHn (IHn instfalse) => _ IHn.
       evalpartial' evalpop.
@@ -275,7 +275,7 @@ Proof.
   evalpartial' evalexec.
   evalpartial (eval_instnat_repeat m).
   clear H1 i3.
-  move: m n i1 i2 H H0; elim => [ | m IH] n i1 i2 H H0 /=.
+  elim: m n i1 i2 H H0 => [ | m IH] n i1 i2 H H0 /=.
   - evalpartial' evalswap.
     evalpartial evalpop.
     evalauto.
@@ -321,7 +321,7 @@ Proof.
   evalpartial' evalswap.
   evalpartial' evalexec.
   evalpartial (eval_instnat_repeat m).
-  clear i2 H0; move: m n i1 H; elim => [ | m IH] n i1 H /=.
+  clear i2 H0; elim: m n i1 H => [ | m IH] n i1 H /=.
   - evalauto.
     by rewrite subn0.
   - edestruct (instnat_pred_proof n i1) as [i2 [H1 H2]]; auto.
