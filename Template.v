@@ -220,10 +220,10 @@ Lemma exists_inst_fill_template_iter :
   forall l i, size l = len -> fill_template l t i -> forall vs cs,
   (l ++ vs, inst_fill_template :: cs) |=>* (i :: l ++ vs, cs) }.
 Proof.
-  have Heq1: forall n m, n < (n + m).+1 by move => n m; rewrite ltnS leq_addr //.
+  have Heq1: forall n m, n < (n + m).+1 by move => n m; rewrite ltnS leq_addr.
   have Heq2: forall n t1 t2,
     instt_size (lift_instt n t1) < (instt_size t2 + instt_size t1).+1
-    by move => n t1 t2; rewrite ltnS -instt_size_lifted leq_addl //.
+    by move => n t1 t2; rewrite ltnS -instt_size_lifted leq_addl.
   move => len t; move: t len.
   refine (well_founded_induction (measure_wf well_founded_lt instt_size) _ _).
   rewrite /MR; case; try by move => H len;
