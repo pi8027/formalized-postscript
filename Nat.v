@@ -61,15 +61,14 @@ Lemma instnat_eqmap :
   forall n m i, instnat_spec n i -> instnat_spec m i -> n = m.
 Proof.
   move => n m i1 H0 H1.
+  rewrite -(size_nseq n instpop) -(size_nseq m instpop); f_equal.
   have: (([::], nseq n instpop) |=>* ([::], nseq m instpop) \/
       ([::], nseq m instpop) |=>* ([::], nseq n instpop)).
     apply (@eval_semi_uniqueness ([:: instpop], [:: i1; instexec])).
     - evalpartial (eval_instnat_repeat n); rewrite cats0; constructor.
     - evalpartial (eval_instnat_repeat m); rewrite cats0; constructor.
-  clear => H.
-  have: (nseq n instpop = nseq m instpop).
-    by destruct H, n, m; inversion H => /=; (inversion H0 || f_equal).
-  elim: n m {H} => [ | n IHn]; case => [ | m] H; inversion H; auto.
+  by clear; case: n m => [| n]; case => [| m]; case => H //=;
+    inversion H; try inversion H0.
 Qed.
 
 (*
@@ -123,18 +122,15 @@ Defined.
 Notation instnat_add := (proj1_sig exists_instnat_add_tail).
 Notation instnat_add_proof_tail := (proj2_sig exists_instnat_add_tail).
 
-Lemma exists_instnat_add :
-  { instnat_add : inst |
-    forall n m i1 i2 vs cs, instnat_spec n i1 -> instnat_spec m i2 ->
-    exists i3 : inst, instnat_spec (n + m) i3 /\
-    (i2 :: i1 :: vs, instnat_add :: cs) |=>* (i3 :: vs, cs) }.
+Lemma instnat_add_proof :
+  forall n m i1 i2 vs cs, instnat_spec n i1 -> instnat_spec m i2 ->
+  exists i3 : inst, instnat_spec (n + m) i3 /\
+  (i2 :: i1 :: vs, instnat_add :: cs) |=>* (i3 :: vs, cs).
 Proof.
-  exists instnat_add => n m.
+  move => n m.
   rewrite -NatTrec.addE.
   apply instnat_add_proof_tail.
 Defined.
-
-Notation instnat_add_proof := (proj2_sig exists_instnat_add).
 
 (*
 instnat_mult:
@@ -167,18 +163,15 @@ Defined.
 Notation instnat_mult := (proj1_sig exists_instnat_mult_tail).
 Notation instnat_mult_proof_tail := (proj2_sig exists_instnat_mult_tail).
 
-Lemma exists_instnat_mult :
-  { instnat_mult : inst |
-    forall n m i1 i2 vs cs, instnat_spec n i1 -> instnat_spec m i2 ->
-    exists i3 : inst, instnat_spec (n * m) i3 /\
-    (i2 :: i1 :: vs, instnat_mult :: cs) |=>* (i3 :: vs, cs) }.
+Lemma instnat_mult_proof :
+  forall n m i1 i2 vs cs, instnat_spec n i1 -> instnat_spec m i2 ->
+  exists i3 : inst, instnat_spec (n * m) i3 /\
+  (i2 :: i1 :: vs, instnat_mult :: cs) |=>* (i3 :: vs, cs).
 Proof.
-  exists instnat_mult => n m.
+  move => n m.
   replace (n * m) with (NatTrec.add_mul n m 0) by ssromega.
   apply instnat_mult_proof_tail.
 Defined.
-
-Notation instnat_mult_proof := (proj2_sig exists_instnat_mult).
 
 (*
 instnat_even:

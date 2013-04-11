@@ -9,7 +9,7 @@ Lemma nseq_rev_id : forall A n (a : A), nseq n a = rev (nseq n a).
 Proof.
   move => A n a.
   rewrite /rev -{1}(cats0 (nseq n a)) -[[::]]/(nseq 0 a).
-  elim: n 0 => //= n IH m; rewrite -(IH m.+1); clear.
+  elim: n 0 => //= n IH m; rewrite -(IH m.+1) {IH}.
   by elim: n => //= n IH; f_equal.
 Qed.
 

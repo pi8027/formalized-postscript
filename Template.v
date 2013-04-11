@@ -17,15 +17,15 @@ Fixpoint listindex (xs : seq A) n x :=
 Theorem lift_listindex :
   forall xs ys n a, listindex ys n a -> listindex (xs ++ ys) (size xs + n) a.
 Proof.
-  elim => //.
+  by elim.
 Qed.
 
 Theorem dec_listindex :
   forall xs n, { a | listindex xs n a } + ({ a | listindex xs n a } -> False).
 Proof.
-  elim => [ | x xs IH] /=.
-  - by move => _; right; case.
-  - by case => //=; left; exists x.
+  elim => [| x xs IH] /=.
+  - by right; case.
+  - by case => //; left; exists x.
 Defined.
 
 Theorem unique_listindex :
@@ -180,7 +180,7 @@ Lemma exists_inst_listindex_iter :
   (instseqv ys :: xs ++ vs, inst_listindex :: cs) |=>*
   (x :: ys ++ xs ++ vs, cs) }.
 Proof.
-  elim => [ | n [i IH]]; eexists; case => //= x xs x' ys H vs cs.
+  elim => [| n [i IH]]; eexists; case => //= x xs x' ys H vs cs.
   - subst.
     evalpartial' evalquote.
     evalpartial' evalswap.
@@ -248,11 +248,11 @@ Theorem exists_clear_used :
   forall i vs1, size vs1 = len -> forall vs2 cs,
   (i :: vs1 ++ vs2, inst_clear_used :: cs) |=>* (i :: vs2, cs) }.
 Proof.
-  elim => [ | n [i1 IH] ]; eexists => i2.
-  - case => [ | v vs1] H vs2 cs.
+  elim => [| n [i1 IH]]; eexists => i2.
+  - case => [| v vs1] H vs2 cs.
     - apply evalnop.
     - inversion H.
-  - case => [ | v vs1] H vs2 cs; inversion H => /=.
+  - case => [| v vs1] H vs2 cs; inversion H => /=.
     evalpartial' evalswap.
     evalpartial' evalpop.
     apply (IH i2 vs1 H1).

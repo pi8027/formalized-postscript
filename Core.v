@@ -135,17 +135,14 @@ decide_eval:
 *)
 Theorem decide_eval : forall s1, decidable (exists s2 : state, s1 |=> s2).
 Proof.
-  elim => [vs [ | [ | | | | | | | ] ps]];
-  [ |
-   destruct vs |
-   destruct vs |
-   destruct vs as [ | ? [ | ? ?]] |
-   destruct vs as [ | ? [ | ? ?]] |
-   destruct vs |
-   destruct vs |
-    |
-    ];
-  (by right; intro; do 2 inversion 0) ||
+  move => [vs [ | [ | | | | | | | ]]];
+  [| case: vs |
+     case: vs |
+     case: vs => [ | v []] |
+     case: vs => [ | v []] |
+     case: vs |
+     case: vs | |];
+  (by right => H; do 2 inversion 0) ||
   (by left; eexists; constructor).
 Defined.
 
@@ -155,7 +152,7 @@ eval_uniqueness:
 *)
 Theorem eval_uniqueness : forall s1 s2 s3, s1 |=> s2 -> s1 |=> s3 -> s2 = s3.
 Proof.
-  destruct s1 as [[ | v vs] [ | [ | | | | | | | ] [ | p ps]]] => s2 s3 H H0;
+  case => [[ | v vs] [ | [ | | | | | | c | c1 c2 ] cs]] => s2 s3 H H0;
     inversion H; inversion H0; congruence.
 Qed.
 
@@ -170,8 +167,8 @@ Proof.
   - auto.
   - move => x y z H H0 IH H1.
     inversion H1.
-    right; rewrite -H2; econstructor; eauto.
-    move: IH; rewrite (eval_uniqueness H H2); auto.
+    - right; rewrite -H2; econstructor; eauto.
+    - move: IH; rewrite (eval_uniqueness H H2); auto.
 Qed.
 
 (*
@@ -193,10 +190,10 @@ Theorem evalrtc_apptail :
 Proof.
   move => vs ps vs' ps' vs'' ps'' H.
   dependent induction H.
-  constructor.
-  destruct y.
-  by apply evalrtc_cons with (l ++ vs'', l0 ++ ps'');
-    [ apply eval_apptail | apply IHclos_refl_trans_1n].
+  - constructor.
+  - destruct y.
+    by apply evalrtc_cons with (l ++ vs'', l0 ++ ps'');
+      [ apply eval_apptail | apply IHclos_refl_trans_1n].
 Qed.
 
 (*
@@ -315,8 +312,8 @@ Lemma evalseqc' :
   forall il i vs cs, (vs, instseqc' i il :: cs) |=>* (vs, i :: il ++ cs).
 Proof.
   elim => [ | i il IH] i' vs cs.
-  evalauto.
-  evalpartial IH; evalauto.
+  - evalauto.
+  - evalpartial IH; evalauto.
 Qed.
 
 Notation instseqc := (instseqc' instnop).
@@ -375,9 +372,8 @@ Lemma evalseqv' :
   forall il i vs cs, (vs, instseqv' i il :: cs) |=>* (il ++ vs, i :: cs).
 Proof.
   elim => [ | i' il IH ] i vs cs.
-  evalauto.
-  evalpartial IH.
-  evalauto.
+  - evalauto.
+  - evalpartial IH; evalauto.
 Qed.
 
 Notation instseqv := (instseqv' instnop).
