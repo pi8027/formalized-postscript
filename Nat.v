@@ -63,11 +63,10 @@ Proof.
   move => n m i1 H0 H1.
   rewrite -(size_nseq n instpop) -(size_nseq m instpop); f_equal.
   have: (([::], nseq n instpop) |=>* ([::], nseq m instpop) \/
-      ([::], nseq m instpop) |=>* ([::], nseq n instpop)).
-    apply (@eval_semi_uniqueness ([:: instpop], [:: i1; instexec])).
-    - evalpartial (eval_instnat_repeat n); rewrite cats0; constructor.
-    - evalpartial (eval_instnat_repeat m); rewrite cats0; constructor.
-  by clear; case: n m => [| n]; case => [| m]; case => H //=;
+    ([::], nseq m instpop) |=>* ([::], nseq n instpop))
+    by apply (@eval_semi_uniqueness ([:: instpop], [:: i1; instexec]));
+      rewrite -[nseq _ _]cats0; apply eval_instnat_repeat.
+  by case: n m {H0 H1} => [| n]; case => [| m]; case => H //=;
     inversion H; try inversion H0.
 Qed.
 
