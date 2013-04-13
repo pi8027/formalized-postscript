@@ -1,7 +1,7 @@
 Require Import
   Coq.Lists.List Coq.Program.Wf
-  Ssreflect.ssreflect Ssreflect.ssrbool Ssreflect.ssrnat Ssreflect.seq
-  FormalPS.stdlib_ext FormalPS.Core.
+  Ssreflect.ssreflect Ssreflect.ssrfun Ssreflect.ssrbool Ssreflect.ssrnat
+  Ssreflect.seq FormalPS.stdlib_ext FormalPS.Core.
 
 Set Implicit Arguments.
 
@@ -135,7 +135,7 @@ Proof.
       by exists il; inversion H.
   - move => n; case (dec_listindex l n).
     - by case => i; left; eexists i; constructor.
-    - by move => H; right; case => i H0 ; apply: H; exists i; inversion H0.
+    - by move => H; right; case => i H0; apply: H; exists i; inversion H0.
 Defined.
 
 Theorem dec_fill_template' :
@@ -150,9 +150,9 @@ Proof.
       - by left; exists (i :: il); constructor.
       - right; case; case.
         - move => H1; inversion H1.
-        - move => i il'; move => H1; apply H0.
+        - move => i il' H1; apply H0.
           by exists i; inversion H1.
-    - right; case => l' H1; inversion H1; apply: H.
+    - right; case => l' H1; inversion_clear H1; apply H.
       by exists l'0.
 Defined.
 
@@ -161,16 +161,13 @@ Theorem unique_fill_template :
 Proof.
   move => l; elim; try by move => i1 i2 H H0; inversion H; inversion H0.
   - move => t IH i1 i2 H H0.
-    inversion H.
-    inversion H0.
+    inversion H; inversion H0; subst.
     f_equal; auto.
   - move => t1 IH1 t2 IH2 i1 i2 H H0.
-    inversion H.
-    inversion H0.
+    inversion H; inversion H0; subst.
     f_equal; auto.
   - move => n i1 i2 H H0.
-    inversion H.
-    inversion H0.
+    inversion H; inversion H0; subst.
     by apply (unique_listindex l n).
 Qed.
 
@@ -229,11 +226,11 @@ Proof.
   rewrite /MR; case; try by move => H len;
     eexists => l i H0 H1 vs cs; inversion H1; evalpartial evalpush; evalauto.
   - move => /= t IH len; eexists => l i H H0 vs cs.
-    inversion H0; move => {i l0 t0 H0 H1 H2 H4}.
+    inversion H0 => {i l0 t0 H0 H1 H2 H4}.
     evalpartial' (proj2_sig (IH t (ltnSn (instt_size t)) len) l i0 H H3).
     apply evalrtc_step, evalquote.
   - move => /= t1 t2 IH len; eexists => l i H H0 vs cs.
-    inversion H0; move => {i l0 t0 t3 H0 H1 H2 H3 H5}.
+    inversion H0 => {i l0 t0 t3 H0 H1 H2 H3 H5}.
     evalpartial' (proj2_sig (IH t1 (Heq1 _ _) len) l i1 H H4).
     evalpartial' (proj2_sig (IH (lift_instt 1 t2) (Heq2 1 t2 t1) len.+1)
       (i1 :: l) i2 (eq_S _ _ H) (@lift_fill_template [:: i1] l t2 i2 H6)) => /=.
