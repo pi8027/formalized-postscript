@@ -1,14 +1,20 @@
 #!/bin/zsh
 
-if [[ -n $COQBIN ]]; then
-    PATH=$COQBIN:$PATH
-fi
+export GREP_COLORS='ms=101:mc=01;31:sl=:cx=:fn=35:ln=32:bn=32:se=36'
+vfiles=(Bool.v Core.v Example.v Nat.v Template.v stdlib_ext.v)
+error=
 
-for f in *.v ; do
-  tail -c 1 $f | grep -q . && echo "$f: no newline at end of file" && exit -1
-  tail -n 1 $f | grep -qv . && echo "$f: trailing empty line" && exit -1
-  export GREP_COLORS='ms=101:mc=01;31:sl=:cx=:fn=35:ln=32:bn=32:se=36'
-  grep --color=auto -H -n " * $" $f && echo "$f: trailing whitespace" && exit -1
+puterr(){
+  echo $1 >&2
+  error=1
+}
+
+for f in $vfiles; do
+  tail -c 1 $f | grep -q . && puterr "$f: no newline at end of file"
+  tail -n 1 $f | grep -qv . && puterr "$f: trailing empty line"
+  grep --color=auto -H -n " * $" $f && error=1
 done
 
-make
+[[ -n $error ]] && exit 1
+
+make "VFILES=$vfiles"
