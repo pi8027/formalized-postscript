@@ -1,7 +1,7 @@
 Require Import
   Coq.Program.Wf
   Ssreflect.ssreflect Ssreflect.ssrfun Ssreflect.ssrbool
-  Ssreflect.ssrnat Ssreflect.seq Ssreflect.div
+  Ssreflect.ssrnat Ssreflect.seq MathComp.div
   FormalPS.stdlib_ext FormalPS.Core FormalPS.Template FormalPS.Bool.
 
 Set Implicit Arguments.
