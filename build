@@ -17,4 +17,4 @@ done
 
 [[ -n $error ]] && exit 1
 
-make "VFILES=$vfiles"
+make -j ${JOBS:-4} VFILES="$vfiles" COQLIBS="-R . FormalPS $COQLIB"

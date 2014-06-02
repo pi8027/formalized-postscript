@@ -104,38 +104,28 @@ Notation evalrtc := (clos_refl_trans_1n state eval).
 Infix "|=>" := eval (at level 50, no associativity).
 Infix "|=>*" := evalrtc (at level 50, no associativity).
 
-Lemma evalrtc_refl : forall s, s |=>* s.
-Proof.
-  constructor.
-Qed.
+Lemma evalrtc_refl s : s |=>* s.
+Proof. constructor. Qed.
 
-Lemma evalrtc_refl' : forall s1 s2, s1 = s2 -> s1 |=>* s2.
-Proof.
-  move => s1 s2 H; rewrite H; constructor.
-Qed.
+Lemma evalrtc_refl' s1 s2 : s1 = s2 -> s1 |=>* s2.
+Proof. move => ->; constructor. Qed.
 
-Lemma evalrtc_step : forall s1 s2, s1 |=> s2 -> s1 |=>* s2.
-Proof.
-  do !econstructor; eauto.
-Qed.
+Lemma evalrtc_step s1 s2 : s1 |=> s2 -> s1 |=>* s2.
+Proof. do !econstructor; eauto. Qed.
 
-Lemma evalrtc_cons : forall s1 s2 s3, s1 |=> s2 -> s2 |=>* s3 -> s1 |=>* s3.
-Proof.
-  econstructor; eauto.
-Qed.
+Lemma evalrtc_cons s1 s2 s3 : s1 |=> s2 -> s2 |=>* s3 -> s1 |=>* s3.
+Proof. econstructor; eauto. Qed.
 
-Lemma evalrtc_trans : forall s1 s2 s3, s1 |=>* s2 -> s2 |=>* s3 -> s1 |=>* s3.
-Proof.
-  by apply rt1n_trans'.
-Qed.
+Lemma evalrtc_trans s1 s2 s3 : s1 |=>* s2 -> s2 |=>* s3 -> s1 |=>* s3.
+Proof. by apply rt1n_trans'. Qed.
 
 (*
 decide_eval:
   状態 s1 から eval によって書き換えられる状態 s2 の有無を決定する。
 *)
-Theorem decide_eval : forall s1, decidable (exists s2 : state, s1 |=> s2).
+Lemma decide_eval s1 : decidable (exists s2 : state, s1 |=> s2).
 Proof.
-  move => [vs [ | [ | | | | | | | ]]];
+  move: s1 => [vs [ | [ | | | | | | | ]]];
   [| case: vs |
      case: vs |
      case: vs => [ | v []] |
@@ -150,9 +140,9 @@ Defined.
 eval_uniqueness:
   状態 s1 から eval によって書き換えられる状態 s2, s3 は同値である。
 *)
-Theorem eval_uniqueness : forall s1 s2 s3, s1 |=> s2 -> s1 |=> s3 -> s2 = s3.
+Lemma eval_uniqueness s1 s2 s3 : s1 |=> s2 -> s1 |=> s3 -> s2 = s3.
 Proof.
-  case => [[ | v vs] [ | [ | | | | | | c | c1 c2 ] cs]] => s2 s3 H H0;
+  case: s1 => [[ | v vs] [ | [ | | | | | | c | c1 c2 ] cs]] => H H0;
     inversion H; inversion H0; congruence.
 Qed.
 
@@ -160,15 +150,13 @@ Qed.
 eval_semi_uniqueness:
   s1 |=>* s2 かつ s1 |=>* s3 ならば s2 |=>* s3 もしくは s3 |=>* s2 が成り立つ。
 *)
-Theorem eval_semi_uniqueness:
-  forall s1 s2 s3, s1 |=>* s2 -> s1 |=>* s3 -> s2 |=>* s3 \/ s3 |=>* s2.
+Lemma eval_semi_uniqueness s1 s2 s3 :
+  s1 |=>* s2 -> s1 |=>* s3 -> s2 |=>* s3 \/ s3 |=>* s2.
 Proof.
-  move => s1 s2 s3; elim.
-  - auto.
-  - move => x y z H H0 IH H1.
-    inversion H1.
-    - right; rewrite -H2; econstructor; eauto.
-    - move: IH; rewrite (eval_uniqueness H H2); auto.
+  elim; auto => x y z H H0 IH H1.
+  inversion H1; subst.
+  - right; econstructor; eauto.
+  - move: IH; rewrite (eval_uniqueness H H2); auto.
 Qed.
 
 (*
@@ -176,20 +164,16 @@ eval_apptail, evalrtc_apptail:
   ある計算が正しければ、その両辺の値スタックや継続スタックの末尾にリストを足した
   としても正しい計算となる。
 *)
-Lemma eval_apptail :
-  forall vs ps vs' ps' vs'' ps'', (vs, ps) |=> (vs', ps') ->
+Lemma eval_apptail vs ps vs' ps' vs'' ps'' :
+  (vs, ps) |=> (vs', ps') ->
   (vs ++ vs'', ps ++ ps'') |=> (vs' ++ vs'', ps' ++ ps'').
-Proof.
-  move => vs ps vs' ps' vs'' ps'' H.
-  inversion H; constructor.
-Qed.
+Proof. move => H; inversion H; constructor. Qed.
 
-Theorem evalrtc_apptail :
-  forall vs ps vs' ps' vs'' ps'', (vs, ps) |=>* (vs', ps') ->
+Theorem evalrtc_apptail vs ps vs' ps' vs'' ps'' :
+  (vs, ps) |=>* (vs', ps') ->
   (vs ++ vs'', ps ++ ps'') |=>* (vs' ++ vs'', ps' ++ ps'').
 Proof.
-  move => vs ps vs' ps' vs'' ps'' H.
-  dependent induction H.
+  move => H; dependent induction H.
   - constructor.
   - destruct y.
     by apply evalrtc_cons with (l ++ vs'', l0 ++ ps'');
@@ -201,12 +185,10 @@ evalstep:
   ゴールが s1 |=>* s2 の形である場合に、s1 から書き換え可能な状態 s3 を計算し、
   ゴールを s3 |=>* s2 で置き換えるタクティク。計算を自動的に1段階進める。
 *)
-Lemma exists_and_right_map :
-  forall (P Q R : inst -> Prop), (forall i, Q i -> R i) ->
+Lemma exists_and_right_map (P Q R : inst -> Prop) :
+  (forall i, Q i -> R i) ->
   (exists i : inst, P i /\ Q i) -> (exists i : inst, P i /\ R i).
-Proof.
-  by firstorder.
-Qed.
+Proof. by firstorder. Qed.
 
 Ltac evalstep_0 s1 s2 :=
   apply evalrtc_refl ||
@@ -249,7 +231,7 @@ evalpartial:
 *)
 Tactic Notation "evalpartial" constr(H) "by" tactic(tac) :=
   (
-    apply: evalrtc_trans ||
+    eapply evalrtc_trans ||
     refine (@exists_and_right_map _ _ _ (fun _ => @evalrtc_trans _ _ _ _) _) ||
     refine (@exists_and_right_map _ _ _ (fun _ =>
             @exists_and_right_map _ _ _ (fun _ => @evalrtc_trans _ _ _ _)) _)
@@ -308,56 +290,44 @@ instseqc', instseqc:
 *)
 Notation instseqc' := (foldl instpair).
 
-Lemma evalseqc' :
-  forall il i vs cs, (vs, instseqc' i il :: cs) |=>* (vs, i :: il ++ cs).
+Lemma evalseqc' il i vs cs : (vs, instseqc' i il :: cs) |=>* (vs, i :: il ++ cs).
 Proof.
-  elim => [ | i il IH] i' vs cs.
+  elim: il i => [ | i il IH] i'.
   - evalauto.
   - evalpartial IH; evalauto.
 Qed.
 
 Notation instseqc := (instseqc' instnop).
 
-Lemma evalseqc : forall il vs cs, (vs, instseqc il :: cs) |=>* (vs, il ++ cs).
+Lemma evalseqc il vs cs : (vs, instseqc il :: cs) |=>* (vs, il ++ cs).
 Proof.
-  move => il vs cs.
   evalpartial evalseqc'.
   evalauto.
 Qed.
 
-Lemma app_instseqc' :
-  forall il1 il2 i, instseqc' i (il1 ++ il2) = instseqc' (instseqc' i il1) il2.
-Proof.
-  move => il1 il2 i; apply foldl_cat.
-Qed.
+Lemma app_instseqc' il1 il2 i :
+  instseqc' i (il1 ++ il2) = instseqc' (instseqc' i il1) il2.
+Proof. apply foldl_cat. Qed.
 
-Lemma app_instseqc :
-  forall il1 il2, instseqc (il1 ++ il2) = instseqc' (instseqc il1) il2.
-Proof.
-  move => il1 il2; apply app_instseqc'.
-Qed.
+Lemma app_instseqc il1 il2 :
+  instseqc (il1 ++ il2) = instseqc' (instseqc il1) il2.
+Proof. apply app_instseqc'. Qed.
 
 Notation instseqc_nseq' n i1 i2 := (foldr (flip instpair) i2 (nseq n i1)).
 
 Notation instseqc_nseq n i := (instseqc_nseq' n i instnop).
 
-Lemma instseqc_nseq_eq :
-  forall n i1 i2, instseqc' i2 (nseq n i1) = instseqc_nseq' n i1 i2.
-Proof.
-  by move => n i1 i2; rewrite {1}nseq_rev_id foldl_rev.
-Qed.
+Lemma instseqc_nseq_eq n i1 i2 :
+  instseqc' i2 (nseq n i1) = instseqc_nseq' n i1 i2.
+Proof. by rewrite {1}nseq_rev_id foldl_rev. Qed.
 
-Lemma evalseqc_nseq' :
-  forall n i1 i2 vs cs,
+Lemma evalseqc_nseq' n i1 i2 vs cs :
   (vs, instseqc_nseq' n i1 i2 :: cs) |=>* (vs, i2 :: nseq n i1 ++ cs).
-Proof.
-  move => n i1 i2; rewrite -instseqc_nseq_eq; apply evalseqc'.
-Qed.
+Proof. rewrite -instseqc_nseq_eq; apply evalseqc'. Qed.
 
-Lemma evalseqc_nseq :
-  forall n i vs cs, (vs, instseqc_nseq n i :: cs) |=>* (vs, nseq n i ++ cs).
+Lemma evalseqc_nseq n i vs cs :
+  (vs, instseqc_nseq n i :: cs) |=>* (vs, nseq n i ++ cs).
 Proof.
-  move => n i vs cs.
   evalpartial evalseqc_nseq'.
   evalauto.
 Qed.
@@ -368,31 +338,25 @@ instseqv', instseqv:
 *)
 Notation instseqv' := (foldl (fun a b => instpair (instpush b) a)).
 
-Lemma evalseqv' :
-  forall il i vs cs, (vs, instseqv' i il :: cs) |=>* (il ++ vs, i :: cs).
+Lemma evalseqv' il i vs cs : (vs, instseqv' i il :: cs) |=>* (il ++ vs, i :: cs).
 Proof.
-  elim => [ | i' il IH ] i vs cs.
+  elim: il i => [ | i' il IH ] i.
   - evalauto.
   - evalpartial IH; evalauto.
 Qed.
 
 Notation instseqv := (instseqv' instnop).
 
-Lemma evalseqv : forall il vs cs, (vs, instseqv il :: cs) |=>* (il ++ vs, cs).
+Lemma evalseqv il vs cs : (vs, instseqv il :: cs) |=>* (il ++ vs, cs).
 Proof.
-  move => il vs cs.
   evalpartial evalseqv'.
   evalauto.
 Qed.
 
-Lemma app_instseqv' :
-  forall il1 il2 i, instseqv' i (il1 ++ il2) = instseqv' (instseqv' i il1) il2.
-Proof.
-  move => il1 il2 i; apply foldl_cat.
-Qed.
+Lemma app_instseqv' il1 il2 i :
+  instseqv' i (il1 ++ il2) = instseqv' (instseqv' i il1) il2.
+Proof. apply foldl_cat. Qed.
 
-Lemma app_instseqv :
-  forall il1 il2, instseqv (il1 ++ il2) = instseqv' (instseqv il1) il2.
-Proof.
-  move => il1 il2; apply app_instseqv'.
-Qed.
+Lemma app_instseqv il1 il2 :
+  instseqv (il1 ++ il2) = instseqv' (instseqv il1) il2.
+Proof. apply app_instseqv'. Qed.

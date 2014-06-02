@@ -17,7 +17,7 @@ done
 
 shift $(( $OPTIND - 1 ))
 
-result=`coqtop -R . FormalPS 2>/dev/null <<EOT
+result=`coqtop -R . FormalPS $COQLIB 2>/dev/null <<EOT
 Require Import ${modules[@]}.
 Eval compute in (pscode_of_inst ($1)).
 EOT`

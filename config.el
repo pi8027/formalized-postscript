@@ -1,2 +1,2 @@
 (setq coq-prog-args (list "-dont-load-proofs"))
-(setq coq-load-path (list (list (expand-file-name default-directory) "FormalPS")))
+(add-to-list 'coq-load-path (list (expand-file-name default-directory) "FormalPS"))
