@@ -43,16 +43,10 @@ Fixpoint inst_size i : nat :=
   end.
 
 (*
-stack:
-  スタックは命令のリスト。
-*)
-Notation stack := (seq inst).
-
-(*
 state:
-  状態は2本のスタックの組。前者は値のスタック、後者は継続のスタックである。
+  状態は2つの命令列の組。前者はスタック、後者は継続である。
 *)
-Notation state := (stack * stack)%type.
+Notation state := (seq inst * seq inst)%type.
 
 (*
 eval:
@@ -169,7 +163,7 @@ Lemma eval_apptail vs ps vs' ps' vs'' ps'' :
   (vs ++ vs'', ps ++ ps'') |=> (vs' ++ vs'', ps' ++ ps'').
 Proof. move => H; inversion H; constructor. Qed.
 
-Theorem evalrtc_apptail vs ps vs' ps' vs'' ps'' :
+Lemma evalrtc_apptail vs ps vs' ps' vs'' ps'' :
   (vs, ps) |=>* (vs', ps') ->
   (vs ++ vs'', ps ++ ps'') |=>* (vs' ++ vs'', ps' ++ ps'').
 Proof.
@@ -190,33 +184,33 @@ Lemma exists_and_right_map (P Q R : inst -> Prop) :
   (exists i : inst, P i /\ Q i) -> (exists i : inst, P i /\ R i).
 Proof. by firstorder. Qed.
 
-Ltac evalstep_0 s1 s2 :=
+Ltac evalstep_0 s :=
   apply evalrtc_refl ||
-  match eval hnf in (decide_eval s1) with
-    | or_introl _ (ex_intro _ ?s3 ?p) => apply (@evalrtc_cons _ _ _ p)
+  match eval hnf in (decide_eval s) with
+    | or_introl _ (ex_intro _ _ ?p) => apply (@evalrtc_cons _ _ _ p)
   end.
 
-Ltac evalstep_1 s1 s2 :=
+Ltac evalstep_1 s :=
   (eexists; split; last apply evalrtc_refl) ||
-  match eval hnf in (decide_eval s1) with
-    | or_introl _ (ex_intro _ ?s3 ?p) =>
+  match eval hnf in (decide_eval s) with
+    | or_introl _ (ex_intro _ _ ?p) =>
       apply (@exists_and_right_map _ _ _ (fun _ => @evalrtc_cons _ _ _ p))
   end.
 
-Ltac evalstep_2 s1 s2 :=
+Ltac evalstep_2 s :=
   (eexists; split; last (eexists; split; last apply evalrtc_refl)) ||
-  match eval hnf in (decide_eval s1) with
-    | or_introl _ (ex_intro _ ?s3 ?p) =>
+  match eval hnf in (decide_eval s) with
+    | or_introl _ (ex_intro _ _ ?p) =>
       apply (@exists_and_right_map _ _ _ (fun _ =>
              @exists_and_right_map _ _ _ (fun _ => @evalrtc_cons _ _ _ p)))
   end.
 
 Ltac evalstep :=
   match goal with
-    | |- ?s1 |=>* ?s2 => evalstep_0 s1 s2
-    | |- exists i1 : inst, _ /\ ?s1 |=>* ?s2 => evalstep_1 s1 s2
-    | |- exists i1 : inst, _ /\ exists i2 : inst, _ /\ ?s1 |=>* ?s2 =>
-      evalstep_2 s1 s2
+    | |- ?s |=>* _ => evalstep_0 s
+    | |- exists i1 : inst, _ /\ ?s |=>* _ => evalstep_1 s
+    | |- exists i1 : inst, _ /\ exists i2 : inst, _ /\ ?s |=>* _ =>
+      evalstep_2 s
   end.
 
 (*
@@ -289,6 +283,9 @@ instseqc', instseqc:
   継続のスタックの先頭にあった場合に、元のリストの通りに展開される。
 *)
 Notation instseqc' := (foldl instpair).
+Notation instseqc := (instseqc' instnop).
+Notation instnseqc' n i1 i2 := (iter n (flip instpair i1) i2).
+Notation instnseqc n i := (instnseqc' n i instnop).
 
 Lemma evalseqc' il i vs cs : (vs, instseqc' i il :: cs) |=>* (vs, i :: il ++ cs).
 Proof.
@@ -297,13 +294,8 @@ Proof.
   - evalpartial IH; evalauto.
 Qed.
 
-Notation instseqc := (instseqc' instnop).
-
 Lemma evalseqc il vs cs : (vs, instseqc il :: cs) |=>* (vs, il ++ cs).
-Proof.
-  evalpartial evalseqc'.
-  evalauto.
-Qed.
+Proof. evalpartial evalseqc'. evalauto. Qed.
 
 Lemma app_instseqc' il1 il2 i :
   instseqc' i (il1 ++ il2) = instseqc' (instseqc' i il1) il2.
@@ -313,24 +305,17 @@ Lemma app_instseqc il1 il2 :
   instseqc (il1 ++ il2) = instseqc' (instseqc il1) il2.
 Proof. apply app_instseqc'. Qed.
 
-Notation instseqc_nseq' n i1 i2 := (foldr (flip instpair) i2 (nseq n i1)).
+Lemma instnseqc_eq n i1 i2 :
+  instseqc' i2 (nseq n i1) = instnseqc' n i1 i2.
+Proof. by elim: n i2 => // n IH i2; rewrite iterSr /= IH. Qed.
 
-Notation instseqc_nseq n i := (instseqc_nseq' n i instnop).
+Lemma evalnseqc' n i1 i2 vs cs :
+  (vs, instnseqc' n i1 i2 :: cs) |=>* (vs, i2 :: nseq n i1 ++ cs).
+Proof. rewrite -instnseqc_eq; apply evalseqc'. Qed.
 
-Lemma instseqc_nseq_eq n i1 i2 :
-  instseqc' i2 (nseq n i1) = instseqc_nseq' n i1 i2.
-Proof. by rewrite {1}nseq_rev_id foldl_rev. Qed.
-
-Lemma evalseqc_nseq' n i1 i2 vs cs :
-  (vs, instseqc_nseq' n i1 i2 :: cs) |=>* (vs, i2 :: nseq n i1 ++ cs).
-Proof. rewrite -instseqc_nseq_eq; apply evalseqc'. Qed.
-
-Lemma evalseqc_nseq n i vs cs :
-  (vs, instseqc_nseq n i :: cs) |=>* (vs, nseq n i ++ cs).
-Proof.
-  evalpartial evalseqc_nseq'.
-  evalauto.
-Qed.
+Lemma evalnseqc n i vs cs :
+  (vs, instnseqc n i :: cs) |=>* (vs, nseq n i ++ cs).
+Proof. evalpartial evalnseqc'. evalauto. Qed.
 
 (*
 instseqv', instseqv:
@@ -348,10 +333,7 @@ Qed.
 Notation instseqv := (instseqv' instnop).
 
 Lemma evalseqv il vs cs : (vs, instseqv il :: cs) |=>* (il ++ vs, cs).
-Proof.
-  evalpartial evalseqv'.
-  evalauto.
-Qed.
+Proof. evalpartial evalseqv'. evalauto. Qed.
 
 Lemma app_instseqv' il1 il2 i :
   instseqv' i (il1 ++ il2) = instseqv' (instseqv' i il1) il2.

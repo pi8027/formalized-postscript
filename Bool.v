@@ -10,55 +10,43 @@ instfalse_spec, insttrue_spec, instbool_spec:
   false は何もしない命令である。
   true は swap と同様の振舞いをする命令である。
 *)
-Definition instfalse_spec (i1 : inst) : Prop :=
-  forall i2 i3 vs cs, (i3 :: i2 :: vs, i1 :: cs) |=>* (i3 :: i2 :: vs, cs).
-
-Definition insttrue_spec (i1 : inst) : Prop :=
-  forall i2 i3 vs cs, (i3 :: i2 :: vs, i1 :: cs) |=>* (i2 :: i3 :: vs, cs).
-
-Notation instbool_spec b i :=
-  (if b then insttrue_spec i else instfalse_spec i)%GEN_IF.
-
-Lemma instbool_spec_if_tf : forall A B (P : {A}+{B}) i,
-  instbool_spec (if P then true else false) i <-> instbool_spec P i.
-Proof.
-  move => A B P i; split; case P; auto.
-Qed.
-
-Lemma instbool_spec_if_ft : forall A B (P : {A}+{B}) i,
-  instbool_spec (if P then false else true) i <->
-  instbool_spec (sumbool_not _ _ P) i.
-Proof.
-  move => A B P i; split; case P; auto.
-Qed.
+Definition instbool_spec (b : bool) (i1 : inst) : Prop :=
+  forall i2 i3 vs cs,
+    (i3 :: i2 :: vs, i1 :: cs) |=>*
+    ((if b then [:: i2; i3] else [:: i3; i2]) ++ vs, cs).
 
 (*
 exists_false, exists_true:
   ブール値の仕様を満たす命令。
 *)
-
-Lemma exists_false : { instfalse : inst | instfalse_spec instfalse }.
+Lemma exists_bool b : {instbool : inst | instbool_spec b instbool }.
 Proof.
-  eexists => i1 i2 vs cs.
-  evalpartial evalnop.
-  constructor.
+  case: b; eexists => i1 i2 vs cs /=.
+  - evalpartial evalswap; evalauto.
+  - evalpartial evalnop; evalauto.
 Defined.
 
-Notation instfalse := (proj1_sig exists_false).
-Notation evalfalse := (proj2_sig exists_false).
+Notation instbool b := (proj1_sig (exists_bool b)).
+Notation evalbool b := (proj2_sig (exists_bool b)).
 
-Lemma exists_true : { insttrue : inst | insttrue_spec insttrue }.
+Hint Resolve ((fun b => evalbool b) :
+  forall b, instbool_spec b (instbool b)).
+
+(*
+instbool_eqmap:
+*)
+Lemma instbool_eqmap :
+  forall b1 b2 i, instbool_spec b1 i -> instbool_spec b2 i -> b1 = b2.
 Proof.
-  eexists => i1 i2 vs cs.
-  evalpartial evalswap.
-  constructor.
-Defined.
-
-Notation insttrue := (proj1_sig exists_true).
-Notation evaltrue := (proj2_sig exists_true).
-
-Hint Resolve (evalfalse : instfalse_spec instfalse).
-Hint Resolve (evaltrue : insttrue_spec insttrue).
+  move => b1 b2 i H H0.
+  have: let f b := if b then [:: instpop; instcopy]
+                        else [:: instcopy; instpop] in
+        let s1 := (f b1, [::]) in
+        let s2 := (f b2, [::]) in s1 |=>* s2 \/ s2 |=>* s1
+    by apply (@eval_semi_uniqueness ([:: instcopy; instpop], [:: i]));
+      [evalpartial H | evalpartial H0]; rewrite cats0; evalauto.
+  by move: b1 b2 {H H0} => [] [] [] //= H; inversion H; inversion H0.
+Qed.
 
 (*
 exists_not:
@@ -74,7 +62,7 @@ Proof.
   evalpartial' (evalpush instswap).
   evalpartial evalcons.
   evalauto.
-  move: b H; case => H i2 i3 vs' cs'; evalauto; evalpartial H; evalauto.
+  case: b H => H i2 i3 vs' cs'; evalauto; evalpartial H; evalauto.
 Defined.
 
 Notation instnot := (proj1_sig exists_not).
@@ -101,7 +89,7 @@ Proof.
   evalpartial' evalsnoc.
   evalpartial' evalexec.
   evalauto.
-  move: b H; case => H; evalpartial H; evalpartial evalpop; evalauto.
+  case: b H => H; evalpartial H => /=; evalpartial evalpop; evalauto.
 Defined.
 
 Notation instif := (proj1_sig exists_if).

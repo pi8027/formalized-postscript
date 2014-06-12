@@ -6,14 +6,14 @@
 
 % boolean values ADD_MODULES(FormalPS.Bool)
 
-/boolfalse  EMBEDPUSH(instfalse) def
-/booltrue   EMBEDPUSH(insttrue) def
-/boolnot    EMBEDPUSH(instnot) def
-/boolif     EMBEDPUSH(instif) def
-/boolexecif EMBEDPUSH(instexecif) def
-/boolxor    EMBEDPUSH(instxor) def
-/booland    EMBEDPUSH(instand) def
-/boolor     EMBEDPUSH(instor) def
+/boolfalse  {EMBED(instbool false)} def
+/booltrue   {EMBED(instbool true)} def
+/boolnot    {EMBED(instnot)} def
+/boolif     {EMBED(instif)} def
+/boolexecif {EMBED(instexecif)} def
+/boolxor    {EMBED(instxor)} def
+/booland    {EMBED(instand)} def
+/boolor     {EMBED(instor)} def
 
 /boolenc {
     { booltrue }{ boolfalse } ifelse
@@ -25,19 +25,19 @@
 
 % natural numbers ADD_MODULES(FormalPS.Nat)
 
-/natsucc   EMBEDPUSH(instnat_succ) def
-/natadd    EMBEDPUSH(instnat_add) def
-/natmult   EMBEDPUSH(instnat_mult) def
-/nateven   EMBEDPUSH(instnat_even) def
-/natiszero EMBEDPUSH(instnat_iszero) def
-/natpred   EMBEDPUSH(instnat_pred) def
-/natsub    EMBEDPUSH(instnat_sub) def
-/natle     EMBEDPUSH(instnat_le) def
-/natdivmod EMBEDPUSH(instnat_divmod) def
-/natgcd    EMBEDPUSH(instnat_gcd) def
+/natsucc   {EMBED(inst_succn)} def
+/natadd    {EMBED(inst_addn)} def
+/natmult   {EMBED(inst_muln)} def
+/nateven   {EMBED(inst_even)} def
+/natiszero {EMBED(inst_iszero)} def
+/natpred   {EMBED(inst_predn)} def
+/natsub    {EMBED(inst_subn)} def
+/natle     {EMBED(inst_leqn)} def
+/natdivmod {EMBED(inst_divmodn)} def
+/natgcd    {EMBED(inst_gcdn)} def
 
 /natenc {
-    EMBEDPUSH(instnat 0) exch { natsucc } repeat
+    {EMBED(instnat 0)} exch { natsucc } repeat
 } def
 
 /natdec {
